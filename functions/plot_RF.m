@@ -1,0 +1,73 @@
+function [h,hline,hpos,hneg] = plot_RF( ax,RF,tt,level,xshift,iffill,pcol,ncol )
+%[h,hline,hpos,hneg] = plot_RF( ax,RF,tt,level,xshift,iffill )
+%   
+% function to plot a single receiver function on a set of axes "ax". This
+% will plot the receiver function vector "RF" in time "tt", shifted in the
+% x-direction by "xshift". If "iffill" is true, it will fill in the regions
+% with greater amplitude than "level" - red for positive, blue for
+% negative. The handles to the plotted elements are returned, where 
+%  h = [hline,hpos,hneg].
+
+
+if nargin < 4 || isempty(level)
+    level = 0;
+end
+if nargin < 5 || isempty(xshift)
+    xshift = 0;
+end
+if nargin < 6 || isempty(iffill)
+    iffill = true;
+end
+if nargin < 7 || isempty(pcol)
+    pcol = [1 0 0];
+end
+if nargin < 8 || isempty(ncol)
+    ncol = [0 0 1];
+end
+
+RF = RF(:);
+tt = tt(:);
+
+axes(ax);hold on
+
+
+if iffill
+    % positive patch
+    [~,tt_pos] = crossing(RF,tt,level); % find crossings at positive level
+    Npf = floor(length(tt_pos)/2); % N of positive blocks. 
+    hpos = zeros(Npf,1);
+    for ib = 1:Npf
+        if RF(1)>level,k=1; else k=0; end % shift if the RF starts above lev
+        tt_b0 = tt_pos(2*ib-1 + k);
+        tt_b1 = tt_pos(2*ib + k);
+        tt_bl = [tt_b0;tt(tt>tt_b0 & tt<tt_b1);tt_b1];
+        RF_bl = interp1(tt,RF,tt_bl);
+        hpos(ib) = patch(ax,RF_bl+xshift,tt_bl,pcol,'linestyle','none');
+    end
+
+    % negative patch
+    [~,tt_neg] = crossing(RF,tt,-level); % find crossings at negative level
+    Nnf = floor(length(tt_neg)/2); % N of negative blocks. 
+    hneg = zeros(Nnf,1);
+    for ib = 1:Nnf
+        if RF(1)<-level,k=1; else k=0; end % shift if the RF starts above lev
+        tt_b0 = tt_neg(2*ib-1 + k);
+        tt_b1 = tt_neg(2*ib + k);
+        tt_bl = [tt_b0;tt(tt>tt_b0 & tt<tt_b1);tt_b1];
+        RF_bl = interp1(tt,RF,tt_bl);
+        hold on
+        hneg(ib) = patch(ax,RF_bl+xshift,tt_bl,ncol,'linestyle','none');
+    end
+else
+    hpos = [];
+    hneg = [];
+end
+    
+hline = plot(ax,RF+xshift,tt,'-k');
+
+h = {hline,hpos,hneg};
+
+
+
+end
+
