@@ -38,14 +38,14 @@ for ii = 1:Ntr
 %     cc_snr = abs(maxab(cc))/rms(cc);
     sig_cc = (abs(max(cc))-abs(min(cc)))./rms(cc);
     if abs(sig_cc) < 0.2, polests_cc(ii) = 0; end
-    if sig_mami<5, polests_mami(ii)=0; end
+    if any(sig_mami<4), polests_mami(ii)=0; end
     
     %% plotting
-    figure(2), clf
-    subplot(211), plot([dat_template/max(abs(dat_template)),...
-                        dat(:,ii)/max(abs(dat(:,ii)))])
-    subplot(212), plot(cc)
-    xlabel(['cc: ',num2str(polests_cc(ii)),'  maxab: ',num2str(polests_maxab(ii)),'  mamio: ',num2str(polests_mami(ii))],'fontsize',22)
+%     figure(2), clf
+%     subplot(211), plot([dat_template/max(abs(dat_template)),...
+%                         dat(:,ii)/max(abs(dat(:,ii)))])
+%     subplot(212), plot(cc)
+%     xlabel(['cc: ',num2str(polests_cc(ii)),'  maxab: ',num2str(polests_maxab(ii)),'  mamio: ',num2str(polests_mami(ii))],'fontsize',22)
 
 end
 
@@ -59,7 +59,8 @@ function [mmo,sig] = min_max_ord(xx)
     [~,imi] = min(xx);
     [~,ima] = max(xx);
     mmo = sign(imi-ima); % negative if minimum comes first, positive if max comes first)
-    sig = (max(xx)-min(xx))/rms(xx);
+%     sig = (max(xx)-min(xx))/rms(xx);
+    sig = [max(xx),-min(xx)]/rms(xx);
 end
     
 

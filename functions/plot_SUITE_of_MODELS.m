@@ -49,7 +49,7 @@ xlabel(ax2,'Vp (km/s)','fontsize',16)
 % ylabel(ax2,'Depth (km)','fontsize',16)
 
 
-Zdh = midpts(sm.Z); Zdh = Zdh(1:3:end);
+Zdh = midpts([0:1:sm.Z(end)]');
 nm = hist(posterior.zmoh(ic),Zdh);
 ns = hist(posterior.zsed(ic),Zdh);
 plot(ax4,nm/sum(nm),Zdh,'k')

@@ -22,7 +22,7 @@ maxdepth = 50;  % maximum EQ depth
 min4clust = 20; % minimum # of EQ to even try the stack
 min4stack = 5;  % minumum # of traces in order to keep the stack
 
-ifsave = false;
+ifsave = true;
 verbose = true;
 
 load(sprintf('dat_%s_%s_%.0fto%.0f',station,network,gc_lims(1),gc_lims(2)));
@@ -70,6 +70,7 @@ for ip = 1:length(RFphase)
     edeps = [eqar.edeps];
 	evinds(edeps(evinds)>=maxdepth) = [];
 	evinds(T(evinds)~=iclust) = [];
+    evinds_clust = evinds;
     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds)
     
     %% Make matrix of data to cross-correlate        
@@ -193,29 +194,64 @@ for ip = 1:length(RFphase)
 
     %% FIRST-STACK trace
     for ic = 1:3
-        dataZRT_stk(:,ic,ip) = sum(dataZRT_proc(:,evinds,ic,ip),2)/length(evinds); %#ok<SAGROW>
+        dataZRT_stk1(:,ic,ip) = sum(dataZRT_proc(:,evinds,ic,ip),2)/length(evinds); %#ok<SAGROW>
     end
     
     %% Xcorr again!
-    for ie = 1:length(evinds)
-        evind = evinds(ie);        
-        dd = squeeze(eqar.dataZRT(:,evind,:,ip));
+    dataZRT_proc2 = nan([size(eqar.dataZRT(:,:,1,ip)),3]);
+    acor = zeros(length(evinds_clust),ip);
+    dcor = zeros(length(evinds_clust),ip);
+    SNR_all2 = zeros(length(evinds_clust),3);
+    for ie = 1:length(evinds_clust)
+        evind = evinds_clust(ie);        
+        dd_s = squeeze(eqar.dataZRT(:,evind,:,ip));
         % fix
-        dd_s = interp1(eqar.tt(:,evind,ip), dd ,eqar.tt(:,evind,ip)+dcor(ie)); % interp to new time axis with the shift
+%         dd_s = interp1(eqar.tt(:,evind,ip), dd ,eqar.tt(:,evind,ip)+dcor(ie)); % interp to new time axis with the shift
         dd_s(isnan(dd_s)) = 0;
         % filt
         dd_sf = filt_quick(dd_s,filtfs(1),filtfs(2),1./samprate);
         % taper
         dd_sft = flat_hanning_win(eqar.tt(:,evind,ip),dd_sf,datwind(1),datwind(2),tapertime);
+        % normalise
         normval = max(max(abs(dd_sft)));
-        pol = polarity_est(dataZRT_stk(:,chp,ip),...
+        % polarity
+        [~,pol] = polarity_est(dataZRT_stk1(:,chp,ip),...
                            flat_hanning_win(eqar.tt(:,evind,ip),dd_sft(:,chp),-20,20,tapertime),...
-                            5*samprate);
+                            5*samprate); % using polest_cc
+        if pol==0, acor(ie)=0; continue; end
         dd_sftnp = dd_sft./normval./pol;
-        pause;
+        % align
+        [ddcor,~,~,aacor] = xcortimes([dd_sftnp(:,chp),dataZRT_stk1(:,chp,ip)],1./samprate,0,5,0);
+        acor(ie,ip) = sum(aacor)-1;
+        dcor(ie,ip) = -diff(ddcor);
+        dataZRT_proc2(:,evind,:,ip) = interp1(eqar.tt(:,evind,ip), dd_sftnp ,eqar.tt(:,evind,ip)+dcor(ie,ip));
+
+        %% SNR
+        nswin = find(eqar.tt(:,evind,ip)<=-5 & eqar.tt(:,evind,ip)>(max([datwind(1)+tapertime,-55]))); % noise window 
+        dwin  = find(eqar.tt(:,evind,ip)>=-2 & eqar.tt(:,evind,ip)<=10); % generous first arrival window 
+        for ic = 1:3
+            SNR_all2(ie,ic) = max(abs(detrend(dd_sftnp(dwin,ic))))./2./rms(detrend(dd_sftnp(nswin,ic)));
+        end
+%         figure(33), clf, set(gcf,'pos',[84 675 1156 423]);
+%         subplot(221);plot(eqar.tt(:,evind,ip),dd_s(:,chp)/normval,eqar.tt(:,evind,ip),dataZRT_stk1(:,chp,ip))
+%         subplot(222);plot(eqar.tt(:,evind,ip),dd_s(:,chd)/normval,eqar.tt(:,evind,ip),dataZRT_stk1(:,chd,ip))
+%         subplot(223);plot(eqar.tt(:,evind,ip),dataZRT_proc2(:,evind,chp,ip),eqar.tt(:,evind,ip),dataZRT_stk1(:,chp,ip))
+%         subplot(224);plot(eqar.tt(:,evind,ip),dataZRT_proc2(:,evind,chd,ip),eqar.tt(:,evind,ip),dataZRT_stk1(:,chd,ip))
+%         pause
+    end
+    
+    % get indices of events with good acor w/ the stack
+    gdinds = evinds_clust(acor(:,ip)>.7);
+    gdinds = evinds_clust(SNR_all2(:,chp)>SNRmin & SNR_all2(:,chd)>SNRmin/10);
+    gdinds = evinds_clust(acor(:,ip)>.7 & SNR_all2(:,chp)>SNRmin & SNR_all2(:,chd)>SNRmin/10);
+   	for ic = 1:3
+        dataZRT_stk(:,ic,ip) = sum(dataZRT_proc2(:,gdinds,ic,ip),2)/length(gdinds); %#ok<SAGROW>
     end
 
-    
+    figure(34)
+    subplot(211);plot(eqar.tt(:,1,ip),dataZRT_stk1(:,chp,ip),eqar.tt(:,1,ip),dataZRT_stk(:,chp,ip))
+    subplot(212);plot(eqar.tt(:,1,ip),dataZRT_stk1(:,chd,ip),eqar.tt(:,1,ip),dataZRT_stk(:,chd,ip))
+     
 
     %% pick phase onset
     figure(20), clf, set(gcf,'pos',[15 25 1426 420]), hold on
@@ -233,19 +269,19 @@ for ip = 1:length(RFphase)
     pause(0.1)
 
     %% other averaged parms
-    gcarc_av(ip) = mean(eqar.gcarcs(evinds));
-    seaz_av(ip) = mean(eqar.seazs(evinds));
-    rayp_av(ip) = mean(eqar.rayps(evinds,ip));
-    norids(ip,1) = length(evinds);
-    evinds_save{ip,1} = evinds;
+    gcarc_av(ip) = mean(eqar.gcarcs(gdinds));
+    seaz_av(ip) = mean(eqar.seazs(gdinds));
+    rayp_av(ip) = mean(eqar.rayps(gdinds,ip));
+    norids(ip,1) = length(gdinds);
+    evinds_save{ip,1} = gdinds;
     
-    if length(evinds) < min4stack, continue; end
+    if length(gdinds) < min4stack, continue; end
     
     %% nice plot
     figure(21), clf, set(gcf,'pos',[92 404 802 642])
     for ic = 1:length(eqar.components)
         subplot(3,1,ic), hold on
-        plot(tt_stk(:,ip),dataZRT_proc(:,evinds,ic,ip),'color',[.8 .89 .9],'linewidth',0.5)
+        plot(tt_stk(:,ip),dataZRT_proc(:,gdinds,ic,ip),'color',[.8 .89 .9],'linewidth',0.5)
         plot(tt_stk(:,ip),dataZRT_stk(:,ic,ip),'k','linewidth',3)
         set(gca,'xlim',[-50 50],'ylim',[-1.1 1.1],'fontsize',16)
         ylabel([eqar.components{ic},'-comp'],'fontsize',20)
@@ -255,7 +291,6 @@ for ip = 1:length(RFphase)
     if ifsave
         save2jpg(21,sprintf('stackdata_%s_%s_%.0f_%.0f_%s',eqar.sta,eqar.nwk,gcarc_av(ip),seaz_av(ip),RFphase{ip}),'figs')
     end
-    pause
 end % loop on phases
 
 %% kill ones with too few evts in each stack
@@ -281,7 +316,7 @@ avar = struct('sta',eqar.sta,'nwk',eqar.nwk,'phases',phases,'components',{eqar.c
               'SNRmin',SNRmin,'acormin',acormin,...
               'xcor_filt',xcor_filtfs,'xcor_win',xcor_win,...
               'filtfs_PCA',filtfs,...
-              'dataZRT',dataZRT_stk,'tt',tt_stk);
+              'dataZRT',dataZRT_stk,'tt',tt_stk,'stackmethod','doublestack');
           
 if ifsave
     fprintf('SAVING\n')

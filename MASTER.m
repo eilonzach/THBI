@@ -5,7 +5,7 @@ projname = 'WYOMING';
 sta = 'RSSD';
 nwk = 'IU';
 gc = 70; % will search for gcarcs ±3 of this value;
-baz = 315;
+% baz = 315;
 global projdir
 projdir = ['/Users/zeilon/Documents/MATLAB/BayesianJointInv/',projname,'/'];
 
@@ -25,10 +25,10 @@ save([projdir,STAMP,'/par'],'par');
 par.inv.verbose=false;
 
 %% PRIOR
-fprintf('  > Building prior distribution from %.0f runs\n',par.inv.niter)
-prior = a2_BUILD_PRIOR(par,par.inv.niter);
-plot_MODEL_SUMMARY(prior,1,[projdir,STAMP,'/prior_fig.pdf']);
-save([projdir,STAMP,'/prior'],'prior');
+% fprintf('  > Building prior distribution from %.0f runs\n',par.inv.niter)
+% prior = a2_BUILD_PRIOR(par,par.inv.niter);
+% plot_MODEL_SUMMARY(prior,1,[projdir,STAMP,'/prior_fig.pdf']);
+% save([projdir,STAMP,'/prior'],'prior');
 
 %% stations
 

@@ -4,8 +4,8 @@ lonlim = [-113 -93];
 latlim = [40 50];
 
 starttime = '1970-01-01 00:00:00';
-startbytime = '2005-01-01 00:00:00';
-min_longevity_yrs = 10;
+startbytime = '2016-01-01 00:00:00';
+min_longevity_yrs = 1.8;
 
 %% Get to work
 javaaddpath('/Users/zeilon/Documents/MATLAB/IRIS-WS-2.0.15.jar')
@@ -19,9 +19,9 @@ stainfo = stainfo((datenum({stainfo.EndDate}') - datenum({stainfo.StartDate}'))/
 
 figure(1), clf
 plot([stainfo.Longitude],[stainfo.Latitude],'o')
-text([stainfo.Longitude]+0.1,[stainfo.Latitude]+0.2,{stainfo.StationName})
+% text([stainfo.Longitude]+0.1,[stainfo.Latitude]+0.2,{stainfo.StationName})
 text([stainfo.Longitude]+0.1,[stainfo.Latitude],{stainfo.StationCode})
-text([stainfo.Longitude]+0.1,[stainfo.Latitude]-0.2,{stainfo.NetworkCode})
+% text([stainfo.Longitude]+0.1,[stainfo.Latitude]-0.2,{stainfo.NetworkCode})
 add_state_boundaries(gca,latlim,lonlim)
 set(gca,'ylim',latlim,'xlim',lonlim)
 

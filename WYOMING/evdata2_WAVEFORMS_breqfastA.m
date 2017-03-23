@@ -1,6 +1,6 @@
 clear all
-station = 'RWWY';
-network = 'IW';
+station = 'J19A';
+network = 'TA';
 
 phases = {'P','S'};
 datwind = [-100 100]; % in sec around main arrival
@@ -21,6 +21,7 @@ ifsave = true;
 ifrequest = true;
 
 javaaddpath('/Users/zeilon/Documents/MATLAB/IRIS-WS-2.0.15.jar')
+addpath('~/Dropbox/MATLAB/seis_tools/breqfasting/')
 
 %% get station info
 stainfo = irisFetch.Stations('channel',network,station,'*','BH?');
@@ -85,13 +86,13 @@ time0 = zeros(length(evinfo),length(phases));
 time1 = zeros(length(evinfo),length(phases));
 label = cell(length(phases),1);
 for ip = 1:length(phases)
-    for ie = 1:length(evinfo)
+    for ie = 1:length(evinfo)% loop on events
         time0(ie,ip) = datenum(evinfo(ie).PreferredTime) + arr_times(ie,ip)/86400 + datwind(1)/86400 - 1/86400;
         time1(ie,ip) = datenum(evinfo(ie).PreferredTime) + arr_times(ie,ip)/86400 + datwind(2)/86400 + 1/86400;
-    end% loop on events
+    end
     label{ip} = sprintf('%s_%s_%.0f_%.0f_%s',station,network,gc_lims(1),gc_lims(2),phases{ip});
     if ifrequest
-        breq_fast_request(label{ip},station,'BH?',network,[],time0(:,ip),time1(:,ip),'SEED',[label{ip},'_request'])
+        breq_fast_request(label{ip},'zeilon',station,'BH?',network,[],time0(:,ip),time1(:,ip),'SEED',[label{ip},'_request'])
     end
 end% loop on phases
 
@@ -102,7 +103,7 @@ dat_all = zeros(diff(datwind)*samprate,norids,3,length(phases)); % channels in o
 tt_all= zeros(diff(datwind)*samprate,norids,length(phases));
 for ip = 1:length(phases)
     fprintf('Processing %.0f events for %s... ',length(evinfo),phases{ip})
-    [ traces ] = breq_fast_process( label{ip},station,'BH?',network,[],time0(:,ip));
+    [ traces ] = breq_fast_process( label{ip},'zeilon',station,'BH?',network,[],time0(:,ip));
     for ie = 1:length(traces);
         fprintf(' processing trace %.0f...\n',ie)
         tr = traces(ie,:);
