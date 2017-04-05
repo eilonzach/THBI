@@ -2,10 +2,10 @@ clear
 close all
 
 projname = 'WYOMING';
-sta = 'RSSD';
-nwk = 'IU';
-gc = 70;
-baz = 315;
+sta = 'REDW';
+nwk = 'IW';
+gc = 70; % will search for gcarcs +/-3 of this value;
+% baz = 315;
 global projdir
 projdir = ['/Users/zeilon/Documents/MATLAB/BayesianJointInv/',projname,'/'];
 
@@ -45,10 +45,10 @@ if strcmp(projname,'SYNTHETICS')
     [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
 
 else
-    fprintf('Loading data\n')
     addpath('matguts')
     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
-    trudata = load_data(projname,par,sta,nwk,gc,baz);
+    trudata = load_data(projname,sta,nwk,gc);
+    save([projdir,STAMP,'/trudata_ORIG'],'trudata');
 end
 
 trudata_ORIG = trudata; trudata_ORIG.PsRF_lo=trudata_ORIG.PsRF; trudata_ORIG.SpRF_lo=trudata_ORIG.SpRF;
@@ -60,8 +60,8 @@ trudata.SpRF_lo = trudata_ORIG.SpRF;
 [ trudata ] = predat_process( trudata,'SpRF',par);
 [ trudata ] = predat_process( trudata,'PsRF_lo',par);
 [ trudata ] = predat_process( trudata,'SpRF_lo',par);
-plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG)
-plot_TRUvsPRE(trudata,trudata)
+plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG);
+plot_TRUvsPRE(trudata,trudata);
     
     
 % calc noise parms
@@ -120,7 +120,9 @@ end % now we have a starting model!
 ptb = cell({});
 nchain = 0;
 fail_chain = 0;
-reset_likelihood;
+ifaccept=true; 
+% reset_likelihood;
+misfits.lastlogL = -Inf; 
 predata=[];
 % not parfor
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',char(64+iii))
@@ -169,10 +171,12 @@ try
 	
 		predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,id,0); predata0=predata;
     
-        % continue if any Sp inhomogeneous or weird output
+        % continue if any Sp or PS inhomogeneous or weird output
+        if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
+            fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end
         if predata.SpRF.nsamp<predata.SpRF.samprate*diff(par.datprocess.Twin.SpRF)
             fprintf('Not enough S data!\n'),fail_chain=fail_chain+1;continue, end
-        if isnan(predata.SpRF.ZRT), 
+        if any(any(isnan(predata.SpRF.ZRT))) || any(any(isnan(predata.PsRF.ZRT))) 
             fprintf('inhomogeneous!\n'), fail_chain=fail_chain+1; continue, end
         
         for idt = 1:length(par.inv.datatypes)
@@ -197,10 +201,18 @@ try
 			newK = true;
 		else 
 			Ktry = [];
-        end
+		end
 	end % only redo data if model has changed 
 
-%      plot_TRUvsPRE_old(trudata,predata)
+%      plot_TRUvsPRE_old(trudata,predata)]
+
+        % continue if any Sp or PS inhomogeneous or weird output
+        if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
+            fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end
+        if predata.SpRF.nsamp<predata.SpRF.samprate*diff(par.datprocess.Twin.SpRF)
+            fprintf('Not enough S data!\n'),fail_chain=fail_chain+1;continue, end
+        if any(any(isnan(predata.SpRF.ZRT))) || any(any(isnan(predata.PsRF.ZRT))) 
+            fprintf('inhomogeneous!\n'), fail_chain=fail_chain+1; continue, end
     
 %% =========================  CALCULATE MISFIT  ===========================
     
@@ -226,10 +238,12 @@ try
     [ ifaccept ] = b6_IFACCEPT( log_likelihood+log(p_bd),misfits,temp );
     
     % ======== PLOT ========  if accept
-%    if ifaccept
-%        plot_TRUvsPRE( trudata,predata)
-%        plot_MOD_TRUEvsTRIAL( TRUEmodel, model1 )
-%    end
+    if ifaccept && par.inv.verbose
+        plot_TRUvsPRE( trudata,predata);
+        if strcmp(projname,'SYNTHETICS')
+            plot_MOD_TRUEvsTRIAL( TRUEmodel, model1 );
+        end
+    end
     
 %% ========================  IF ACCEPT ==> STORE  =========================
     if ifaccept 
@@ -305,7 +319,7 @@ allmodels_perchain = allmodels_perchain(goodchains);
 
 [ allmodels_collated ] = collate_allmodels_perchain( allmodels_perchain,par );
 [ hypparm_trends ] = plot_HYPERPARAMETER_TRENDS( allmodels_perchain );
-plot_KNOT_TRENDS( allmodels_perchain,par )
+plot_KNOT_TRENDS( allmodels_perchain,par,[projdir,STAMP,'/knottrends.pdf']  )
 
 posterior = c2_BUILD_POSTERIOR(allmodels_collated,par);
 fprintf('  > Saving posterior\n')

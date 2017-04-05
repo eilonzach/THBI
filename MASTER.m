@@ -2,9 +2,9 @@ clear
 close all
 
 projname = 'WYOMING';
-sta = 'RSSD';
-nwk = 'IU';
-gc = 70; % will search for gcarcs ±3 of this value;
+sta = 'REDW';
+nwk = 'IW';
+gc = 70; % will search for gcarcs +/-3 of this value;
 % baz = 315;
 global projdir
 projdir = ['/Users/zeilon/Documents/MATLAB/BayesianJointInv/',projname,'/'];
@@ -25,10 +25,11 @@ save([projdir,STAMP,'/par'],'par');
 par.inv.verbose=false;
 
 %% PRIOR
-% fprintf('  > Building prior distribution from %.0f runs\n',par.inv.niter)
-% prior = a2_BUILD_PRIOR(par,par.inv.niter);
-% plot_MODEL_SUMMARY(prior,1,[projdir,STAMP,'/prior_fig.pdf']);
-% save([projdir,STAMP,'/prior'],'prior');
+fprintf('  > Building prior distribution from %.0f runs\n',par.inv.niter)
+prior = a2_BUILD_PRIOR(par,par.inv.niter);
+plot_MODEL_SUMMARY(prior,1,[projdir,STAMP,'/prior_fig.pdf']);
+save([projdir,STAMP,'/prior'],'prior');
+% clone_figure(90,89);
 
 %% stations
 
@@ -44,7 +45,6 @@ if strcmp(projname,'SYNTHETICS')
     [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
 
 else
-    fprintf('Loading data\n')
     addpath('matguts')
     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
     trudata = load_data(projname,sta,nwk,gc);
@@ -63,7 +63,6 @@ trudata.SpRF_lo = trudata_ORIG.SpRF;
 plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG);
 plot_TRUvsPRE(trudata,trudata);
     
-% calc noise parms
 
 %% Fail-safe to restart chain if there's a succession of failures
 fail_chain=10;
@@ -97,7 +96,6 @@ while ifpass==0
     
     if any(isnan(phV)),ifpass = false; end
 end % now we have a starting model!
-
 
 
 %% ========================================================================
@@ -164,7 +162,9 @@ for ii = 1:par.inv.niter
 	
 		predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,id,0); predata0=predata;
     
-        % continue if any Sp inhomogeneous or weird output
+        % continue if any Sp or PS inhomogeneous or weird output
+        if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
+            fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end
         if predata.SpRF.nsamp<predata.SpRF.samprate*diff(par.datprocess.Twin.SpRF)
             fprintf('Not enough S data!\n'),fail_chain=fail_chain+1;continue, end
         if any(any(isnan(predata.SpRF.ZRT))) || any(any(isnan(predata.PsRF.ZRT))) 
@@ -195,7 +195,15 @@ for ii = 1:par.inv.niter
 		end
     end % only redo data if model has changed 
 
-%      plot_TRUvsPRE_old(trudata,predata)
+%      plot_TRUvsPRE_old(trudata,predata)]
+
+        % continue if any Sp or PS inhomogeneous or weird output
+        if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
+            fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end
+        if predata.SpRF.nsamp<predata.SpRF.samprate*diff(par.datprocess.Twin.SpRF)
+            fprintf('Not enough S data!\n'),fail_chain=fail_chain+1;continue, end
+        if any(any(isnan(predata.SpRF.ZRT))) || any(any(isnan(predata.PsRF.ZRT))) 
+            fprintf('inhomogeneous!\n'), fail_chain=fail_chain+1; continue, end
     
 %% =========================  CALCULATE MISFIT  ===========================
     

@@ -29,8 +29,11 @@ for ii = 1:Ntr
     %% measure
     cc = xcorr(dat_template,dat(:,ii),maxlag);
     polests_cc(ii) = unique(sign(maxab(cc)));
+    
     polests_maxab(ii) = sign(maxab(dat(:,ii)))./sign(maxab(dat_template));
+    
     [mmo,sig_mami] = min_max_ord(dat(:,ii));
+    [~,sig_mami_temp] = min_max_ord(dat_template);
     polests_mami(ii) = mmo./min_max_ord(dat_template);
     
     %% significances:
@@ -38,12 +41,13 @@ for ii = 1:Ntr
 %     cc_snr = abs(maxab(cc))/rms(cc);
     sig_cc = (abs(max(cc))-abs(min(cc)))./rms(cc);
     if abs(sig_cc) < 0.2, polests_cc(ii) = 0; end
-    if any(sig_mami<4), polests_mami(ii)=0; end
+    if any([sig_mami,sig_mami_temp]<4), polests_mami(ii)=0; end
     
     %% plotting
 %     figure(2), clf
-%     subplot(211), plot([dat_template/max(abs(dat_template)),...
-%                         dat(:,ii)/max(abs(dat(:,ii)))])
+%     subplot(211), hold on
+%         plot(dat_template/max(abs(dat_template)))
+%         plot(dat(:,ii)/max(abs(dat(:,ii))))
 %     subplot(212), plot(cc)
 %     xlabel(['cc: ',num2str(polests_cc(ii)),'  maxab: ',num2str(polests_maxab(ii)),'  mamio: ',num2str(polests_mami(ii))],'fontsize',22)
 

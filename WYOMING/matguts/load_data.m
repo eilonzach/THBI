@@ -11,11 +11,14 @@ tapertime = 2;
 samprate = 10;
 
 if strcmp(project,'WYOMING');
-    cd('~/Documents/MATLAB/BayesianJointInv/WYOMING');
+    wd = '~/Documents/MATLAB/BayesianJointInv/WYOMING/';
+    addpath('matguts')
+    cd(wd);
     
+    cd('AVARS');
     %% Sesismogram data
     datfiles = {};
-    for gcwind = -2:2;
+    for gcwind = -4:4;
     	df = dir(sprintf('avar_dat_%s_%s_%.0f_*.mat',sta,nwk,gc+gcwind));
         datfiles = [datfiles;{df.name}']; %#ok<AGROW>
     end
@@ -58,6 +61,8 @@ if strcmp(project,'WYOMING');
         end
     end % end loop on data files
         
+    cd(wd);
+    
     %% Phase velocity data
     phVdir = '~/Dropbox/Dave_Li_phV/2D_phase_velocities/'; % need final slash
     phVerrordir = '~/Dropbox/Dave_Li_phV/Errors/'; % need final slash

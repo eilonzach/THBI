@@ -1,12 +1,12 @@
 clear all
 close all
-station = 'RSSD';
-network = 'IU';
+station = 'REDW';
+network = 'IW';
 gc_lims = [65,75];
 
 RFphase = {'Ps','Sp'};
 
-xcor_filtfs = [[0.1;2],[0.05;1]];
+xcor_filtfs = [[0.02;2],[0.05;1]];
 % xcor_filtfs = [[0.02;100],[0.02;100]];
 xcor_win = [-20 10];
 npoles = 2;
@@ -15,17 +15,17 @@ filtfs = [0.02;100]; % filter frequencies pre PCA, in Hz
 
 datwind = [-50 50]; % in sec around main arrival
 tapertime = 5; % s at beginnning and end of window to taper over
-acormin = 0.8;
+acormin = 0.75;
 
-SNRmin = 5;
+SNRmin = 3;
 maxdepth = 50;  % maximum EQ depth
-min4clust = 20; % minimum # of EQ to even try the stack
+min4clust = 15; % minimum # of EQ to even try the stack
 min4stack = 5;  % minumum # of traces in order to keep the stack
 
-ifsave = true;
+ifsave = false;
 verbose = true;
 
-load(sprintf('dat_%s_%s_%.0fto%.0f',station,network,gc_lims(1),gc_lims(2)));
+load(sprintf('DATA/dat_%s_%s_%.0fto%.0f',station,network,gc_lims(1),gc_lims(2)));
 addpath('matguts')
 
 %% cluster analysis on events
@@ -34,6 +34,7 @@ T = cluster(Z,'cutoff',5,'criterion','distance');
 nT = histcounts(T);
 iclusts = find(nT>min4clust);
 
+if verbose
 % plot EQ and clusters
 addpath('~/Documents/MATLAB/lib/m_map')
 figure(78), clf, hold on, set(gcf,'color','w','pos',[1360 685 560 420]) 
@@ -51,11 +52,17 @@ m_range_ring(eqar.slon,eqar.slat,[1100:1100:10000],'color','k','linewi',1);
 xlabel(['10 deg range rings from ',eqar.sta],'fontsize',20);
 
 save2pdf(78,['EQ_source_',eqar.sta],'figs')
+end 
 
 %% loop through clusters
 for icl = 1:length(iclusts)
 
 iclust = iclusts(icl);
+gcarc_av = nan(length(RFphase),1);
+seaz_av = nan(length(RFphase),1);
+rayp_av = nan(length(RFphase),1);
+norids = nan(length(RFphase),1);
+evinds_save = cell(length(RFphase),1);
 
 for ip = 1:length(RFphase)
     fprintf('\nCluster %.0f, %s \n',icl,RFphase{ip})
@@ -72,59 +79,108 @@ for ip = 1:length(RFphase)
 	evinds(T(evinds)~=iclust) = [];
     evinds_clust = evinds;
     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds)
-    
+%     clone_figure(66,67)
     %% Make matrix of data to cross-correlate        
     % grab the sample rate
     samprate = unique(round(1./diff(eqar.tt(:,:,ip))));
-    % filter before cross correlation
-    xcordat = eqar.dataZRT(:,:,chidx,ip);
-    xcordat = filt_quick(xcordat,xcor_filtfs(1,ip),xcor_filtfs(2,ip),1./samprate,npoles);
-    % taper extreme ends
-%     xcordat = flat_hanning_win(xcortt,xcordat,xcortt(1)+5,xcortt(end)-5,5);
-    % detrend
-    xcordat = detrend(xcordat);
-    % timing
-    xcortt = eqar.tt(:,1,ip);
-    xcinds = xcortt>=xcor_win(1) & xcortt<xcor_win(2); % indices of times within window
-    % taper
-    xcortt = eqar.tt(:,1,ip);
-    xcordat = flat_hanning_win(xcortt,xcordat,xcortt(1)+5,xcortt(end)-5,5);
+% %     % filter before cross correlation
+% %     xcordat = eqar.dataZRT(:,:,chidx,ip);
+% %     xcordat = filt_quick(xcordat,xcor_filtfs(1,ip),xcor_filtfs(2,ip),1./samprate,npoles);
+% %     % taper extreme ends
+% % %     xcordat = flat_hanning_win(xcortt,xcordat,xcortt(1)+5,xcortt(end)-5,5);
+% %     % detrend
+% %     xcordat = detrend(xcordat);
+% %     % timing
+% %     xcortt = eqar.tt(:,1,ip);
+% %     xcinds = xcortt>=xcor_win(1) & xcortt<xcor_win(2); % indices of times within window
+% %     % taper
+% %     xcortt = eqar.tt(:,1,ip);
+% %     xcordat = flat_hanning_win(xcortt,xcordat,xcortt(1)+5,xcortt(end)-5,5);
+% %     
+% %     % SNR after the filter
+% %     nswin = find(xcortt>(max([datwind(1)+tapertime,-55])) & xcortt<=-5); % noise window 
+% %     dwin  = find(xcortt>=-5 & xcortt<=10); % generous first arrival window 
+% %     SNR_est = max(abs(xcordat(dwin,:)))./2./rms(xcordat(nswin,:));
+% % 
+% %     % window to xcorr time segment
+% %     xcordat = detrend(xcordat(xcinds,:),'constant');
+% %     
+% %     % normalise
+% %     for ie = 1:eqar.norids,
+% %         dd = xcordat(:,ie);
+% %         ddmax = max(abs(dd));
+% %         xcordat(:,ie) = dd./ddmax; % flip and scale 
+% % %         xcordat(:,ie) = dd.*ddsgn; % flip based on sign
+% % %         xcordat(:,ie) = dd./maxab(dd); % flip and scale 
+% %     end
+% %     % window before cross correlation to xcor_window around arrival
+% %     xcordat = flat_hanning_win(xcortt(xcinds),xcordat,xcor_win(1),xcor_win(2),1);
+    %% data clean for polest
+    cp = struct('samprate',samprate,'fhi',filtfs(2),'flo',filtfs(1),...
+                'pretime',-eqar.tt(1,1,ip),'prex',-xcor_win(1),'postx',xcor_win(2),...
+                'taperx',1./diff(xcor_win),'npoles',npoles,'norm',1);
+    [ poldat,~,~,~,~,poltt] = data_clean(  eqar.dataZRT(:,:,chidx,ip),cp ); 
     
     % SNR after the filter
-    nswin = find(xcortt>(max([datwind(1)+tapertime,-55])) & xcortt<=-5); % noise window 
-    dwin  = find(xcortt>=-5 & xcortt<=10); % generous first arrival window 
-    SNR_est = max(abs(xcordat(dwin,:)))./2./rms(xcordat(nswin,:));
+    nswin = find(poltt>(max([datwind(1)+tapertime,-55])) & poltt<=-5); % noise window 
+    dwin  = find(poltt>=-5 & poltt<=10); % generous first arrival window 
+    SNR_est = max(abs(poldat(dwin,:)))./2./rms(poldat(nswin,:));
+    % kill low SNRs
+    evinds(SNR_est(evinds)<SNRmin) = [];
+%     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds)
 
-    % window to xcorr time segment
-    xcordat = detrend(xcordat(xcinds,:),'constant');
+    %% polarity estimate
+%     indtemplate = evinds(mindex(-SNR_est(evinds)));
+%     t0template = STA_LTA(poldat(:,indtemplate),1./samprate,poltt);
+%     iarr_templ = poltt<t0template+5;
     
-    % normalise
-    for ie = 1:eqar.norids,
+    ddpol = zeros(eqar.norids,1);
+    for ie = 1:eqar.norids
+%         if ~ismember(ie,evinds), continue; end    
+%         t0i = STA_LTA(poldat(:,ie),1./samprate,poltt,2.5);
+%         if isnan(t0i), continue; end
+%         iarr_i = poltt<t0i+2;
+        
+        % compare each indiv. to stack's polarity (as loose ref waveform)
+        ddpol(ie) = polarity_est(sum(poldat,2),poldat(:,ie),5*samprate);
+%         ddpol(ie) = polarity_est(poldat(iarr_templ,indtemplate),poldat(iarr_i,ie),5*samprate);
+        % flip depending on polarity of maximum
+%         xcordat(:,ie) = xcordat(:,ie).*ddpol(ie);
+%     [ie,ddpol(ie)]
+
+    end
+    % kill arrs with no discernible pol
+    evinds(ddpol(evinds)==0) = [];
+%     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds,zeros(size(evinds)),ddpol)
+
+     %% data clean for xcorr
+    cp = struct('samprate',samprate,'fhi',xcor_filtfs(2,ip),'flo',xcor_filtfs(1,ip),...
+                'pretime',-eqar.tt(1,1,ip),'prex',-xcor_win(1),'postx',xcor_win(2),...
+                'taperx',1./diff(xcor_win),'npoles',npoles,'norm',1);
+    [ xcordat,~,~,~,~,xcortt,~ ] = data_clean(  eqar.dataZRT(:,:,chidx,ip),cp ); 
+     for ie = 1:eqar.norids,
         dd = xcordat(:,ie);
         ddmax = max(abs(dd));
-        xcordat(:,ie) = dd./ddmax; % flip and scale 
+        xcordat(:,ie) = dd.*ddpol(ie)./ddmax; % flip and scale 
 %         xcordat(:,ie) = dd.*ddsgn; % flip based on sign
 %         xcordat(:,ie) = dd./maxab(dd); % flip and scale 
-    end
-    % window before cross correlation to xcor_window around arrival
-    xcordat = flat_hanning_win(xcortt(xcinds),xcordat,xcor_win(1),xcor_win(2),1);
+     end
+    
+%% SNR after the filter
+%     nswin = find(xcortt>(max([datwind(1)+tapertime,-55])) & xcortt<=-5); % noise window 
+%     dwin  = find(xcortt>=-5 & xcortt<=10); % generous first arrival window 
+%     SNR_est = max(abs(xcordat(dwin,:)))./2./rms(xcordat(nswin,:));
 
-    %% polarity
-    indtemplate = evinds(mindex(-SNR_est(evinds)));
-    ddpol = polarity_est(xcordat(:,indtemplate),xcordat(:,evinds),5*samprate);
-    ddpol(evinds) = ddpol; if length(ddpol)<eqar.norids, ddpol(eqar.norids)=0; end
-    % flip depending on polarity of maximum
-    for ie = 1:eqar.norids,
-        xcordat(:,ie) = xcordat(:,ie).*ddpol(ie);
-    end
-    evinds(ddpol(evinds)==0) = [];
 
     %% CROSS CORRELATE - iteratively throw out low acor
     acor = -1;
-    evinds(SNR_est(evinds)<2) = [];
+%     evinds(SNR_est(evinds)<2) = [];
+    if length(evinds)<3, continue; end
     
-    figure(2),clf;plot(xcortt(xcinds),xcordat(:,evinds))
-
+    if verbose
+    figure(2),clf;plot(xcortt,xcordat(:,evinds))
+    end
+    
     while any(acor<0)
         fprintf('xcorr-ing %.0f traces\n',length(evinds))
         [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat(:,evinds),1./samprate, -xcor_win(1), 5,verbose);
@@ -139,8 +195,9 @@ for ip = 1:length(RFphase)
         evinds(acor<acormin) = [];
     end
     
+    if verbose
     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds,-dcor,ddpol)
-%     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},xcor_filtfs,evinds,-dcor,ddpol)
+    end
     
     % subset to only good events
     ddpol = ddpol(evinds);
@@ -198,6 +255,7 @@ for ip = 1:length(RFphase)
     end
     
     %% Xcorr again!
+    fprintf('Xcorr on stack\n')
     dataZRT_proc2 = nan([size(eqar.dataZRT(:,:,1,ip)),3]);
     acor = zeros(length(evinds_clust),ip);
     dcor = zeros(length(evinds_clust),ip);
@@ -241,25 +299,37 @@ for ip = 1:length(RFphase)
     end
     
     % get indices of events with good acor w/ the stack
-    gdinds = evinds_clust(acor(:,ip)>.7);
-    gdinds = evinds_clust(SNR_all2(:,chp)>SNRmin & SNR_all2(:,chd)>SNRmin/10);
-    gdinds = evinds_clust(acor(:,ip)>.7 & SNR_all2(:,chp)>SNRmin & SNR_all2(:,chd)>SNRmin/10);
+%     gdinds = evinds_clust(acor(:,ip)>.7);
+%     gdinds = evinds_clust(SNR_all2(:,chp)>SNRmin & SNR_all2(:,chd)>SNRmin/10);
+    gdinds = evinds_clust(acor(:,ip)>acormin & SNR_all2(:,chp)>SNRmin & SNR_all2(:,chd)>SNRmin/10);
    	for ic = 1:3
         dataZRT_stk(:,ic,ip) = sum(dataZRT_proc2(:,gdinds,ic,ip),2)/length(gdinds); %#ok<SAGROW>
     end
 
+    if verbose
     figure(34)
     subplot(211);plot(eqar.tt(:,1,ip),dataZRT_stk1(:,chp,ip),eqar.tt(:,1,ip),dataZRT_stk(:,chp,ip))
     subplot(212);plot(eqar.tt(:,1,ip),dataZRT_stk1(:,chd,ip),eqar.tt(:,1,ip),dataZRT_stk(:,chd,ip))
-     
+    end
 
-    %% pick phase onset
-    figure(20), clf, set(gcf,'pos',[15 25 1426 420]), hold on
+	%% continue if not enough for stack
+    if length(gdinds) < min4stack, fprintf('Not enough good traces\n'), continue; end
+    fprintf('%.0f good traces\n',length(gdinds))
+    
+    %% automatic pick phase onset
+    figure(20), clf, set(gcf,'pos',[15 225 1426 420]), hold on
     htr = plot(eqar.tt(:,1,ip),dataZRT_stk(:,:,ip),'linewidth',1.5);
     title('PICK PHASE ONSET','fontsize',22)
     set(gca,'xlim',[-50 50],'ylim',[-1. 1.],'fontsize',18)
     legend(eqar.components)
-    tshft = ginput(1);
+    
+    % first use sta_lta to get approx phase onset
+    istalta = eqar.tt(:,1,ip)>=-50 & eqar.tt(:,1,ip)<50;
+    [stalta_t0] = STA_LTA( dataZRT_stk(istalta,chp,ip),1./samprate,eqar.tt(istalta,1,ip));
+    % now, within 5s of sta_lta onset, find the max amp.
+    imax = eqar.tt(:,1,ip)>=stalta_t0-5 & eqar.tt(:,1,ip)<stalta_t0+5;
+    [~,tshft] = crossing(dataZRT_stk(imax,chp,ip),eqar.tt(imax,1,ip),maxab(dataZRT_stk(imax,chp,ip)));
+    
     tt_stk(1:size(eqar.tt,1),ip) = eqar.tt(:,1,ip) - tshft(1);
     tt_stk = round_level(tt_stk,1/samprate);
     for ic = 1:length(htr)
@@ -274,9 +344,7 @@ for ip = 1:length(RFphase)
     rayp_av(ip) = mean(eqar.rayps(gdinds,ip));
     norids(ip,1) = length(gdinds);
     evinds_save{ip,1} = gdinds;
-    
-    if length(gdinds) < min4stack, continue; end
-    
+ 
     %% nice plot
     figure(21), clf, set(gcf,'pos',[92 404 802 642])
     for ic = 1:length(eqar.components)
@@ -291,11 +359,13 @@ for ip = 1:length(RFphase)
     if ifsave
         save2jpg(21,sprintf('stackdata_%s_%s_%.0f_%.0f_%s',eqar.sta,eqar.nwk,gcarc_av(ip),seaz_av(ip),RFphase{ip}),'figs')
     end
+    pause
 end % loop on phases
+
+if ~exist('rayp_av','var'), continue; end
 
 %% kill ones with too few evts in each stack
 keepstk = norids >= min4stack;
-evinds_save = evinds_save(keepstk);
 evinds_save = evinds_save(keepstk);
 seaz_av = seaz_av(keepstk);
 gcarc_av = gcarc_av(keepstk);
@@ -320,9 +390,11 @@ avar = struct('sta',eqar.sta,'nwk',eqar.nwk,'phases',phases,'components',{eqar.c
           
 if ifsave
     fprintf('SAVING\n')
-    save(sprintf('avar_dat_%s_%s_%.0f_%.0f',station,network,mean(gcarc_av),mean(seaz_av)),'avar');
+    arfile = sprintf('avar_dat_%s_%s_%.0f_%.0f',station,network,mean(gcarc_av),mean(seaz_av));
+    save(arfile,'avar');
+    if exist('AVARS','dir'); movefile([arfile,'.mat'],'AVARS'); end
 else
-    pause 
+    pause(2)
 end
 
 end % loop on clusters

@@ -1,6 +1,6 @@
 %% Script to grab station information for Wyoming craton project
 
-lonlim = [-113 -93];
+lonlim = [-113 -102];
 latlim = [40 50];
 
 starttime = '1970-01-01 00:00:00';

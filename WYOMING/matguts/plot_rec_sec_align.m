@@ -44,6 +44,7 @@ for ie = 1:length(evinds)
     datf = filt_quick(dat,filtfs(1),filtfs(2),dt);
     datf = datf./max(abs(datf));
     plot(eqar.tt(:,evind,ip)+dcor(ie),SEP*isz(ie)+SCL*datf,'linewidth',1.5)
+    text(eqar.tt(end,evind,ip)+dcor(ie)+1,SEP*isz(ie),num2str(evind),'fontsize',15,'fontweight','bold')
 end
 xlim([eqar.tt(1,evind,ip),eqar.tt(end,evind,ip)]);
 ylim([1-2*SEP SEP*length(evinds)+2*SEP])
