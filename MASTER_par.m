@@ -6,12 +6,12 @@ sta = 'REDW';
 nwk = 'IW';
 gc = 70; % will search for gcarcs +/-3 of this value;
 % baz = 315;
-global projdir
-projdir = ['/Users/zeilon/Documents/MATLAB/BayesianJointInv/',projname,'/'];
+global projdir THBIpath
+projdir = [THBIpath,'/',projname,'/'];
 
 
 %% ------------------------- START ------------------------- 
-run /Users/zeilon/Documents/MATLAB/BayesianJointInv/a0_STARTUP_BAYES;
+run([THBIpath,'/a0_STARTUP_BAYES']);
 cd(projdir);
 
 STAMP=[datestr(now,'yyyymmddHHMM'),'_pll'];
