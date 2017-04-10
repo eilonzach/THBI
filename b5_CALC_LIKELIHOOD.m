@@ -51,6 +51,7 @@ if any(strcmp(par.inv.datatypes,'PsRF'))
     misfit.rms_ps = sqrt(misfit.PsRF./N_ps);
     log_likelihood_ps = sum(-N_ps*log(sigma_ps) - 0.5*chi2_ps)./M_ps;
 else
+    M_ps = 1;
     chi2_ps = 0;
     log_likelihood_ps = 0; 
 end
@@ -70,6 +71,7 @@ if any(strcmp(par.inv.datatypes,'SpRF')),
     misfit.rms_sp = sqrt(misfit.SpRF./N_sp);
     log_likelihood_sp = sum(-N_sp*log(sigma_sp) - 0.5*chi2_sp)./M_sp;
 else
+    M_sp = 1;
     chi2_sp = 0;
     log_likelihood_sp = 0; 
 end
@@ -89,6 +91,7 @@ if any(strcmp(par.inv.datatypes,'PsRF_lo'))
     misfit.rms_ps_lo = sqrt(misfit.PsRF_lo./N_ps_lo);
     log_likelihood_ps_lo = sum(-N_ps_lo*log(sigma_ps_lo) - 0.5*chi2_ps_lo)./M_ps_lo;
 else
+    M_ps_lo = 1;
     chi2_ps_lo = 0;
     log_likelihood_ps_lo = 0;
 end
@@ -108,6 +111,7 @@ if any(strcmp(par.inv.datatypes,'SpRF_lo'))
     misfit.rms_sp_lo = sqrt(misfit.SpRF_lo./N_sp_lo);
     log_likelihood_sp_lo = sum(-N_sp_lo*log(sigma_sp_lo) - 0.5*chi2_sp_lo)./M_sp_lo;
 else
+    M_sp_lo = 1;
     chi2_sp_lo = 0;
     log_likelihood_sp_lo = 0; 
 end

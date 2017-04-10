@@ -108,6 +108,8 @@ bar(X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',
 set(gca,'fontsize',14,'xlim',[3.5 4.9]), title(sprintf('Vs at %.0f km',prior.zmantle(iz)),'fontsize',16)
 end
 
+%% title
+htit = title_custom([par.sta,' ',par.nwk],0.05,'fontweight','bold','fontsize',25);
 
 if ifsave
     save2pdf(91,ofile,'/');

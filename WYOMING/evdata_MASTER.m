@@ -9,7 +9,6 @@ stainfo_master = stainfo;
 
 % request data
 for is = 1:length(stainfo_master)
-    if ~strcmp(stainfo(is).StationCode,'E19A'), continue; end
     fprintf('\n============================================\n')
     fprintf('Requesting %s %s...',stainfo_master(is).StationCode,stainfo_master(is).NetworkCode)
     reqfile = evdata2_WAVEFORMS_breqfast(stainfo_master(is).StationCode,...
@@ -30,7 +29,7 @@ for is = 1:length(stainfo_master)
     [~,datafile] = evdata2_WAVEFORMS_breqfast(stainfo_master(is).StationCode,...
                                          stainfo_master(is).NetworkCode,...
                                          false,true);
-    movefile(datafile,'DATA')                                     
+%     movefile([datafile,'.mat'],'DATA')                                     
     catch
         fprintf('... NO DATA?!\n')
     end

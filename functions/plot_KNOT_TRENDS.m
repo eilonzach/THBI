@@ -19,6 +19,7 @@ for iii = 1:nchains
     
     if nchains>1, 
         am = allmodels{iii};
+        if isempty(am), continue; end
     else 
         am = allmodels;
     end

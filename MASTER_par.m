@@ -2,11 +2,12 @@ clear
 close all
 
 projname = 'WYOMING';
-sta = 'REDW';
-nwk = 'IW';
+sta = 'RSSD'; % no Ps!!
+nwk = 'IU';
 gc = 70; % will search for gcarcs +/-3 of this value;
 % baz = 315;
 global projdir THBIpath
+THBIpath = '/Users/zeilon/Documents/MATLAB/BayesianJointInv';
 projdir = [THBIpath,'/',projname,'/'];
 
 
@@ -14,7 +15,7 @@ projdir = [THBIpath,'/',projname,'/'];
 run([THBIpath,'/a0_STARTUP_BAYES']);
 cd(projdir);
 
-STAMP=[datestr(now,'yyyymmddHHMM'),'_pll'];
+STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')];
 mkdir([projdir,STAMP]);
 
 %% PARMS
@@ -306,7 +307,7 @@ end % parfor loop
 %% ----------------------- End loop on chains  ----------------------------
 %% ========================================================================
 %% ========================================================================
-
+save([STAMP,'/matlab'])
 fprintf('Duration of entire run: %.0f s\n',(now-t)*86400)
 
 %% Process results
@@ -327,7 +328,7 @@ save([projdir,STAMP,'/posterior'],'posterior');
 save([projdir,STAMP,'/allmods_collated'],'allmodels_collated');
 
 fprintf('  > Plotting posterior\n')
-plot_MODEL_SUMMARY(posterior,1,[projdir,STAMP,'/posterior.pdf'])
+plot_MODEL_SUMMARY(posterior,1,[projdir,STAMP,'/posteror.pdf'])
 
 fprintf('  > Plotting prior vs. posterior\n')
 load([projdir,STAMP,'/prior']) ; load([projdir,STAMP,'/posterior'])
@@ -360,10 +361,10 @@ final_predata.SpRF_lo = final_predata.SpRF;
                         'sigmaSpRF_lo',10^final_model.hyperparms.sigmaSpRF_lo.mu_log10,...
                         'sigmaPsRF_lo',10^final_model.hyperparms.sigmaPsRF_lo.mu_log10,...
                         'sigmaSW',10^final_model.hyperparms.sigmaSW.mu_log10),par );
-plot_TRUvsPRE( trudata,final_predata,1,[projdir,STAMP,'/final_true_vs_pred_data_fig.pdf'])
+plot_TRUvsPRE( trudata,final_predata,1,[projdir,STAMP,'/final_true_vs_pred_data_fig.pdf']);
 
 addpath([projdir,STAMP]); 
-plot_FIG2_FIT_MODEL(final_model,posterior,prior,par,1,[projdir,STAMP,'/fig2_MODEL.pdf'])
+plot_FIG2_FIT_MODEL(final_model,posterior,prior,par,1,[projdir,STAMP,'/fig2_MODEL.pdf']);
 rmpath([projdir,STAMP]);
 
 clear('TRUEmodel')

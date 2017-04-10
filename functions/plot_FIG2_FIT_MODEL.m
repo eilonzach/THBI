@@ -67,8 +67,10 @@ bar(ax2,X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
 bar(ax2,X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',1.5);
 set(ax2,'fontsize',14), 
 xlim(ax2,[par.mod.crust.vpvsmin,par.mod.crust.vpvsmax])
-% title(ax2,'\textbf{ km}','fontsize',18,'interpreter','latex')
 xlabel(ax2,'\textbf{Crustal $\mathbf{V_P/V_S}$ ratio}','fontsize',18,'Interpreter','latex')
+
+
+title(ax2,['\textbf{',par.sta,' ',par.nwk,'}'],'fontsize',22,'interpreter','latex')
 
 
 % Moho depth

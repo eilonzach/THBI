@@ -13,7 +13,7 @@ inv = struct(    'verbose',true                  ,... % option to spit out more 
                  'kerneltolmin',0.6              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'nchains',8                     ,... % number of chains to start in parallel
                  'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
-                 'datatypes',{{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}});  % any of {{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}}
+                 'datatypes',{{'SpRF','SW','SpRF_lo'}});  % any of {{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}}
 
 %% Model parms
 mod = struct([]);

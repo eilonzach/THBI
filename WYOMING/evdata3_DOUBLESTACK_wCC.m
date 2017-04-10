@@ -394,7 +394,7 @@ if ifsave
     save(arfile,'avar');
     if exist('AVARS','dir'); movefile([arfile,'.mat'],'AVARS'); end
 else
-    pause(2)
+    pause
 end
 
 end % loop on clusters

@@ -10,6 +10,7 @@ allmodels_collated = [];
 
 for iii = 1:length(allmodels_perchain)
     am = allmodels_perchain{iii};
+    if isempty(am), continue; end
     am([am.iter]'<=par.inv.burnin) =  [];
     am = dealto(am,'chain',iii);
     

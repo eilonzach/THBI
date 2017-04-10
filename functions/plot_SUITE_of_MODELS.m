@@ -30,6 +30,7 @@ nchains = length(ichains);
 
 for iii = 1:nchains
 ic = find(sm.chain==iii);
+if isempty(ic), continue; end
 if length(ic)>=200, ic = ic(randperm(length(ic),200)); end;
 basecol = colour_get(iii,nchains+1,0,parula);
 basecol = 1 - 0.5*(1-basecol); basecol = basecol(:)';

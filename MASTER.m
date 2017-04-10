@@ -1,24 +1,31 @@
 clear
 close all
 
-projname = 'WYOMING';
-sta = 'REDW';
+
+projname = 'SYNTHETICS'; % SYNTHETICS or WYOMING, for now
+sta = 'REDW'; if strcmp(projname,'SYNTHETICS'),sta='SYNTH'; end
 nwk = 'IW';
 gc = 70; % will search for gcarcs +/-3 of this value;
 % baz = 315;
-global projdir THBIpath
-projdir = [THBIpath,'/',projname,'/'];
 
 
 %% ------------------------- START ------------------------- 
+global projdir THBIpath
+projdir = [THBIpath,'/',projname,'/'];
 run([THBIpath,'/a0_STARTUP_BAYES']);
 cd(projdir);
 
-STAMP=datestr(now,'yyyymmddHHMM');
+STAMP=[sta,datestr(now,'_yyyymmddHHMM')];
 mkdir([projdir,STAMP]);
 
 %% PARMS
 run parms/bayes_inv_parms
+if strcmp(projname,'SYNTHETICS'),
+    par.sta = 'SYNTH'; par.nwk = '--';
+else
+    par.sta = sta;par.nwk = nwk;par.gc = gc;
+end
+
 par_ORIG = par;
 % par came from above script
 save([projdir,STAMP,'/par'],'par');
@@ -159,9 +166,11 @@ for ii = 1:par.inv.niter
     % make random run ID (to avoid overwrites in parfor)
     if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
 		id = [num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
-	
+        try
 		predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,id,0); predata0=predata;
-    
+        catch, continue
+        end
+        
         % continue if any Sp or PS inhomogeneous or weird output
         if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
             fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end

@@ -16,6 +16,11 @@ figure(88);clf, set(gcf,'pos',[850 198 900 888])
 ax1 = subplot(2,1,1);
 ax2 = subplot(2,1,2); hold(ax2,'on');
 
+pdm_min = inf;
+pdm_max = -inf;
+ch2_min = inf;
+ch2_max = -inf;
+
 
 %% loop through each chain
 nchains = length(misfits);
@@ -25,6 +30,7 @@ for iii = 1:nchains
     
     if nchains>1, mf = misfits{iii};   else mf = misfits; end
     if nchains>1, am = allmodels{iii}; else am = allmodels; end
+    if isempty(am), continue; end
     basecol = colour_get(iii,nchains+1,0,parula); basecol = basecol(:)';
     
     %% TRIM MISFITS AND ALLMODELS STRUCTURES
@@ -93,10 +99,19 @@ for iii = 1:nchains
     %% PLOT IMPROVEMENT IN MODEL FIT
     [ax1,h1,h2] = plotyy(ax1,mf.iter,mf.chi2,mf.iter,mf.logLike,'semilogy');
     hold(ax1(1),'on'),hold(ax1(2),'on')
-    set(ax1(1),'Yscale','log','ylim',[min(mf.chi2)/2 max(mf.chi2)*2],'ytick',round_level(linspace(min(mf.chi2)/2,max(mf.chi2)*2,5),5));
-    ytk = unique(round_level(linspace(min(mf.logLike),max(mf.logLike),5),5));
-    set(ax1(2),'Yscale','log','ylim',[min(mf.logLike)-1 max(mf.logLike)+10],...
+    pdm_min = min([pdm_min,min(mf.logLike)-1]);
+    pdm_max = max([pdm_max,max(mf.logLike)+10]);
+    ch2_min = min([ch2_min,min(mf.chi2)/2]);
+    ch2_max = max([ch2_max,max(mf.chi2)*2]);
+%     set(ax1(1),'Yscale','log','ylim',[min(mf.chi2)/2 max(mf.chi2)*2],'ytick',round_level(linspace(min(mf.chi2)/2,max(mf.chi2)*2,5),5));
+%     ytk = unique(round_level(linspace(min(mf.logLike),max(mf.logLike),5),5));
+%     set(ax1(2),'Yscale','log','ylim',[min(mf.logLike)-1 max(mf.logLike)+10],...
+%         'ytick',ytk,'yticklabel',ytk);
+    set(ax1(1),'Yscale','log','ylim',[ch2_min ch2_max],'ytick',round_level(linspace(ch2_min,ch2_max,5),5));
+    ytk = unique(round_level(linspace(pdm_min+1,pdm_max-10,5),5));
+    set(ax1(2),'Yscale','log','ylim',[pdm_min pdm_max],...
         'ytick',ytk,'yticklabel',ytk);
+    
     set(h1,'marker','o','linestyle','none','markersize',5,...
            'markerfacecolor',basecol,'markeredgecolor',[0 0.447 0.741]);
     set(h2,'marker','o','linestyle','none','markersize',5,...
@@ -125,8 +140,11 @@ for iii = 1:nchains
 
 end
 
-%% determine "good" models
+%% title
+htit = title_custom([par.sta,' ',par.nwk],0.5,'fontweight','bold','fontsize',25);
 
+
+%% determine "good" models
 
 if ifsave
     fprintf('saving, may take a while\n')
@@ -142,6 +160,7 @@ for iii=1:nchains;
     if goodchains(iii)==false, chi2_alldata(iii,:) = nan; continue; end % already know it's bad
     for id = 1:length(par.inv.datatypes)
         if nchains>1, mf = misfits{iii}; else mf = misfits; end
+        if isempty(mf), continue; end
         ind = mf.iter > par.inv.burnin;
         switch char(par.inv.datatypes(id))
             case 'SpRF'

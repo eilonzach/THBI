@@ -4,16 +4,16 @@
 
 %% Inversion parms
 inv = struct(    'verbose',true                  ,... % option to spit out more information+plots
-                 'niter',3000                    ,... % Number of iterations
-                 'burnin',800                   ,... % don't record results before burnin iterations
-                 'cooloff',800                   ,... % # of iterations over which temperature declines as erf
+                 'niter',5000                    ,... % Number of iterations
+                 'burnin',1200                   ,... % don't record results before burnin iterations
+                 'cooloff',1000                   ,... % # of iterations over which temperature declines as erf
                  'tempmax',4                     ,... % maximum multiple of all standard deviations
                  'bestNmod2keep',500             ,... % keep only the best N models in each chain, defined here
                  'kerneltolmax',2.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
                  'kerneltolmin',0.6              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'nchains',8                     ,... % number of chains to start in parallel
                  'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
-                 'datatypes',{{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}});  % any of {{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}}
+                 'datatypes',{{'SpRF','SW','SpRF_lo'}});  % any of {{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}}
 
 %% Model parms
 mod = struct([]);
