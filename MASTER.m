@@ -2,9 +2,9 @@ clear
 close all
 
 
-projname = 'SYNTHETICS'; % SYNTHETICS or WYOMING, for now
-sta = 'REDW'; if strcmp(projname,'SYNTHETICS'),sta='SYNTH'; end
-nwk = 'IW';
+projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
+sta = 'RSSD'; if strcmp(projname,'SYNTHETICS'),sta='SYNTH'; end
+nwk = 'IU';
 gc = 70; % will search for gcarcs +/-3 of this value;
 % baz = 315;
 
@@ -29,7 +29,7 @@ end
 par_ORIG = par;
 % par came from above script
 save([projdir,STAMP,'/par'],'par');
-par.inv.verbose=false;
+par.inv.verbose=true;
 
 %% PRIOR
 fprintf('  > Building prior distribution from %.0f runs\n',par.inv.niter)
@@ -50,13 +50,14 @@ if strcmp(projname,'SYNTHETICS')
     % z0_SYNTH_MODEL_custommod(par,1); global TRUEmodel; close(95)
     z0_SYNTH_MODEL_simplemod(par,1);  %close(95)
     [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
-
+    [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par )
 else
     addpath('matguts')
     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
     trudata = load_data(projname,sta,nwk,gc);
     save([projdir,STAMP,'/trudata_ORIG'],'trudata');
 end
+
 
 trudata_ORIG = trudata; trudata_ORIG.PsRF_lo=trudata_ORIG.PsRF; trudata_ORIG.SpRF_lo=trudata_ORIG.SpRF;
 
@@ -171,22 +172,13 @@ for ii = 1:par.inv.niter
         catch, continue
         end
         
-        % continue if any Sp or PS inhomogeneous or weird output
-        if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
-            fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end
-        if predata.SpRF.nsamp<predata.SpRF.samprate*diff(par.datprocess.Twin.SpRF)
-            fprintf('Not enough S data!\n'),fail_chain=fail_chain+1;continue, end
-        if any(any(isnan(predata.SpRF.ZRT))) || any(any(isnan(predata.PsRF.ZRT))) 
-            fprintf('inhomogeneous!\n'), fail_chain=fail_chain+1; continue, end
+        % continue if any Sp or PS inhomogeneous or nan or weird output
+        if ifforwardfail(predata,par), fail_chain=fail_chain+1; continue, end
         
         for idt = 1:length(par.inv.datatypes)
             [ predata ] = predat_process( predata,par.inv.datatypes{idt},par);
         end
         
-        % reject if a nan channel
-        if any(any(isnan(predata.PsRF.ZRT))) ||  any(any(isnan(predata.SpRF.ZRT))), 
-            fprintf('NaN DATA!\n'),fail_chain=fail_chain+1;continue, end
-	
 		% Explicitly use mineos if ptb is too large
 		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
 		if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmin/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
@@ -196,8 +188,7 @@ for ii = 1:par.inv.niter
 		
 			if par.inv.verbose
 				fprintf('    RMS diff is %.4f\n',rms(swk-predata.SW.phV)); % RMS difference
-			end
-		
+            end
 			newK = true;
 		else 
 			Ktry = [];
@@ -206,25 +197,14 @@ for ii = 1:par.inv.niter
 
 %      plot_TRUvsPRE_old(trudata,predata)]
 
-        % continue if any Sp or PS inhomogeneous or weird output
-        if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
-            fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end
-        if predata.SpRF.nsamp<predata.SpRF.samprate*diff(par.datprocess.Twin.SpRF)
-            fprintf('Not enough S data!\n'),fail_chain=fail_chain+1;continue, end
-        if any(any(isnan(predata.SpRF.ZRT))) || any(any(isnan(predata.PsRF.ZRT))) 
-            fprintf('inhomogeneous!\n'), fail_chain=fail_chain+1; continue, end
+    % continue if any Sp or PS inhomogeneous or nan or weird output
+    if ifforwardfail(predata,par), fail_chain=fail_chain+1; continue, end
+
     
 %% =========================  CALCULATE MISFIT  ===========================
     
-    % if weighting SWs:
-    if all(par.inv.Kweight == true) % if using default weight by fraction of kernel in model
-        SWwt = calc_K_in_model( Kbase.K,par );
-        SWwt=SWwt/mean(SWwt);
-    elseif all(par.inv.Kweight == false) % if no weight
-        SWwt = [];
-    else
-        SWwt = par.inv.Kweight; % if not explicitly "false", assume custom wts and use.
-    end
+    % SW weights, if applicable 
+    [ SWwt2 ] = make_SW_weight( par,Kbase );
     
     [ misfit ] = b4_CALC_MISFIT( trudata,predata,par,0,SWwt ); % misfit has structures of summed errors
 
