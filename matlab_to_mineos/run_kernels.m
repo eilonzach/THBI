@@ -13,7 +13,7 @@ end
 if nargin < 5 || isempty(ifplot)
     ifplot = false;
 end
-if nargin < 5 || isempty(ifverbose)
+if nargin < 6 || isempty(ifverbose)
     ifverbose = true;
 end
 

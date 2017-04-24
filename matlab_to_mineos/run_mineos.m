@@ -1,5 +1,5 @@
 function [phV,grV] = run_mineos(model,swperiods,ID,ifdelete,ifplot,ifverbose)
-% [phV,grV] = run_mineos(model,swperiods,ID,ifplot,ifdelete,ifverbose)
+% [phV,grV] = run_mineos(model,swperiods,ID,ifdelete,ifplot,ifverbose)
 % 
 % Function to run the MINEOS for a given model and extract the phase
 % velocities at a bunch of input periods. If you keep the output files
