@@ -51,36 +51,38 @@ fprintf('Processing saved raw data... ')
 for id = 1:length(dtypes)
     dtype = dtypes{id}; fprintf('%s... ',dtype);
     odat = savedata0.(dtype(1:4));
-    odat.tt = round_level(odat.tt(savedata.gdmods(1),:),0.001); if odat.tt(end)==0; odat.tt(end)=nan; end
+    for jj = 1:length(odat)
+        odat(jj).tt = round_level(odat(jj).tt(savedata.gdmods(1),:),0.001); if odat(jj).tt(end)==0; odat(jj).tt(end)=nan; end
 
-	%% apply windowing - next will filter, taper
-    gdtt = (odat.tt>= par.datprocess.Twin.(dtype)(1)) & (odat.tt < par.datprocess.Twin.(dtype)(2));
-    odat.tt = odat.tt(:,gdtt)'; % flip
-    odat.Z = odat.Z(savedata.gdmods,gdtt)'; % flip
-    odat.R = odat.R(savedata.gdmods,gdtt)'; % flip
-    odat.T = odat.T(savedata.gdmods,gdtt)'; % flip
+        %% apply windowing - next will filter, taper
+        gdtt = (odat(jj).tt>= par.datprocess.Twin.(dtype)(1)) & (odat(jj).tt < par.datprocess.Twin.(dtype)(2));
+        odat(jj).tt = odat(jj).tt(:,gdtt)'; % flip
+        odat(jj).Z = odat(jj).Z(savedata.gdmods,gdtt)'; % flip
+        odat(jj).R = odat(jj).R(savedata.gdmods,gdtt)'; % flip
+        odat(jj).T = odat(jj).T(savedata.gdmods,gdtt)'; % flip
 
-    cp = struct('samprate',trudata.(dtype)(1).samprate,        ...
-                'pretime',-par.datprocess.Twin.(dtype)(1),  ...
-                'prex',-par.datprocess.Twin.(dtype)(1),     ...
-                'postx',par.datprocess.Twin.(dtype)(2),     ...                 
-                'fhi',par.datprocess.filtf.(dtype)(1),      ...
-                'flo',par.datprocess.filtf.(dtype)(2),      ...
-                'taperx',0.06,'npoles',2,'norm',0           );
+        cp = struct('samprate',trudata.(dtype)(1).samprate,        ...
+                    'pretime',-par.datprocess.Twin.(dtype)(1),  ...
+                    'prex',-par.datprocess.Twin.(dtype)(1),     ...
+                    'postx',par.datprocess.Twin.(dtype)(2),     ...                 
+                    'fhi',par.datprocess.filtf.(dtype)(1),      ...
+                    'flo',par.datprocess.filtf.(dtype)(2),      ...
+                    'taperx',0.06,'npoles',2,'norm',0           );
 
-    %% clean, filter, taper
-    odat.Z = data_clean(odat.Z,cp);
-    odat.R = data_clean(odat.R,cp);
-    odat.T = data_clean(odat.T,cp);
+        %% clean, filter, taper
+        odat(jj).Z = data_clean(odat(jj).Z,cp);
+        odat(jj).R = data_clean(odat(jj).R,cp);
+        odat(jj).T = data_clean(odat(jj).T,cp);
 
-%% normalise to unit energy
-if par.datprocess.normdata 
-    normf = diag(odat.Z'*odat.Z) + diag(odat.R'*odat.R) +diag(odat.T'*odat.T);
-    odat.Z = odat.Z*diag(1./sqrt(normf));
-    odat.R = odat.R*diag(1./sqrt(normf));
-    odat.T = odat.T*diag(1./sqrt(normf));
-end
+        %% normalise to unit energy
+        if par.datprocess.normdata 
+            normf = diag(odat(jj).Z'*odat(jj).Z) + diag(odat(jj).R'*odat(jj).R) +diag(odat(jj).T'*odat(jj).T);
+            odat(jj).Z = odat(jj).Z*diag(1./sqrt(normf));
+            odat(jj).R = odat(jj).R*diag(1./sqrt(normf));
+            odat(jj).T = odat(jj).T*diag(1./sqrt(normf));
+        end
 
+    end
  
 %% decimate
 % if par.datprocess.decdata
@@ -108,9 +110,9 @@ for id = 1:length(dtypes)
     samprate = trudata.(dtype)(1).samprate;
     for itr = 1:length(trudata.(dtype))
         fprintf('%.0f ',itr);
-        for is = 1:size(savedata.(dtype).Z,2)
-            cc_v1(:,is) = conv(trudata.(dtype)(itr).ZRT(:,1),savedata.(dtype).R(:,is),'full'); % Vobs*Hpre
-            cc_v2(:,is) = conv(trudata.(dtype)(itr).ZRT(:,2),savedata.(dtype).Z(:,is),'full'); % Hobs*Vpre
+        for is = 1:size(savedata.(dtype)(itr).Z,2)
+            cc_v1(:,is) = conv(trudata.(dtype)(itr).ZRT(:,1),savedata.(dtype)(itr).R(:,is),'full'); % Vobs*Hpre
+            cc_v2(:,is) = conv(trudata.(dtype)(itr).ZRT(:,2),savedata.(dtype)(itr).Z(:,is),'full'); % Hobs*Vpre
         end
         cc_max = max(max(abs([cc_v1;cc_v2])));
         cc_t = [0:size(cc_v1,1)-1]'./samprate;

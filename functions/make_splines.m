@@ -2,7 +2,7 @@ function [ spbasis,spwts,spzz ] = make_splines( zknots,par,zi,vi )
 %  [ spbasis,spwts,spzz ] = make_splines( zknots,par,zi,vi )
 %   
 % Function to make splines within a current model with knots at absolute
-% depths zknots. The splines will be defined on an interpolatec grid (spzz)
+% depths zknots. The splines will be defined on an interpolated grid (spzz)
 % between the top and bottom splines. We will find weights for these
 % splines by interpolating the basis onto vectors zi and vi.
 % 
