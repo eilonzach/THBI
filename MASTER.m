@@ -204,7 +204,7 @@ for ii = 1:par.inv.niter
 %% =========================  CALCULATE MISFIT  ===========================
     
     % SW weights, if applicable 
-    [ SWwt2 ] = make_SW_weight( par,Kbase );
+    [ SWwt ] = make_SW_weight( par,Kbase );
     
     [ misfit ] = b4_CALC_MISFIT( trudata,predata,par,0,SWwt ); % misfit has structures of summed errors
 
