@@ -30,7 +30,7 @@ for is = 1:length(stainfo_master)
                                          stainfo_master(is).NetworkCode,...
                                          false,true);
 %     movefile([datafile,'.mat'],'DATA')                                     
-    catch
+    catch me
         fprintf('... NO DATA?!\n')
     end
 end

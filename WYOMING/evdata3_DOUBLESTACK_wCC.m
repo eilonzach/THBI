@@ -1,23 +1,33 @@
 clear all
 close all
-station = 'REDW';
-network = 'IW';
+datadir = '~/Documents/MATLAB/THBI_paper/DATA/'; % need final slash
+station = 'RSSD';
+network = 'IU';
 gc_lims = [65,75];
+gc_lims = [45,55];
 
 RFphase = {'Ps','Sp'};
+RFphase = {'Ps'};
 
-xcor_filtfs = [[0.02;2],[0.05;1]];
-% xcor_filtfs = [[0.02;100],[0.02;100]];
-xcor_win = [-20 10];
+
+%% processing parms
 npoles = 2;
+tapertime = 5; % s at beginnning and end of window to taper over
+
+dpol_win = [-1 5];
+datwind = [-50 50]; % in sec around main arrival
 
 filtfs = [0.02;100]; % filter frequencies pre PCA, in Hz
 
-datwind = [-50 50]; % in sec around main arrival
-tapertime = 5; % s at beginnning and end of window to taper over
-acormin = 0.75;
-
 SNRmin = 3;
+
+%% xcor parms
+xcor_filtfs = [[0.02;2],[0.05;1]];
+% xcor_filtfs = [[0.02;100],[0.02;100]];
+xcor_win = [-20 5];
+acormin = 0.175;
+maxlag = 5;
+
 maxdepth = 50;  % maximum EQ depth
 min4clust = 15; % minimum # of EQ to even try the stack
 min4stack = 5;  % minumum # of traces in order to keep the stack
@@ -25,12 +35,12 @@ min4stack = 5;  % minumum # of traces in order to keep the stack
 ifsave = false;
 verbose = true;
 
-load(sprintf('DATA/dat_%s_%s_%.0fto%.0f',station,network,gc_lims(1),gc_lims(2)));
+load(sprintf('%sdat_%s_%s_%.0fto%.0f',datadir,station,network,gc_lims(1),gc_lims(2)));
 addpath('matguts')
 
 %% cluster analysis on events
 Z = linkage([eqar.gcarcs.*sind(eqar.seazs),eqar.gcarcs.*cosd(eqar.seazs)]);
-T = cluster(Z,'cutoff',5,'criterion','distance');
+T = cluster(Z,'cutoff',500,'criterion','distance');
 nT = histcounts(T);
 iclusts = find(nT>min4clust);
 
@@ -75,7 +85,7 @@ for ip = 1:length(RFphase)
     evinds = 1:eqar.norids;
     % QC on depth, only include this cluster
     edeps = [eqar.edeps];
-	evinds(edeps(evinds)>=maxdepth) = [];
+% 	evinds(edeps(evinds)>=maxdepth) = [];
 	evinds(T(evinds)~=iclust) = [];
     evinds_clust = evinds;
     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds)
@@ -115,21 +125,27 @@ for ip = 1:length(RFphase)
 % %     end
 % %     % window before cross correlation to xcor_window around arrival
 % %     xcordat = flat_hanning_win(xcortt(xcinds),xcordat,xcor_win(1),xcor_win(2),1);
-    %% data clean for polest
-    cp = struct('samprate',samprate,'fhi',filtfs(2),'flo',filtfs(1),...
+    %% SNRest
+    % data clean for SNRest
+    cp = struct('samprate',samprate,'fhi',xcor_filtfs(2,ip),'flo',xcor_filtfs(1,ip),...
                 'pretime',-eqar.tt(1,1,ip),'prex',-xcor_win(1),'postx',xcor_win(2),...
                 'taperx',1./diff(xcor_win),'npoles',npoles,'norm',1);
-    [ poldat,~,~,~,~,poltt] = data_clean(  eqar.dataZRT(:,:,chidx,ip),cp ); 
+    [ SNRdat,~,~,~,~,SNRtt] = data_clean(  eqar.dataZRT(:,:,chidx,ip),cp ); 
     
     % SNR after the filter
-    nswin = find(poltt>(max([datwind(1)+tapertime,-55])) & poltt<=-5); % noise window 
-    dwin  = find(poltt>=-5 & poltt<=10); % generous first arrival window 
-    SNR_est = max(abs(poldat(dwin,:)))./2./rms(poldat(nswin,:));
+    nswin = find(SNRtt>(max([datwind(1)+tapertime,-55])) & SNRtt<=-5); % noise window 
+    dwin  = find(SNRtt>=-5 & SNRtt<=10); % generous first arrival window 
+    SNR_est = max(abs(SNRdat(dwin,:)))./2./rms(SNRdat(nswin,:));
     % kill low SNRs
     evinds(SNR_est(evinds)<SNRmin) = [];
-%     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds)
+    plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},xcor_filtfs,evinds)
 
     %% polarity estimate
+    % data clean for polest
+    cp = struct('samprate',samprate,'fhi',10,'flo',1/100,...
+                'pretime',-eqar.tt(1,1,ip),'prex',1,'postx',5,...
+                'taperx',1./diff(xcor_win),'npoles',npoles,'norm',1);
+    [ poldat,~,~,~,~,~] = data_clean(  eqar.dataZRT(:,:,chidx,ip),cp ); 
 %     indtemplate = evinds(mindex(-SNR_est(evinds)));
 %     t0template = STA_LTA(poldat(:,indtemplate),1./samprate,poltt);
 %     iarr_templ = poltt<t0template+5;
@@ -151,7 +167,7 @@ for ip = 1:length(RFphase)
     end
     % kill arrs with no discernible pol
     evinds(ddpol(evinds)==0) = [];
-%     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds,zeros(size(evinds)),ddpol)
+    plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},xcor_filtfs,evinds,zeros(size(evinds)),ddpol)
 
      %% data clean for xcorr
     cp = struct('samprate',samprate,'fhi',xcor_filtfs(2,ip),'flo',xcor_filtfs(1,ip),...
@@ -183,14 +199,14 @@ for ip = 1:length(RFphase)
     
     while any(acor<0)
         fprintf('xcorr-ing %.0f traces\n',length(evinds))
-        [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat(:,evinds),1./samprate, -xcor_win(1), 5,verbose);
+        [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat(:,evinds),1./samprate, -xcor_win(1), maxlag,verbose);
         fprintf('killing %.0f traces\n',sum(acor<0))
         evinds(acor<0) = [];
     end
     while any(acor<acormin)
         fprintf('xcorr-ing %.0f traces\n',length(evinds))
         
-        [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat(:,evinds),1./samprate, -xcor_win(1), 5,verbose);
+        [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat(:,evinds),1./samprate, -xcor_win(1), maxlag,verbose);
         fprintf('killing %.0f traces\n',sum(acor<acormin))
         evinds(acor<acormin) = [];
     end

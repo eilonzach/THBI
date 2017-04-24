@@ -65,12 +65,8 @@ end
 
 PsRF = struct('ZRT',trudat_ps,'tt',tt_ps,'rayp',tt(1).rayparameter,'inc',P_inc,'samprate',samprate,'nsamp',length(tt_ps),'sigma',par.mod.data.prior_sigmaPsRF);
 SpRF = struct('ZRT',trudat_sp,'tt',tt_sp,'rayp',tt(2).rayparameter,'inc',S_inc,'samprate',samprate,'nsamp',length(tt_sp),'sigma',par.mod.data.prior_sigmaSpRF);
-% 
-% % DELETE THIS - JUST WHILE TESTING!!
-% data = struct('PsRF',PsRF,'SpRF',SpRF,'SW',struct('phV',0,'periods',0));
-% fprintf('NOT DOING SW DATA\n')
-% return
-% % END DELETE REGION
+
+
 
 %% ===================  CALCULATE PHASE VELOCITIES  ===================
 % % Use Menke phV solver method on layered model 

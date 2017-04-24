@@ -72,8 +72,8 @@ TRUEmodel.Z = TRUEmodel.z;
 TRUEmodel.vs = TRUEmodel.VS;
 TRUEmodel.vp = TRUEmodel.VP;
 
-
-%% Leyered model
+%% MAKE LAYERISED TARGET MODEL
+% layerise
 [zlayt,zlayb,Vs_lay,Vp_lay,rho_lay] = layerise(Z,Vs,0.05,1,Vp,rho);
 TLM = struct('nlay',length(Vs_lay),'zlayt',zlayt,'zlayb',zlayb,'Vp',Vp_lay,'Vs',Vs_lay,'rho',rho_lay);
            

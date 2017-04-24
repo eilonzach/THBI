@@ -65,11 +65,13 @@ for id = 1:length(dtypes)
         savedat.(dtype).periods(N,inds) = predata.SW.periods;
     elseif regexp(dtype,'RF')
         if regexp(dtype,'_lo'), continue; end
-        inds = 1:predata.(dtype).nsamp;
-        savedat.(dtype).Z(N,inds) = predata.(dtype).ZRT(:,1);
-        savedat.(dtype).R(N,inds) = predata.(dtype).ZRT(:,2);
-        savedat.(dtype).T(N,inds) = predata.(dtype).ZRT(:,3);
-        savedat.(dtype).tt(N,inds) = predata.(dtype).tt;
+        for jj = 1:length(predata.(dtype))
+            inds = 1:predata.(dtype)(jj).nsamp;
+            savedat.(dtype)(jj,1).Z(N,inds) = predata.(dtype)(jj).ZRT(:,1);
+            savedat.(dtype)(jj,1).R(N,inds) = predata.(dtype)(jj).ZRT(:,2);
+            savedat.(dtype)(jj,1).T(N,inds) = predata.(dtype)(jj).ZRT(:,3);
+            savedat.(dtype)(jj,1).tt(N,inds) = predata.(dtype)(jj).tt;
+        end
     end
 end
 

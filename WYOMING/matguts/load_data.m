@@ -67,10 +67,10 @@ if strcmp(project,'WYOMING');
     phVdir = '~/Dropbox/Dave_Li_phV/2D_phase_velocities/'; % need final slash
     phVerrordir = '~/Dropbox/Dave_Li_phV/Errors/'; % need final slash
 
-    [ freqs, periods ] = get_freqs(phVdir);
+    [ freqs ] = get_freqs(phVdir);
 
-    phV = disp_curve_latlon( freqs,avar.slat,avar.slon,phVdir);
-    err = error_curve_latlon( freqs,avar.slat,avar.slon,phVerrordir);
+    [periods,phV]  = disp_curve_latlon( avar.slat,avar.slon); % grab composite of AN and EQ
+    err = error_curve_EQ_latlon( freqs,avar.slat,avar.slon,phVerrordir);
     
     [periods,iT] = sort(periods);
     phV = phV(iT);

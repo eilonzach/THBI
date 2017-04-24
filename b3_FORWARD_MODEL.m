@@ -21,6 +21,10 @@ function [ predata ] = b3_FORWARD_MODEL( model,Kbase,par,data,ID,ifplot )
 % determined by the minimum dVs in any layer (specified as an input). The
 % layerised 1D model is also output from this function.
 
+%% ===================  PREPARE DATA STRUCTURE  ===================
+predata = data;
+
+
 
 %% ===================  LAYERISE PROFILE  ===================
 [zlayt,zlayb,Vslay,Vplay,rholay] = ...
@@ -44,73 +48,111 @@ if ifplot
     set(gcf,'pos',[41   282   729   823]);
 end
 
-%% =============  RECEIVER FUNCTIONS FROM PROPAGATOR MATRIX  ==============
+%% ===================  PS RFs FROM PROPAGATOR MATRIX  ====================
 
 if any(strcmp(par.inv.datatypes,'PsRF'))
-rayp = mean([data.PsRF.rayp]);
-samprate = unique([data.PsRF.samprate]);
-P_inc = rayp2inc(rayp,laymodel.Vp(end),6371-laymodel.zlayb(end));
-[predat_ps,tt_ps] = run_propmat(laymodel,ID,'Ps',samprate, P_inc, par.forc.synthperiod,par.forc.nsamps);
-predat_ps = predat_ps(:,[3,1,2]); % in Z,R,T
-tt_ps_Par = mean(tt_ps(predat_ps(:,1)==min(predat_ps(:,1))));% estimate main P-wave arrival time from first big downswing
-tt_ps = tt_ps - tt_ps_Par;
-tt_ps = round_level(tt_ps,0.001);
+    [ unique_rayps_P,irayps_P ] = rayp_vals( [data.PsRF.rayp] );
+    for ir = 1:length(unique_rayps_P)
+        rayp = unique_rayps_P(ir);
+        samprate = unique([data.PsRF(irayps_P==ir).samprate]);
+        P_inc = rayp2inc(rayp,laymodel.Vp(end),6371-laymodel.zlayb(end));
+        [predat_ps,tt_ps] = run_propmat(laymodel,ID,'Ps',samprate, P_inc, par.forc.synthperiod,par.forc.nsamps);
+        predat_ps = predat_ps(:,[3,1,2]); % in Z,R,T
+        tt_ps_Par = mean(tt_ps(predat_ps(:,1)==min(predat_ps(:,1))));% estimate main P-wave arrival time from first big downswing
+        tt_ps = tt_ps - tt_ps_Par;
+        tt_ps = round_level(tt_ps,0.001);
 
-Ps_widewind = [-10 50];
-inwind = (tt_ps >= Ps_widewind(1)) & (tt_ps < Ps_widewind(2)); 
-% crop
-predat_ps = predat_ps(inwind,:);
-tt_ps = tt_ps(inwind);
-if ~any(inwind)
-    tt_ps = []; predat_ps = nan; % NO GOOD DATA
-else
-    % taper
-    predat_ps = flat_hanning_win(tt_ps,predat_ps,Ps_widewind(1),Ps_widewind(2),1); % 1s taper
-    % normalise to unit energy
-    % normf_ps = predat_ps(:,1)'*predat_ps(:,1) + predat_ps(:,2)'*predat_ps(:,2) + predat_ps(:,3)'*predat_ps(:,3);
-    % predat_ps = predat_ps/sqrt(normf_ps);'
-end
-
-else
-tt_ps = []; predat_ps = [];    
-end
-
-    
-
-
-if any(strcmp(par.inv.datatypes,'SpRF'))
-rayp = mean([data.SpRF.rayp]);
-samprate = unique([data.SpRF.samprate]);
-S_inc = rayp2inc(rayp,laymodel.Vs(end),6371-laymodel.zlayb(end));
-% check if inhomogeneous
-if isreal(asind(laymodel.Vp*sind(S_inc)./laymodel.Vs(end))) % 
-    [predat_sp,tt_sp] = run_propmat(laymodel,ID,'Sp',samprate, S_inc, par.forc.synthperiod,par.forc.nsamps);
-    predat_sp = predat_sp(:,[3,1,2]); % in Z,R,T
-    tt_sp_Sar = mean(tt_sp(predat_sp(:,2)==min(predat_sp(:,2)))); % estimate main S-wave arrival time from first big downswing
-    tt_sp = tt_sp - tt_sp_Sar;
-    tt_sp = round_level(tt_sp,0.001);
-
-    Sp_widewind = [-50 10];
-    inwind = (tt_sp >= Sp_widewind(1)) & (tt_sp < Sp_widewind(2)); 
-    % crop
-    predat_sp = predat_sp(inwind,:);
-    tt_sp = tt_sp(inwind);
-    
-    if ~any(inwind)
-        tt_ps = []; predat_ps = nan; % NO GOOD DATA
-    else
-        % taper
-        predat_sp = flat_hanning_win(tt_sp,predat_sp,Sp_widewind(1),Sp_widewind(2),1); % 1s taper
-        % normalise to unit energy
-        % normf_sp = predat_sp(:,1)'*predat_sp(:,1) + predat_sp(:,2)'*predat_sp(:,2) + predat_sp(:,3)'*predat_sp(:,3);
-        % predat_sp = predat_sp/sqrt(normf_sp);
+        Ps_widewind = [-10 50];
+        inwind = (tt_ps >= Ps_widewind(1)) & (tt_ps < Ps_widewind(2)); 
+        % crop
+        predat_ps = predat_ps(inwind,:);
+        tt_ps = tt_ps(inwind);
+        if ~any(inwind)
+            tt_ps = []; predat_ps = nan; % NO GOOD DATA
+        else
+            % taper
+            predat_ps = flat_hanning_win(tt_ps,predat_ps,Ps_widewind(1),Ps_widewind(2),1); % 1s taper
+            % normalise to unit energy
+            % normf_ps = predat_ps(:,1)'*predat_ps(:,1) + predat_ps(:,2)'*predat_ps(:,2) + predat_ps(:,3)'*predat_ps(:,3);
+            % predat_ps = predat_ps/sqrt(normf_ps);'
+        end
+        
+        % -----------------  PUT INTO DATA STRUCTURE  -----------------
+        inds = find(irayps_P==ir);
+        for iir = 1:length(inds)
+            predata.PsRF(inds(iir),1).ZRT=predat_ps;
+            predata.PsRF(inds(iir),1).tt=tt_ps;
+            predata.PsRF(inds(iir),1).nsamp = length(predata.PsRF(inds(iir)).ZRT);
+        end
     end
 else
-    tt_sp = NaN; predat_sp = NaN;    
+    predata.PsRF = [];    
 end
+
+% Ps_lo
+if any(strcmp(par.inv.datatypes,'PsRF_lo'))
+    predata.PsRF_lo = predata.PsRF;
+else 
+    predata.PsRF_lo = [];
+end
+
+
+    
+%% ===================  SP RFs FROM PROPAGATOR MATRIX  ====================
+if any(strcmp(par.inv.datatypes,'SpRF'))
+    [ unique_rayps_S,irayps_S ] = rayp_vals( [data.SpRF.rayp] );
+    for ir = 1:length(unique_rayps_S)
+        rayp = unique_rayps_S(ir);
+        samprate = unique([data.SpRF(irayps_S==ir).samprate]);
+        S_inc = rayp2inc(rayp,laymodel.Vs(end),6371-laymodel.zlayb(end));
+        % check if inhomogeneous
+        if isreal(asind(laymodel.Vp*sind(S_inc)./laymodel.Vs(end))) % 
+            [predat_sp,tt_sp] = run_propmat(laymodel,ID,'Sp',samprate, S_inc, par.forc.synthperiod,par.forc.nsamps);
+            predat_sp = predat_sp(:,[3,1,2]); % in Z,R,T
+            tt_sp_Sar = mean(tt_sp(predat_sp(:,2)==min(predat_sp(:,2)))); % estimate main S-wave arrival time from first big downswing
+            tt_sp = tt_sp - tt_sp_Sar;
+            tt_sp = round_level(tt_sp,0.001);
+
+            Sp_widewind = [-50 10];
+            inwind = (tt_sp >= Sp_widewind(1)) & (tt_sp < Sp_widewind(2)); 
+            % crop
+            predat_sp = predat_sp(inwind,:);
+            tt_sp = tt_sp(inwind);
+
+            if ~any(inwind)
+                tt_ps = []; predat_ps = nan; % NO GOOD DATA
+            else
+                % taper
+                predat_sp = flat_hanning_win(tt_sp,predat_sp,Sp_widewind(1),Sp_widewind(2),1); % 1s taper
+                % normalise to unit energy
+                % normf_sp = predat_sp(:,1)'*predat_sp(:,1) + predat_sp(:,2)'*predat_sp(:,2) + predat_sp(:,3)'*predat_sp(:,3);
+                % predat_sp = predat_sp/sqrt(normf_sp);
+            end
+        else
+            tt_sp = NaN; predat_sp = NaN;    
+        end
+        
+% -----------------  PUT INTO DATA STRUCTURE  -----------------
+        inds = find(irayps_S==ir);
+        for iir = 1:length(inds)
+            predata.SpRF(inds(iir),1).ZRT=predat_sp;
+            predata.SpRF(inds(iir),1).tt=tt_sp;
+            predata.SpRF(inds(iir),1).nsamp = length(predata.SpRF(inds(iir)).ZRT);
+        end
+    end
 else
-tt_sp = []; predat_sp = [];    
+    predata.SpRF = [];
 end
+
+% Sp_lo
+if any(strcmp(par.inv.datatypes,'SpRF_lo'))
+    predata.SpRF_lo = predata.SpRF;
+else 
+    predata.SpRF_lo = [];
+end
+
+
+%% ifplot....
 
 if ifplot
     figure(2); clf, hold on
@@ -156,49 +198,56 @@ else
    predat_cph = [];
 end
 
-%% ===================  PUT INTO DATA STRUCTURE  ===================
-predata = data;
-
-% Ps
-if any(strcmp(par.inv.datatypes,'PsRF'))
-predata.PsRF = predata.PsRF(1);
-predata.PsRF.ZRT = predat_ps;
-predata.PsRF.tt = tt_ps;
-predata.PsRF.samprate = data.PsRF.samprate;
-predata.PsRF.nsamp = length(predat_ps);
-end
-
-% Sp
-if any(strcmp(par.inv.datatypes,'SpRF'))
-predata.SpRF = predata.SpRF(1);
-predata.SpRF.ZRT = predat_sp;
-predata.SpRF.tt = tt_sp;
-predata.SpRF.samprate = data.SpRF.samprate;
-predata.SpRF.nsamp = length(predat_sp);
-end
-
+% -----------------  PUT INTO DATA STRUCTURE  -----------------
 % SW
 if any(strcmp(par.inv.datatypes,'SW'))
-predata.SW.phV = predat_cph;
+    predata.SW.phV = predat_cph;
 end
 
-% Ps_lo
-if any(strcmp(par.inv.datatypes,'PsRF_lo'))
-predata.PsRF_lo = predata.PsRF_lo(1);
-predata.PsRF_lo.ZRT = predat_ps;
-predata.PsRF_lo.tt = tt_ps;
-predata.PsRF_lo.samprate = data.PsRF.samprate;
-predata.PsRF_lo.nsamp = length(predat_ps);
-end
 
-% Sp_lo
-if any(strcmp(par.inv.datatypes,'SpRF_lo'))
-predata.SpRF_lo = predata.SpRF_lo(1);
-predata.SpRF_lo.ZRT = predat_sp;
-predata.SpRF_lo.tt = tt_sp;
-predata.SpRF_lo.samprate = data.SpRF.samprate;
-predata.SpRF_lo.nsamp = length(predat_sp);
-end
+% %% ===================  PUT INTO DATA STRUCTURE  ===================
+% predata = data;
+% 
+% % Ps
+% if any(strcmp(par.inv.datatypes,'PsRF'))
+% predata.PsRF = predata.PsRF(1);
+% predata.PsRF.ZRT = predat_ps;
+% predata.PsRF.tt = tt_ps;
+% predata.PsRF.samprate = data.PsRF.samprate;
+% predata.PsRF.nsamp = length(predat_ps);
+% end
+% 
+% % Sp
+% if any(strcmp(par.inv.datatypes,'SpRF'))
+% predata.SpRF = predata.SpRF(1);
+% predata.SpRF.ZRT = predat_sp;
+% predata.SpRF.tt = tt_sp;
+% predata.SpRF.samprate = data.SpRF.samprate;
+% predata.SpRF.nsamp = length(predat_sp);
+% end
+% 
+% % SW
+% if any(strcmp(par.inv.datatypes,'SW'))
+% predata.SW.phV = predat_cph;
+% end
+% 
+% % Ps_lo
+% if any(strcmp(par.inv.datatypes,'PsRF_lo'))
+% predata.PsRF_lo = predata.PsRF_lo(1);
+% predata.PsRF_lo.ZRT = predat_ps;
+% predata.PsRF_lo.tt = tt_ps;
+% predata.PsRF_lo.samprate = data.PsRF.samprate;
+% predata.PsRF_lo.nsamp = length(predat_ps);
+% end
+% 
+% % Sp_lo
+% if any(strcmp(par.inv.datatypes,'SpRF_lo'))
+% predata.SpRF_lo = predata.SpRF_lo(1);
+% predata.SpRF_lo.ZRT = predat_sp;
+% predata.SpRF_lo.tt = tt_sp;
+% predata.SpRF_lo.samprate = data.SpRF.samprate;
+% predata.SpRF_lo.nsamp = length(predat_sp);
+% end
 
 end
 

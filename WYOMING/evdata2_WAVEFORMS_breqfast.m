@@ -1,4 +1,4 @@
-function [reqfile, datafile] = evdata2_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess)
+function [reqfile, datafile] = evdata2_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess,request_details)
 % reqfile = evdata2_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess)
 
 if nargin < 1 || isempty(station) 
@@ -13,19 +13,24 @@ end
 if nargin < 4 || isempty(ifprocess)
     ifprocess = false;
 end
+if nargin < 5 || isempty(request_details)
+    request_details = struct('phases',{{'P','S'}},'gclims',[65 75],'maglims',[5.7 7.2],...
+                             'samprate',40,'datwind',[-100 100]);
+end
 
-phases = {'P','S'};
-datwind = [-100 100]; % in sec around main arrival
-samprate = 40;
-tapertime = 5; % s at beginnning and end of window to taper over
+phases = request_details.phases;
+
+datwind = request_details.datwind; % in sec around main arrival
+samprate = request_details.samprate;
+% tapertime = 5; % s at beginnning and end of window to taper over
 
 
-SNRmin = 5;
+% SNRmin = 5;
 
-minmag = 5.7;
-maxmag = 7.2;
+minmag = min(request_details.maglims);
+maxmag = max(request_details.maglims);
 
-gc_lims = [65 75];     % [[4.7748;4.9821],[9.4758;9.8629]]  
+gc_lims = request_details.gclims;     % [[4.7748;4.9821],[9.4758;9.8629]]  
               
 redo_gc_lims = false;
 
@@ -87,9 +92,13 @@ rayps = rayps(gdevts,:);
 
 % plot arrivals
 figure(6), clf, hold on
-polar(d2r(seazs),rayp2inc(rayps(:,2),4.3,6371-100),'or');
-polar(d2r(seazs),rayp2inc(rayps(:,1),8.1,6371-100),'ob');
-
+for ip = 1:length(phases)
+    if strcmp(phases{ip},'P')
+        polar(d2r(seazs),rayp2inc(rayps(:,ip),8.1,6371-100),'ob');
+    elseif strcmp(phases{ip},'S')
+        polar(d2r(seazs),rayp2inc(rayps(:,ip),4.3,6371-100),'or');
+    end
+end
 
 
 %% get data in a batch request
@@ -118,6 +127,7 @@ tt_all= zeros(diff(datwind)*samprate,norids,length(phases));
 for ip = 1:length(phases)
     fprintf('Processing %.0f events for %s... ',length(evinfo),phases{ip})
     [ traces ] = breq_fast_process( label{ip},'zeilon',station,'BH?',network,[],time0(:,ip));
+    if isempty(traces), continue; end
     for ie = 1:length(traces);
 
         fprintf(' processing trace %.0f...\n',ie)
@@ -194,6 +204,7 @@ for ip = 1:length(phases)
     end
     fprintf(' stored\n')
 end
+
 
 %% kill nans or empties
 gdevts = zeros(norids,length(phases));

@@ -24,7 +24,7 @@ kvs_mantle = [4.1 4.4 4.4 4.05 4.2 4.4];
 k_mantle = 9;
 kvs_mantle = [4.2 4.4 4.4 4.45 4.5 4.0 4.1 4.2 4.45];
 
-vpvs_mantle = 1.8;
+vpvs = 1.8;
 
 
 %% DERIVATIVE PARMS
@@ -51,8 +51,8 @@ M = 1 + 2 + 1 + k_crust + k_mantle + 1;
 
 %% MAKE ALL PARAMETER STRUCTURES
 sed = struct('h',h_sed,'VS',vs_sed);
-crust = struct('h',h_crust,'Nkn',k_crust,'VS_kn',kvs_crust,'splines',cspbasis);
-mantle = struct('Nkn',k_mantle,'VS_kn',kvs_mantle,'splines',mspbasis,'vpvs',vpvs_mantle);
+crust = struct('h',h_crust,'Nkn',k_crust,'VS_sp',kvs_crust,'splines',cspbasis,'vpvs',vpvs);
+mantle = struct('Nkn',k_mantle,'VS_sp',kvs_mantle,'splines',mspbasis);
 data = struct('sigmaPsRF',par.mod.data.prior_sigmaPsRF,...
               'sigmaSpRF',par.mod.data.prior_sigmaSpRF,...
               'sigmaSW',par.mod.data.prior_sigmaSW);

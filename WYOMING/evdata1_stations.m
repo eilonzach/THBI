@@ -4,7 +4,7 @@ lonlim = [-113 -102];
 latlim = [40 50];
 
 starttime = '1970-01-01 00:00:00';
-startbytime = '2016-01-01 00:00:00';
+startbytime = '2017-01-01 00:00:00';
 min_longevity_yrs = 1.8;
 
 %% Get to work
