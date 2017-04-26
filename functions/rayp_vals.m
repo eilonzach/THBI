@@ -10,6 +10,12 @@ function [ unique_rayps,irayps ] = rayp_vals( rayps )
 % Assumes rayp in s/deg, but will try to adjust if in s/km
 
 
+if length(rayps)==1
+    unique_rayps = rayps;
+    irayps = 1;
+    return
+end
+    
 Z = linkage(rayps(:));
 irayps = cluster(Z,'cutoff',1.5,'criterion','distance');
 N = max(irayps);

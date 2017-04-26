@@ -1,1 +1,0 @@
-%% Script to get all the data 

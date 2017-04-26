@@ -28,7 +28,8 @@ dat_out = dat_in;
 
 % loop on number of data time series (each will be 3 component)
 for itr = 1:length(dat_in)
-
+if isempty(dat_in.ZRT), continue; end
+    
 %% make cp
 cp = struct('samprate',dat_in(itr).samprate,                 ...
             'pretime',-dat_out(itr).tt(1),  ...

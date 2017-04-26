@@ -1,0 +1,22 @@
+!#/bin/bash
+
+
+#rm ./*.rtz
+#rm ./*_synth.in
+#rm ./*_synth.out0
+#rm ./*_synth.out1
+#rm ./*_synth.out2
+
+for i in *_synth.out0
+  do 
+  export j=`echo $i | sed s/_synth.out0//g`
+  echo "Found "$j" killing..."
+  rm `echo $j.rtz`
+  rm $j.cmd
+  rm $j.mod
+  rm $j"_synth.in"
+  rm $j"_synth.out0"
+  rm $j"_synth.out1"
+  rm $j"_synth.out2"
+done
+

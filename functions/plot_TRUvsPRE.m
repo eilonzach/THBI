@@ -29,7 +29,7 @@ for id = 1:length(dtypes)
     dtype = dtypes{id};
     xa = axs(mod(id+1,4)+1); % order [3,4,1,2]
     samprate = trudata.(dtype)(1).samprate;
-    if ~isempty(predata.(dtype))
+    if ~isempty(predata.(dtype)) && ~isempty(predata.(dtype).ZRT)
         for itr = 1:length(trudata.(dtype))
             itr2 = min([itr,length(predata.(dtype))]);
             cc_v1 = conv(trudata.(dtype)(itr).ZRT(:,1),predata.(dtype)(itr2).ZRT(:,2),'full'); % Vobs*Hpre

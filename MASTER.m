@@ -2,7 +2,7 @@ clear
 close all
 
 
-projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
+projname = 'SYNTHETICS'; % SYNTHETICS or WYOMING, for now
 sta = 'RSSD'; if strcmp(projname,'SYNTHETICS'),sta='SYNTH'; end
 nwk = 'IU';
 gc = 70; % will search for gcarcs +/-3 of this value;
@@ -48,9 +48,9 @@ fprintf('LOADING data\n')
 if strcmp(projname,'SYNTHETICS')
     fprintf('Creating custom model and synthetic data\n')
     % z0_SYNTH_MODEL_custommod(par,1); global TRUEmodel; close(95)
-    z0_SYNTH_MODEL_simplemod(par,1);  %close(95)
+    z0_SYNTH_MODEL_fig2_splines(par,1);  %close(95)
     [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
-    [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par )
+%     [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par );
 else
     addpath('matguts')
     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
@@ -139,7 +139,6 @@ for ii = 1:par.inv.niter
 %             [model1,ptb{ii,2}] = b2_PERTURB_MODEL(model1,par,temp);
             ifpass = a1_TEST_CONDITIONS( model1, par );
             if ~ifpass, if par.inv.verbose, fprintf('  nope\n'); end; end
-            
             [ modptb ] = calc_Vperturbation( Kbase.modelk,model1);
             ptbnorm = norm(modptb.dvsv) + norm(modptb.dvsh);
         end
@@ -157,11 +156,8 @@ for ii = 1:par.inv.niter
     pause(0.01)
     end
     
-    if ptbnorm > par.inv.kerneltolmin
-        nchain = nchain + 1;
-    else
-        nchain = nchain + 0.2;
-    end
+    nchain  = kchain_addcount( nchain,ptbnorm,par );
+    
 
 %% ===========================  FORWARD MODEL  ===========================
     % make random run ID (to avoid overwrites in parfor)
@@ -181,7 +177,7 @@ for ii = 1:par.inv.niter
         
 		% Explicitly use mineos if ptb is too large
 		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
-		if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmin/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
+		if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmed/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
 			swk = predata.SW.phV; % record existing phV from kernels
 		
 			predata.SW.phV = run_mineos(model1,trudata.SW.periods,id,0,0,par.inv.verbose);
@@ -250,7 +246,7 @@ for ii = 1:par.inv.niter
     fail_chain = 0;
     
 %% =========  redo kernel at end of burn in or if chain is too long =======
-    if (newK == false) && (nchain > 30);
+    if (newK == false) && (nchain > par.inv.maxnkchain);
         if par.inv.verbose, fprintf('\n RECALCULATING KERNEL - too long chain\n'); end
         Kbase.modelk = model;
         Kbase.phV = run_mineos(model,trudata.SW.periods,id,0,0,par.inv.verbose);
