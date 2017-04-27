@@ -1,5 +1,5 @@
 function [ phV_period ] = disp_curve_AN_latlon( periods,ilat,ilon,datadir )
-% [ phV_period ] = disp_curve_AN_latlon( freqs,ilat,ilon )
+% [ phV_period ] = disp_curve_AN_latlon( periods,ilat,ilon,datadir )
 %  Function to obtain a dispersion curve at any lat/lon point by
 %  interpolation of individual ambient noise phase velocity maps at the
 %  periods of interest. If the requested lat/lon point is outside the grid
