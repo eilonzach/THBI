@@ -16,6 +16,8 @@ vs_sed = mps.VS(:);
 vp_sed = sed_vs2vp(vs_sed);
 rho_sed = sed_vs2rho(vs_sed);
 
+if diff(zs)==0; zs=[]; vs_sed=[]; vp_sed=[]; rho_sed=[]; end
+
 %% CRUST
 cminz = mps.h;
 cmaxz = mps.h+mpc.h;

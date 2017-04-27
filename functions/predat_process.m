@@ -28,7 +28,7 @@ dat_out = dat_in;
 
 % loop on number of data time series (each will be 3 component)
 for itr = 1:length(dat_in)
-if isempty(dat_in.ZRT), continue; end
+if isempty(dat_in(itr).ZRT), continue; end
     
 %% make cp
 cp = struct('samprate',dat_in(itr).samprate,                 ...
@@ -48,12 +48,15 @@ dat_out(itr).ZRT = dat_out(itr).ZRT(gdind,:);
 dat_out(itr).tt = dat_out(itr).tt(gdind,:);
 dat_out(itr).nsamp = length(dat_out(itr).tt);
 
-%% cut
+%% cut some of main arrival
 % inwind = (tt_ps >= par.datprocess.Twin.PsRF(1)) & (tt_ps <= par.datprocess.Twin.PsRF(2)); 
 % % crop
 % predat_ps = predat_ps(inwind,:);
 % tt_ps = tt_ps(inwind);
 
+if par.datprocess.clipmain 
+    [ dat_out(itr).ZRT ] = clip_main_arrival( dat_out(itr).ZRT,dat_out(itr).tt,1./cp.fhi,dtype(1) );
+end
 
 %% normalise to unit energy
 if par.datprocess.normdata && ~isempty(dat_out(itr).ZRT)

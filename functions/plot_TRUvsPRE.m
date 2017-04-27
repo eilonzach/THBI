@@ -29,11 +29,11 @@ for id = 1:length(dtypes)
     dtype = dtypes{id};
     xa = axs(mod(id+1,4)+1); % order [3,4,1,2]
     samprate = trudata.(dtype)(1).samprate;
-    if ~isempty(predata.(dtype)) && ~isempty(predata.(dtype).ZRT)
+    if ~isempty(predata.(dtype)) && ~isempty(predata.(dtype)(1).ZRT)
         for itr = 1:length(trudata.(dtype))
-            itr2 = min([itr,length(predata.(dtype))]);
-            cc_v1 = conv(trudata.(dtype)(itr).ZRT(:,1),predata.(dtype)(itr2).ZRT(:,2),'full'); % Vobs*Hpre
-            cc_v2 = conv(trudata.(dtype)(itr).ZRT(:,2),predata.(dtype)(itr2).ZRT(:,1),'full'); % Hobs*Vpre
+%             itr2 = min([itr,length(predata.(dtype))]);
+            cc_v1 = conv(trudata.(dtype)(itr).ZRT(:,1),predata.(dtype)(itr).ZRT(:,2),'full'); % Vobs*Hpre
+            cc_v2 = conv(trudata.(dtype)(itr).ZRT(:,2),predata.(dtype)(itr).ZRT(:,1),'full'); % Hobs*Vpre
             cc_max = max(abs([cc_v1;cc_v2]));
             cc_t = [0:length(cc_v1)-1]'./samprate;
             plot(xa,cc_t,cc_v1,'k','linewidth',2.5),

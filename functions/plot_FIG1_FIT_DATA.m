@@ -50,6 +50,7 @@ end
 fprintf('Processing saved raw data... ')
 for id = 1:length(dtypes)
     dtype = dtypes{id}; fprintf('%s... ',dtype);
+    if ~isfield(savedata0,dtype), continue; end
     odat = savedata0.(dtype(1:4));
     for jj = 1:length(odat)
         odat(jj).tt = round_level(odat(jj).tt(savedata.gdmods(1),:),0.001); if odat(jj).tt(end)==0; odat(jj).tt(end)=nan; end
@@ -104,6 +105,7 @@ fprintf('\nPlotting... ');
 %% RFs
 for id = 1:length(dtypes)
     dtype = dtypes{id}; fprintf('%s ',dtype);
+    if ~isfield(savedata,dtype), continue; end
     if ~iflodata, if ~isempty(regexp(dtype,'_lo','once')), continue; end, end
     xa = axs(axord(id)); 
     cla(xa); clear('cc_v1','cc_v2')

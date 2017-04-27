@@ -51,7 +51,7 @@ for id = 1:length(dtypes)
     xa2 = axs(mod(2*id+3,8)+1); % order [6,8,2,4]
     if strcmp(dtype(1),'P'), ps=1;elseif strcmp(dtype(1),'S'), ps=2; end
     
-    if ~isempty(predata.(dtype)(1).ZRT)
+    if ~isempty(predata.(dtype)) && ~isempty(predata.(dtype)(1).ZRT)
         for itr = 1:length(trudata.(dtype))
             plot(xa1,trudata.(dtype)(itr).tt,trudata.(dtype)(itr).ZRT(:,1),'k','linewidth',2.5)
             plot(xa1,predata.(dtype)(1).tt,predata.(dtype)(1).ZRT(:,1),'r','linewidth',1.5)
@@ -67,7 +67,7 @@ for id = 1:length(dtypes)
         title(xa1, regexprep(dtype,'_','-'),'fontsize',22)
         xlabel(xa2, sprintf('Time from %s arrival',dtype(1)),'fontsize',18)
     else
-        delete(ax5),delete(ax6) 
+        delete(xa1),delete(xa2) 
     end
     
 end
@@ -76,7 +76,7 @@ pause(0.001)
 
 
 if ifsave
-    save2pdf(57,ofile);
+    save2pdf(58,ofile,'/');
 end
 
 % %% Ps
