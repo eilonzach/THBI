@@ -11,7 +11,9 @@ gc = 70; % will search for gcarcs +/-3 of this value;
 
 %% ------------------------- START ------------------------- 
 global projdir THBIpath
+THBIpath = '/Users/zeilon/Documents/MATLAB/BayesianJointInv';
 projdir = [THBIpath,'/',projname,'/'];
+
 run([THBIpath,'/a0_STARTUP_BAYES']);
 cd(projdir);
 
@@ -57,7 +59,6 @@ else
     trudata = load_data(projname,sta,nwk,gc);
     save([projdir,STAMP,'/trudata_ORIG'],'trudata');
 end
-
 
 trudata_ORIG = trudata; trudata_ORIG.PsRF_lo=trudata_ORIG.PsRF; trudata_ORIG.SpRF_lo=trudata_ORIG.SpRF;
 
@@ -136,9 +137,9 @@ for ii = 1:par.inv.niter
         % only let perturbed model out of the loop if it passes conditions
         while ifpass==0
             [model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
-%             [model1,ptb{ii,2}] = b2_PERTURB_MODEL(model1,par,temp);
             ifpass = a1_TEST_CONDITIONS( model1, par );
             if ~ifpass, if par.inv.verbose, fprintf('  nope\n'); end; end
+            
             [ modptb ] = calc_Vperturbation( Kbase.modelk,model1);
             ptbnorm = norm(modptb.dvsv) + norm(modptb.dvsh);
         end
@@ -161,11 +162,12 @@ for ii = 1:par.inv.niter
 
 %% ===========================  FORWARD MODEL  ===========================
     % make random run ID (to avoid overwrites in parfor)
-    if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
+	if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
 		id = [num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
-        try
+
+		try
 		predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,id,0); predata0=predata;
-        catch, continue
+		catch, continue
         end
         
         % continue if any Sp or PS inhomogeneous or nan or weird output
@@ -318,6 +320,7 @@ final_predata.SpRF_lo = final_predata.SpRF;
 [ final_misfit ] = b4_CALC_MISFIT( trudata,final_predata,par,0 );
 [ final_log_likelihood,final_misfit ] = b5_CALC_LIKELIHOOD( final_misfit,trudata,model1.datahparm,par );
 plot_TRUvsPRE( trudata,final_predata,1,[projdir,STAMP,'/final_true_vs_pred_data.pdf']);
+plot_TRUvsPRE_WAVEFORMS( trudata,final_predata,1,[projdir,STAMP,'/final_true_vs_pred_data_wavs.pdf']);
 
 %% data fit summary
 savedat.gdmods = find([allmodels.bestmods]');

@@ -10,12 +10,12 @@ global TRUEmodel TLM
 
 %% CHOOSE CUSTOM KEY PARAMETERS
 selev = 0;
-h_sed = 2;
+h_sed = 0;
 h_crust = 45;
 
 k_crust = 4;
 
-vs_sed = [2.8 3.1];
+vs_sed = [3.5 3.5];
 
 kvs_crust = [3.5 3.65 3.77 3.81]';
 zspc = linspace(h_sed, h_sed+h_crust,3)';

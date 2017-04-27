@@ -27,7 +27,7 @@ model0 = model;
 
 ptbopts = {'ptb_Vmod','ptb_disc','ptb_Mmod','ptb_sigdat'};
 % opt_rel_P = [3,2,2,1]; % relative probabilities of altering each one
-opt_rel_P = [3,2,2,1];% Not curently changing the N of spline
+opt_rel_P = [3,2,2,1];
 
 opt_plim = cumsum(opt_rel_P)/sum(opt_rel_P);
 
@@ -41,7 +41,7 @@ switch ptbopts{optflag} % decide what to modify
     case 'ptb_Vmod' % modify VELOCITY somewhere in current model
         
         lithlay = {'sed','crust','mantle'};
-        lay_rel_P = [0,2,6]; % relative probabilities of altering each one
+        lay_rel_P = [1,2,6]; % relative probabilities of altering each one
         
         lay_plim = cumsum(lay_rel_P)/sum(lay_rel_P);
         layflag = find(lay_plim>=rand(1),1,'first'); % randomly select which layer to perturb
@@ -53,6 +53,7 @@ switch ptbopts{optflag} % decide what to modify
                 
                 ind = randi([1,2]); % random index of V to pertub (but not base of seds)
                 std = temp.*par.mod.sed.vsstd; % get std of perturbation
+                if std==0, continue; end % don't perturb if no perturbation
                 V0 = model.sedmparm.VS(ind);
                 vma = par.mod.sed.vsmax;
                 vmi = par.mod.sed.vsmin;
@@ -167,7 +168,7 @@ switch ptbopts{optflag} % decide what to modify
     case 'ptb_disc' % modify DISCONTINUITY in current model
         
         disc = {'sed','moh'};
-        disc_rel_P = [0,2]; % relative probabilities of altering each one
+        disc_rel_P = [1,2]; % relative probabilities of altering each one
 
         disc_plim = cumsum(disc_rel_P)/sum(disc_rel_P);
         discflag = find(disc_plim>=rand(1),1,'first'); % randomly select which type of perturbation to do
@@ -210,6 +211,7 @@ switch ptbopts{optflag} % decide what to modify
                         dV = vb-vt; % V jump at disc 
                         
                         std = temp.*mean([par.mod.crust.vsstd,par.mod.sed.vsstd]);
+                        if std==0, continue; end % don't perturb if no perturbation
                         vmi = model.sedmparm.VS(1);
                         vma = model.crustmparm.VS_sp(2);
                         ifgd = false;
@@ -234,9 +236,11 @@ switch ptbopts{optflag} % decide what to modify
                 
                         % modify the sed depth
                         std = temp.*par.mod.sed.hstd; % get std of perturbation
+                        if std==0, continue; end % don't perturb if no perturbation
                         h0 = model.sedmparm.h;
                         hma = par.mod.sed.hmax; 
                         hmi = par.mod.sed.hmin;
+                        if hma==hmi, continue; end % don't perturb sed if no perturbation
                         ifgd = false;
                         while ifgd==false % only do perturbation within the permitted bounds
                             dh = random('norm',0,std,1); % calc. random perturbation
@@ -413,7 +417,7 @@ switch ptbopts{optflag} % decide what to modify
     case 'ptb_Mmod'  % add or remove layer from current model
         
         lithlay = {'crust','mantle'};
-        lay_rel_P = [1,5]; % relative probabilities of altering each one
+        lay_rel_P = [1,4]; % relative probabilities of altering each one
         
         lay_plim = cumsum(lay_rel_P)/sum(lay_rel_P);
         layflag = find(lay_plim>=rand(1),1,'first'); % randomly select which layer to perturb
@@ -572,7 +576,7 @@ switch ptbopts{optflag} % decide what to modify
     case 'ptb_sigdat' % change the sigma value for one of the data types
     
     	datatypes = par.inv.datatypes;
-    	d2mod = randi(length(datatypes));
+    	d2mod = randi(length(datatypes)); % even probability of modifying any
         ptb = [datatypes{d2mod},'_sigma'];
         dtype = datatypes{d2mod};
 

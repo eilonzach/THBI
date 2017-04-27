@@ -121,7 +121,7 @@ for iii = 1:nchains
     set(ax1,'Fontsize',16)
     
     
-    cols = [[0 0.447 0.741];[0.85 0.325 0.098];[0.494 0.184 0.556];[0.929 0.694 0.125];[0.466 0.674 0.188]];
+    cols = [[0 0.447 0.741];[0.85 0.325 0.098];[0.929 0.694 0.125];[0.494 0.184 0.556];[0.466 0.674 0.188]];
     
     for idt = 1:length(par.inv.datatypes) 
         hrms(idt)=plot(ax2,mf.iter,sum(mf.(['rms_',dtype_code(par.inv.datatypes{idt})]),2),'o');

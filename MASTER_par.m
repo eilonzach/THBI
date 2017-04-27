@@ -6,12 +6,13 @@ sta = 'RSSD'; % no Ps!!
 nwk = 'IU';
 gc = 70; % will search for gcarcs +/-3 of this value;
 % baz = 315;
+
+
+%% ------------------------- START ------------------------- 
 global projdir THBIpath
 THBIpath = '/Users/zeilon/Documents/MATLAB/BayesianJointInv';
 projdir = [THBIpath,'/',projname,'/'];
 
-
-%% ------------------------- START ------------------------- 
 run([THBIpath,'/a0_STARTUP_BAYES']);
 cd(projdir);
 
@@ -20,6 +21,12 @@ mkdir([projdir,STAMP]);
 
 %% PARMS
 run parms/bayes_inv_parms
+if strcmp(projname,'SYNTHETICS'),
+    par.sta = 'SYNTH'; par.nwk = '--';
+else
+    par.sta = sta;par.nwk = nwk;par.gc = gc;
+end
+
 par_ORIG = par;
 % par came from above script
 save([projdir,STAMP,'/par'],'par');
@@ -44,7 +51,7 @@ if strcmp(projname,'SYNTHETICS')
     % z0_SYNTH_MODEL_custommod(par,1); global TRUEmodel; close(95)
     z0_SYNTH_MODEL_simplemod(par,1);  %close(95)
     [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
-
+%     [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par );
 else
     addpath('matguts')
     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
@@ -158,74 +165,53 @@ try
             ptbnorm = norm(modptb.dvsv) + norm(modptb.dvsh);
         end
     end
-
-    if ptbnorm > par.inv.kerneltolmin
-        nchain = nchain + 1;
-    else
-        nchain = nchain + 0.2;
-    end
+    
+    nchain  = kchain_addcount( nchain,ptbnorm,par );
+    
 
 %% ===========================  FORWARD MODEL  ===========================
     % make random run ID (to avoid overwrites in parfor)
 	if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
 		id = [char(64+iii),num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
-	
+
+		try
 		predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,id,0); predata0=predata;
-    
-        % continue if any Sp or PS inhomogeneous or weird output
-        if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
-            fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end
-        if predata.SpRF.nsamp<predata.SpRF.samprate*diff(par.datprocess.Twin.SpRF)
-            fprintf('Not enough S data!\n'),fail_chain=fail_chain+1;continue, end
-        if any(any(isnan(predata.SpRF.ZRT))) || any(any(isnan(predata.PsRF.ZRT))) 
-            fprintf('inhomogeneous!\n'), fail_chain=fail_chain+1; continue, end
+		catch, continue
+        end
+        
+        % continue if any Sp or PS inhomogeneous or nan or weird output
+        if ifforwardfail(predata,par), fail_chain=fail_chain+1; continue, end
         
         for idt = 1:length(par.inv.datatypes)
             [ predata ] = predat_process( predata,par.inv.datatypes{idt},par);
         end
         
-        % reject if a nan channel
-        if any(any(isnan(predata.PsRF.ZRT))) ||  any(any(isnan(predata.SpRF.ZRT))), 
-            fprintf('NaN DATA!\n'),fail_chain=fail_chain+1;continue, end
-	
 		% Explicitly use mineos if ptb is too large
 		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
-		if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmin/par.inv.kerneltolmax,1,1) %#ok<ALIGN> % control chance of going to MINEOS
+		if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmed/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
 			swk = predata.SW.phV; % record existing phV from kernels
 		
 			predata.SW.phV = run_mineos(model1,trudata.SW.periods,id,0,0,par.inv.verbose);
 		
 			if par.inv.verbose
 				fprintf('    RMS diff is %.4f\n',rms(swk-predata.SW.phV)); % RMS difference
-			end
-		
+            end
 			newK = true;
 		else 
 			Ktry = [];
 		end
-	end % only redo data if model has changed 
+    end % only redo data if model has changed 
 
 %      plot_TRUvsPRE_old(trudata,predata)]
 
-        % continue if any Sp or PS inhomogeneous or weird output
-        if predata.PsRF.nsamp<predata.PsRF.samprate*diff(par.datprocess.Twin.PsRF)
-            fprintf('Not enough P data!\n'),fail_chain=fail_chain+1;continue, end
-        if predata.SpRF.nsamp<predata.SpRF.samprate*diff(par.datprocess.Twin.SpRF)
-            fprintf('Not enough S data!\n'),fail_chain=fail_chain+1;continue, end
-        if any(any(isnan(predata.SpRF.ZRT))) || any(any(isnan(predata.PsRF.ZRT))) 
-            fprintf('inhomogeneous!\n'), fail_chain=fail_chain+1; continue, end
+    % continue if any Sp or PS inhomogeneous or nan or weird output
+    if ifforwardfail(predata,par), fail_chain=fail_chain+1; continue, end
+
     
 %% =========================  CALCULATE MISFIT  ===========================
     
-    % if weighting SWs:
-    if all(par.inv.Kweight == true) % if using default weight by fraction of kernel in model
-        SWwt = calc_K_in_model( Kbase.K,par );
-        SWwt=SWwt/mean(SWwt);
-    elseif all(par.inv.Kweight == false) % if no weight
-        SWwt = [];
-    else
-        SWwt = par.inv.Kweight; % if not explicitly "false", assume custom wts and use.
-    end
+    % SW weights, if applicable 
+    [ SWwt ] = make_SW_weight( par,Kbase );
     
     [ misfit ] = b4_CALC_MISFIT( trudata,predata,par,0,SWwt ); % misfit has structures of summed errors
 
@@ -271,7 +257,7 @@ try
     fail_chain = 0;
     
 %% =========  redo kernel at end of burn in or if chain is too long =======
-    if (newK == false) && (nchain > 30);
+    if (newK == false) && (nchain > par.inv.maxnkchain);
         if par.inv.verbose, fprintf('\n RECALCULATING KERNEL - too long chain\n'); end
         Kbase.modelk = model;
         Kbase.phV = run_mineos(model,trudata.SW.periods,id,0,0,par.inv.verbose);

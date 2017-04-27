@@ -90,15 +90,15 @@ if any(strcmp(fieldnames(cond),'noVSgt49')) && cond.noVSgt49==true
 end
 
 %% Velocities in each layer within bounds
-is0 = 1:find(model.z==model.zsed,1,'first');
+is0 = 1:find(model.z==model.zsed,1,'first');  if model.zsed==0, is0 = 0; end
 ic0 = is0(end)+1:find(model.z==model.zmoh,1,'first');
 im0 = ic0(end)+1:model.Nz;
-if any(model.VS(is0)<par.mod.sed.vsmin); 
+if model.zsed~=0 && any(model.VS(is0)<par.mod.sed.vsmin); 
     ifpass = false;
     if ifverbose,fprintf('Failed: Sed VS < %.2f km/s\n',par.mod.sed.vsmin); end        
     return
 end
-if any(model.VS(is0)>par.mod.sed.vsmax); 
+if model.zsed~=0 && any(model.VS(is0)>par.mod.sed.vsmax);  
     ifpass = false;
     if ifverbose,fprintf('Failed: Sed VS > %.2f km/s\n',par.mod.sed.vsmax); end        
     return
