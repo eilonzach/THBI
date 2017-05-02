@@ -1,5 +1,5 @@
-    function [model,laymodel] = z0_SYNTH_MODEL_simplesplines(par,ifplot)
-
+function [model,laymodel] = z0_SYNTH_MODEL_simplesplines(par,ifplot)
+% [model,laymodel] = z0_SYNTH_MODEL_simplesplines(par,ifplot)
 
 if nargin < 2 || isempty(ifplot)
     ifplot=false;

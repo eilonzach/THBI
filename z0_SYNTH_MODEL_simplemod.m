@@ -1,4 +1,4 @@
-    function [model,laymodel] = z0_SYNTH_MODEL_simplemod(par,ifplot)
+function [model,laymodel] = z0_SYNTH_MODEL_simplemod(par,ifplot)
 
 
 if nargin < 2 || isempty(ifplot)
