@@ -4,56 +4,58 @@
 
 %% Inversion parms
 inv = struct(    'verbose',true                  ,... % option to spit out more information+plots
-                 'niter',5000                    ,... % Number of iterations
+                 'niter',6000                    ,... % Number of iterations
                  'burnin',1200                   ,... % don't record results before burnin iterations
                  'cooloff',1000                   ,... % # of iterations over which temperature declines as erf
                  'tempmax',4                     ,... % maximum multiple of all standard deviations
                  'bestNmod2keep',500             ,... % keep only the best N models in each chain, defined here
-                 'kerneltolmax',2.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
-                 'kerneltolmin',0.6              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'kerneltolmax',1.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
+                 'kerneltolmed',1.0              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'kerneltolmin',0.5              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'maxnkchain',200              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'nchains',8                     ,... % number of chains to start in parallel
                  'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
-                 'datatypes',{{'SpRF','SW','SpRF_lo'}});  % any of {{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}}
+                 'datatypes',{{'PsRF','SpRF','SW','PsRF_lo','SpRF_lo'}});  % any of {{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}}
 
 %% Model parms
 mod = struct([]);
 
 mod(1).nstas = 1;
-mod.maxz = 200;                                      % maximum depth from ref ellipsoid, km
-mod.dz = 5;                                          % depth spacing of model, km
+mod.maxz = 250;                                      % maximum depth from ref ellipsoid, km
+mod.dz = 4;                                          % depth spacing of model, km
 
-mod.sed = struct(    'hmax',5.00002              ,... %5 max sed layer thickness, km
-                     'hmin',5.00001              ,... %0 min sed layer thickness, km
-                     'hstd',0                    ,... % std of sed layer thickness for perturbation, km
-                     'vsmax',3.2                 ,... % max sed velocity, km/s
-                     'vsmin',3.2                 ,... % min sed velocity, km/s
-                     'vsstd',0.0                 );  % std of sed velocity for perturbation, km/s
+mod.sed = struct(    'hmax',5.0                  ,... %5 max sed layer thickness, km
+                     'hmin',0.0                  ,... %0 min sed layer thickness, km
+                     'hstd',0.2                  ,... % std of sed layer thickness for perturbation, km
+                     'vsmax',3.3                 ,... % max sed velocity, km/s
+                     'vsmin',2.0                 ,... % min sed velocity, km/s
+                     'vsstd',0.1                 );  % std of sed velocity for perturbation, km/s
 
 mod.crust = struct(  'hmax',60                   ,... %60 max xtal crust thickness, km
                      'hmin',40                   ,... %10 min xtal crust thickness, km
                      'hstd',3                    ,... % std of xtal crust thickness, for perturbation, km
                      'vsmax',4.1                 ,...4.5 % max crust spline velocity, km/s
                      'vsmin',3.3                 ,...3.3 % min crust spline velocity, km/s
-                     'vsstd',0.1                 ,... % std of crust spline velocity for perturbation, km/s
+                     'vsstd',0.08                 ,... % std of crust spline velocity for perturbation, km/s
                      'vpvsmax',1.85              ,...1.9 % min crust vpvs ratio
                      'vpvsmin',1.75              ,...1.65 % max crust vpvs ratio
-                     'vpvsstd',0.15              ,... % std of crust vpvs ratio for perturbation, km/s
+                     'vpvsstd',0.01              ,... % std of crust vpvs ratio for perturbation, km/s
                      'kdstd',2                   ,... % std of knot movement, for perturbation, km
                      'kmax',4                    ,... % max number of spline knots in crust (inc ends)
                      'kmin',2                    );  % min number of spline knots in crust (inc ends)
 
 mod.mantle = struct( 'vsmax',4.9                 ,...4.9 % max mantle spline velocity, km/s
                      'vsmin',3.7                 ,...3.7 % min mantle spline velocity, km/s
-                     'vsstd',0.1                 ,... % std of mantle spline velocity for perturbation, km/s
+                     'vsstd',0.08                 ,... % std of mantle spline velocity for perturbation, km/s
                      'kdstd',4                   ,... % std of knot movement, for perturbation, km
                      'kmax',20                   ,... % max number of spline knots in mantle (inc ends)
-                     'kmin',5                   );  % max number of spline knots in mantle (inc ends)
+                     'kmin',4                   );  % max number of spline knots in mantle (inc ends)
 
-mod.data = struct(  'prior_sigmaPsRF',0.05       ,... % prior PsRF seismogram sigma
-                    'prior_sigmaSpRF',0.05       ,... % prior SpRF seismogram sigma
+mod.data = struct(  'prior_sigmaPsRF',0.2       ,... % prior PsRF seismogram sigma
+                    'prior_sigmaSpRF',0.2       ,... % prior SpRF seismogram sigma
                     'prior_sigmaSW',0.05         ,... % prior SW phvel sigma
-                    'prior_sigmaSpRF_lo',0.02    ,... % prior SpRF seismogram sigma for low f data
-                    'prior_sigmaPsRF_lo',0.05    ,... % prior PsRF seismogram sigma for low f data
+                    'prior_sigmaSpRF_lo',0.1    ,... % prior SpRF seismogram sigma for low f data
+                    'prior_sigmaPsRF_lo',0.1    ,... % prior PsRF seismogram sigma for low f data
                     ...
                     'min_sigmaPsRF',0.0002       ,... % minimum PsRF sigma
                     'min_sigmaSpRF',0.0002       ,... % minimum SpRF sigma
@@ -71,6 +73,7 @@ forc = struct(      'mindV',0.05                 ,... % min delta Vs for layeris
 %% Data processing parms
 datprocess=struct( 'normdata',true               ,... % normalise data in processing
                    'decdata',false                ,... % decimate data in processing
+                   'clipmain',true                ,... % clip main phase
                    'Twin'                        ,... % time windows structure...
                      struct('SpRF',[-30 2]       ,... % time window about main S arrival 
                             'PsRF',[-2 25]       ,... % time window about main P arrival 
@@ -95,9 +98,9 @@ cond = struct(  'pos_moho',         true         ,... % No negative moho jumps
 synth = struct( 'inc',20                         ,... % incidence angle
                 'samprate',10                    ,... % sample rate.
                 'noise_sigmaSW',0.01             ,... %0.03 std for random added noise for SWs
-                'noise_sigmaSpRF',0.005           ,... %0.02 std for random added noise for SpRFs
-                'noise_sigmaPsRF',0.008           ,... %0.02 std for random added noise for PsRFs
-                'SWperiods',logspace(log10(6),log10(200),25)',...  % surface wave periods
+                'noise_sigmaSpRF',0.001           ,... %0.02 std for random added noise for SpRFs
+                'noise_sigmaPsRF',0.001           ,... %0.02 std for random added noise for PsRFs
+                'SWperiods',logspace(log10(6),log10(167),25)',...  % surface wave periods
                 'nsamps',[]                      );  % number of samples. 
 
             %% Bundle together

@@ -7,9 +7,9 @@ function plot_PARAMETERISATION( model,ofile,ax )
 if nargin < 2|| isempty(ofile), ifsave = false; else ifsave = true; end
 if nargin < 3 || isempty(ax), ax = []; end
 
-z_sed = model.z(1:2);
-z_crust = model.z(2+[1:size(model.crustmparm.splines,1)]);
-z_mantle = model.z(length(z_crust)+1+2:end);
+z_sed = [0,model.zsed];
+z_crust = model.z([find(model.z==model.zsed,1,'last'):find(model.z==model.zmoh,1,'first')]);
+z_mantle = model.z(find(model.z==model.zmoh,1,'last'):end);
 
 %% Make fig
 if isempty(ax)
