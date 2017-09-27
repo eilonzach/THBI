@@ -2,8 +2,8 @@ function prior = a2_BUILD_PRIOR(par,Niter,zmantle)
 % profile clear
 % profile on
 
-if nargin <2 || isempty(Niter)
-    Niter = 1e5;
+if nargin <2 || isempty(Niter) 
+    Niter = 1e4;
 end
 
 o = [];
@@ -16,7 +16,7 @@ prior = struct('Niter',Niter','Npass',0,...
                'fdVSsed',o,'fdVSmoh',o,'vpvs',o);
 
 if nargin<3 || isempty(zmantle)
-    prior.zmantle = linspace(par.mod.sed.hmax+par.mod.crust.hmax+0.1,par.mod.maxz,40)';
+    prior.zmantle = linspace(par.mod.sed.hmax+par.mod.crust.hmin+0.1,par.mod.maxz,50)';
 else
     prior.zmantle = zmantle;
 end
@@ -45,6 +45,8 @@ for kk = 1:Niter
     parprior(kk).fdVSsed = model.fdVSsed;
     parprior(kk).fdVSmoh = model.fdVSmoh;
     parprior(kk).vpvs = model.crustmparm.vpvs;    
+    parprior(kk).cxi = model.crustmparm.xi;    
+    parprior(kk).mxi = model.mantmparm.xi;    
 end
 Npass = sum(passed);
 
@@ -63,6 +65,8 @@ prior.VSmantle = reshape([parprior.VSmantle],length(prior.zmantle),Npass)';
 prior.fdVSsed = [parprior.fdVSsed]';
 prior.fdVSmoh = [parprior.fdVSmoh]';
 prior.vpvs = [parprior.vpvs]';
+prior.cxi = [parprior.cxi]';
+prior.mxi = [parprior.mxi]';
 prior.zmantle = round(prior.zmantle);
 
 

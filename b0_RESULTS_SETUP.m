@@ -11,9 +11,9 @@ oo = zeros(par.inv.niter,1);
 % misfits 
 misfits = struct('globmaxL',0,'lastL',0,'lastlogL',-Inf,... % minimum global errror, most recent error
                  'iter',0,... % iteration number
-                 'chi2',nn,...  % chi2 is the chi-squared misfit, accounting for data error
-                 'norm_RF',nn,'norm_SW',nn,... % norm is the sum of the squared error
+                 'chi2sum',nn,...  % chi2 is the chi-squared misfit, accounting for data error
                  'Nstored',0);
+                 % norm is the sum of the squared error
 
 % allmodels
 allmodels = struct('z',o,'z0',o,'iter',o,...
@@ -34,8 +34,8 @@ for id = 1:length(dtypes)
     if regexp(dtypes{id},'SW')
         savedat.(dtypes{id})=struct('phV',oo,'periods',oo);
     elseif regexp(dtypes{id},'RF')
-        if regexp(dtypes{id},'_lo'), continue; end
-        savedat.(dtypes{id})=struct('Z',oo,'R',oo,'T',oo,'tt',oo);
+%         if regexp(dtypes{id},'_lo'), continue; end
+        savedat.(dtypes{id})=struct('P',oo,'SV',oo,'tt',oo);
     end
 end
 

@@ -11,9 +11,21 @@ if nargin <3 || isempty(ifplot)
     ifplot=false;
 end
 
+%% Radial anisotropy
+xi0  = 1 + model0.Sanis/100;  % assumes Sanis is a percentage of anis about zero
+phi0 = 1 + model0.Panis/100;  % assumes Panis is a percentage of anis about zero
+[ vsv0,vsh0 ] = VsvVsh_from_VsXi( model0.VS,xi0 );
+[ vpv0,vph0 ] = VpvVph_from_VpPhi( model0.VP,phi0 );
+
+xi1  = 1 + model1.Sanis/100;  % assumes Sanis is a percentage of anis about zero
+phi1 = 1 + model1.Panis/100;  % assumes Panis is a percentage of anis about zero
+[ vsv1,vsh1 ] = VsvVsh_from_VsXi( model1.VS,xi1 );
+[ vpv1,vph1 ] = VpvVph_from_VpPhi( model1.VP,phi1 );
+
+
 %% get in card format inc. all depths in PREM
-card0 = write_cardfile([],model0.z,model0.VP,model0.VS,model0.rho);
-card1 = write_cardfile([],model1.z,model1.VP,model1.VS,model1.rho);
+card0 = write_cardfile([],model0.z,vpv0,vsv0,model0.rho,[],[],vph0,vsh0);
+card1 = write_cardfile([],model1.z,vpv1,vsv1,model1.rho,[],[],vph1,vsh1);
 
 %% parse depths and nodes
 zz0 = card0.depth;

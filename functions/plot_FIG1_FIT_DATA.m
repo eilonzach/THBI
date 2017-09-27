@@ -39,48 +39,60 @@ end
 
 %%  =========================  PROCESS SAVEDATA  =========================  
 
-if iflodata
-    dtypes = {'PsRF','SpRF','PsRF_lo','SpRF_lo'};
-    axord = [4,5,1,2,3]
-else
-    dtypes = {'PsRF','SpRF'};
+dtypes = par.inv.datatypes;
     axord = [1,2];
-end
+
+% if iflodata
+%     dtypes = {'BW_Ps','BW_Sp','BW_Ps_lo','BW_Sp_lo'};
+%     axord = [4,5,1,2,3]
+% else
+%     dtypes = {'BW_Ps','BW_Sp'};
+%     axord = [1,2];
+% end
 
 fprintf('Processing saved raw data... ')
 for id = 1:length(dtypes)
     dtype = dtypes{id}; fprintf('%s... ',dtype);
+    pdtyp = parse_dtype(dtype);
+    if strcmp(pdtyp{1},'SW'), continue; end
     if ~isfield(savedata0,dtype), continue; end
-    odat = savedata0.(dtype(1:4));
+    odat = savedata0.(dtype);
     for jj = 1:length(odat)
         odat(jj).tt = round_level(odat(jj).tt(savedata.gdmods(1),:),0.001); if odat(jj).tt(end)==0; odat(jj).tt(end)=nan; end
 
         %% apply windowing - next will filter, taper
-        gdtt = (odat(jj).tt>= par.datprocess.Twin.(dtype)(1)) & (odat(jj).tt < par.datprocess.Twin.(dtype)(2));
+        gdtt = (odat(jj).tt>= par.datprocess.(pdtyp{2}).Twin.(pdtyp{3})(1)) & (odat(jj).tt < par.datprocess.(pdtyp{2}).Twin.(pdtyp{3})(2));
         odat(jj).tt = odat(jj).tt(:,gdtt)'; % flip
-        odat(jj).Z = odat(jj).Z(savedata.gdmods,gdtt)'; % flip
-        odat(jj).R = odat(jj).R(savedata.gdmods,gdtt)'; % flip
-        odat(jj).T = odat(jj).T(savedata.gdmods,gdtt)'; % flip
+        odat(jj).P = odat(jj).P(savedata.gdmods,gdtt)'; % flip
+        odat(jj).SV = odat(jj).SV(savedata.gdmods,gdtt)'; % flip
 
         cp = struct('samprate',trudata.(dtype)(1).samprate,        ...
-                    'pretime',-par.datprocess.Twin.(dtype)(1),  ...
-                    'prex',-par.datprocess.Twin.(dtype)(1),     ...
-                    'postx',par.datprocess.Twin.(dtype)(2),     ...                 
-                    'fhi',par.datprocess.filtf.(dtype)(1),      ...
-                    'flo',par.datprocess.filtf.(dtype)(2),      ...
+                    'pretime',-par.datprocess.(pdtyp{2}).Twin.(pdtyp{3})(1),  ...
+                    'prex',-par.datprocess.(pdtyp{2}).Twin.(pdtyp{3})(1),     ...
+                    'postx',par.datprocess.(pdtyp{2}).Twin.(pdtyp{3})(2),     ...                 
+                    'fhi',par.datprocess.(pdtyp{2}).filtf.(pdtyp{4})(1),      ...
+                    'flo',par.datprocess.(pdtyp{2}).filtf.(pdtyp{4})(2),      ...
                     'taperx',0.06,'npoles',2,'norm',0           );
 
         %% clean, filter, taper
-        odat(jj).Z = data_clean(odat(jj).Z,cp);
-        odat(jj).R = data_clean(odat(jj).R,cp);
-        odat(jj).T = data_clean(odat(jj).T,cp);
+        odat(jj).P = data_clean(odat(jj).P,cp);
+        odat(jj).SV = data_clean(odat(jj).SV,cp);
 
+        %% cut some of main arrival
+        if par.datprocess.clipmain 
+            for isave = 1:size(odat(jj).P,2)
+                PSV = [odat(jj).P(:,isave),odat(jj).SV(:,isave)];
+                [ PSV ] = clip_main_arrival( PSV,odat(jj).tt,1./cp.fhi,dtype(1) );
+                odat(jj).P(:,isave) = PSV(:,1);
+                odat(jj).SV(:,isave) = PSV(:,2);
+            end
+        end
+        
         %% normalise to unit energy
         if par.datprocess.normdata 
-            normf = diag(odat(jj).Z'*odat(jj).Z) + diag(odat(jj).R'*odat(jj).R) +diag(odat(jj).T'*odat(jj).T);
-            odat(jj).Z = odat(jj).Z*diag(1./sqrt(normf));
-            odat(jj).R = odat(jj).R*diag(1./sqrt(normf));
-            odat(jj).T = odat(jj).T*diag(1./sqrt(normf));
+                normf = diag(odat(jj).P'*odat(jj).P) + diag(odat(jj).SV'*odat(jj).SV);
+            odat(jj).P = odat(jj).P*diag(1./sqrt(normf));
+            odat(jj).SV = odat(jj).SV*diag(1./sqrt(normf));
         end
 
     end
@@ -89,7 +101,7 @@ for id = 1:length(dtypes)
 % if par.datprocess.decdata
 %     resamprate = cp.fhi*4;
 %     tt_new = [odat.tt(1):1./resamprate:dat_out.tt(end)]';
-%     dat_out.ZRT = interp1(dat_out.tt,dat_out.ZRT,tt_new);
+%     dat_out.PSV = interp1(dat_out.tt,dat_out.PSV,tt_new);
 %     dat_out.tt = tt_new;
 %     dat_out.nsamp = length(dat_out.tt);
 %     dat_out.samprate=resamprate;
@@ -102,51 +114,56 @@ fprintf('\nPlotting... ');
 
 %%  ====================  PLOTTING  ====================
 
-%% RFs
 for id = 1:length(dtypes)
-    dtype = dtypes{id}; fprintf('%s ',dtype);
-    if ~isfield(savedata,dtype), continue; end
-    if ~iflodata, if ~isempty(regexp(dtype,'_lo','once')), continue; end, end
-    xa = axs(axord(id)); 
-    cla(xa); clear('cc_v1','cc_v2')
-    samprate = trudata.(dtype)(1).samprate;
-    for itr = 1:length(trudata.(dtype))
-        fprintf('%.0f ',itr);
-        for is = 1:size(savedata.(dtype)(itr).Z,2)
-            cc_v1(:,is) = conv(trudata.(dtype)(itr).ZRT(:,1),savedata.(dtype)(itr).R(:,is),'full'); % Vobs*Hpre
-            cc_v2(:,is) = conv(trudata.(dtype)(itr).ZRT(:,2),savedata.(dtype)(itr).Z(:,is),'full'); % Hobs*Vpre
+dtype = dtypes{id}; fprintf('%s ',dtype);
+pdtyp = parse_dtype(dtype);
+if ~isfield(savedata,dtype), continue; end
+
+%% BWs
+    if strcmp(pdtyp{1},'BW')
+
+        if ~iflodata, if ~isempty(regexp(dtype,'_lo','once')), continue; end, end
+        xa = axs(axord(id)); 
+        cla(xa); clear('cc_v1','cc_v2')
+        samprate = trudata.(dtype)(1).samprate;
+        for itr = 1:length(trudata.(dtype))
+            fprintf('%.0f ',itr);
+            for is = 1:size(savedata.(dtype)(itr).P,2)
+                cc_v1(:,is) = conv(trudata.(dtype)(itr).PSV(:,1),savedata.(dtype)(itr).SV(:,is),'full'); % Vobs*Hpre
+                cc_v2(:,is) = conv(trudata.(dtype)(itr).PSV(:,2),savedata.(dtype)(itr).P(:,is),'full'); % Hobs*Vpre
+            end
+            cc_max = max(max(abs([cc_v1;cc_v2])));
+            cc_t = [0:size(cc_v1,1)-1]'./samprate;
+
+            idspx = [1:downsampx:size(cc_v1,1)]; %DOWNSAMPLE FOR THE PLOT
+            idspy = [1:downsampx:size(cc_v1,2)]; %DOWNSAMPLE FOR THE PLOT
+
+            plot(xa,cc_t(idspx),cc_v1(idspx,idspy),'linewidth',2.5,'color',synthcol+[0   0.1*(itr-1) 0.2])
+            plot(xa,cc_t(idspx),cc_v2(idspx,idspy),'linewidth',1.5,'color',synthcol+[0.2 0.1*(itr-1) 0  ])
         end
-        cc_max = max(max(abs([cc_v1;cc_v2])));
-        cc_t = [0:size(cc_v1,1)-1]'./samprate;
-        
-        idspx = [1:downsampx:size(cc_v1,1)]; %DOWNSAMPLE FOR THE PLOT
-        idspy = [1:downsampx:size(cc_v1,2)]; %DOWNSAMPLE FOR THE PLOT
-        
-        plot(xa,cc_t(idspx),cc_v1(idspx,idspy),'linewidth',2.5,'color',synthcol+[0   0.1*(itr-1) 0.2])
-        plot(xa,cc_t(idspx),cc_v2(idspx,idspy),'linewidth',1.5,'color',synthcol+[0.2 0.1*(itr-1) 0])
-    end
-    if strcmp(dtype(1),'P')
-        xlims = [0 1.5*trudata.(dtype)(1).nsamp./samprate];
-    elseif strcmp(dtype(1),'S')
-        xlims = length(cc_t)./samprate - [1.5*trudata.(dtype)(1).nsamp./samprate 0];
-    end
-    set(xa,'fontsize',15,'xlim',xlims,'ylim',1.1*cc_max*[-1 1],'color','none')
-    ylabel(xa,'\textbf{Normalised amplitude} ','fontsize',18,'interpreter','latex')
-    title(xa,regexprep(dtype,'_','-'),'fontsize',22,'pos',[mean(xlims),0.85*cc_max,0])
-end
-fprintf('\n');
+        if strcmp(pdtyp{2},'Ps')
+            xlims = [0 1.5*trudata.(dtype)(1).nsamp./samprate];
+        elseif strcmp(pdtyp{2},'Sp')
+            xlims = length(cc_t)./samprate - [1.5*trudata.(dtype)(1).nsamp./samprate 0];
+        end
+        set(xa,'fontsize',15,'xlim',xlims,'ylim',1.1*cc_max*[-1 1],'color','none')
+        ylabel(xa,'\textbf{Normalised amplitude} ','fontsize',18,'interpreter','latex')
+        title(xa,regexprep(dtype,'_','-'),'fontsize',22,'pos',[mean(xlims),0.85*cc_max,0])
 
+        
+%% SWs
+    elseif strcmp(pdtyp{1},'SW')
 
-%% SW
-if ~isempty(trudata.SW.phV)
-axes(ax3)
-plot(ax3,1./savedata.SW.periods(savedata.gdmods(idspy),:)',savedata.SW.phV(savedata.gdmods(idspy),:)','color',synthcol,'linewidth',0.2);
-hp(1) = plot(ax3,1./trudata.SW.periods,trudata.SW.phV,'ok','linewidth',3,'markersize',10);
-set(ax3,'fontsize',15,'xlim',[0 1./trudata.SW.periods(1)],'color','none')
-xlabel(ax3,'\textbf{Frequency (Hz)}','fontsize',18,'Interpreter','latex')
-ylabel(ax3,'\textbf{Phase Velocity (km/s)}','fontsize',18,'Interpreter','latex')
-else
-delete(ax3) 
+        axes(ax3)
+        idspy = [1:downsampx:size(savedata.gdmods,1)]; %DOWNSAMPLE FOR THE PLOT
+        plot(ax3,1./savedata.(dtype).periods(savedata.gdmods(idspy),:)',savedata.(dtype).phV(savedata.gdmods(idspy),:)','color',synthcol,'linewidth',0.2);
+        hp(1) = plot(ax3,1./trudata.(dtype).periods,trudata.(dtype).phV,'ok','linewidth',3,'markersize',10);
+        set(ax3,'fontsize',15,'xlim',[0 1./trudata.(dtype).periods(1)],'color','none')
+        xlabel(ax3,'\textbf{Frequency (Hz)}','fontsize',18,'Interpreter','latex')
+        ylabel(ax3,'\textbf{Phase Velocity (km/s)}','fontsize',18,'Interpreter','latex')
+
+    end
+    fprintf('\n');
 end
 
 %% Legend
@@ -161,13 +178,13 @@ set(hl,'pos',get(hl,'pos')+[-0.01 -0.02 +0.02 +0.04])
 % 
 % 
 % %% Ps
-% if ~isempty(trudata.PsRF.ZRT)
+% if ~isempty(trudata.PsRF.PSV)
 %     cla(ax1)
-%     for is = 1:size(savedata.PsRF.Z,2)
-%         Ps_v1(:,is) = conv(trudata.PsRF(1).ZRT(:,1),savedata.PsRF.R(:,is),'full'); % Vobs*Hpre
-%         Ps_v2(:,is) = conv(trudata.PsRF(1).ZRT(:,2),savedata.PsRF.Z(:,is),'full'); % Hobs*Vpre
+%     for is = 1:size(savedata.PsRF.P,2)
+%         Ps_v1(:,is) = conv(trudata.PsRF(1).PSV(:,1),savedata.PsRF.SV(:,is),'full'); % Vobs*Hpre
+%         Ps_v2(:,is) = conv(trudata.PsRF(1).PSV(:,2),savedata.PsRF.P(:,is),'full'); % Hobs*Vpre
 %     end
-% %     Ps_tru = conv(trudata.PsRF.ZRT(:,2),trudata.PsRF.ZRT(:,1),'full'); % Vobs*Hobs or Hobs*Vobs (identical)
+% %     Ps_tru = conv(trudata.PsRF.PSV(:,2),trudata.PsRF.PSV(:,1),'full'); % Vobs*Hobs or Hobs*Vobs (identical)
 %     Ps_max = max(max(abs([Ps_v1,Ps_v2])));
 %     Ps_t = [0:size(Ps_v1,1)-1]'./trudata.PsRF(1).samprate;
 %     plot(ax1,Ps_t,Ps_v1,'linewidth',1.5,'color',synthcol+[0 0 0.2])
@@ -179,13 +196,13 @@ set(hl,'pos',get(hl,'pos')+[-0.01 -0.02 +0.02 +0.04])
 % end
 % 
 % %% Sp
-% if ~isempty(trudata.SpRF.ZRT)
+% if ~isempty(trudata.SpRF.PSV)
 %     cla(ax2)
-%     for is = 1:size(savedata.SpRF.Z,2)
-%         Sp_v1(:,is) = conv(trudata.SpRF.ZRT(:,1),savedata.SpRF.R(:,is),'full'); % Vobs*Hpre
-%         Sp_v2(:,is) = conv(trudata.SpRF.ZRT(:,2),savedata.SpRF.Z(:,is),'full'); % Hobs*Vpre
+%     for is = 1:size(savedata.SpRF.P,2)
+%         Sp_v1(:,is) = conv(trudata.SpRF.PSV(:,1),savedata.SpRF.SV(:,is),'full'); % Vobs*Hpre
+%         Sp_v2(:,is) = conv(trudata.SpRF.PSV(:,2),savedata.SpRF.P(:,is),'full'); % Hobs*Vpre
 %     end
-% %     Sp_tru = conv(trudata.SpRF.ZRT(:,2),-trudata.SpRF.ZRT(:,1),'full'); % Vobs*Hobs or Hobs*Vobs (identical)
+% %     Sp_tru = conv(trudata.SpRF.PSV(:,2),-trudata.SpRF.PSV(:,1),'full'); % Vobs*Hobs or Hobs*Vobs (identical)
 %     Sp_max = max(max(abs([Sp_v1,Sp_v2])));
 %     Sp_t = (size(Sp_v1,1)-[1:size(Sp_v1,1)]')./trudata.SpRF.samprate;
 %     plot(ax2,Sp_t,Sp_v1,'linewidth',1.5,'color',synthcol+[0 0 0.2])
@@ -200,12 +217,12 @@ set(hl,'pos',get(hl,'pos')+[-0.01 -0.02 +0.02 +0.04])
 % 
 % if iflodata
 % %% Ps_lo
-% if ~isempty(trudata.PsRF_lo.ZRT)
-%     for is = 1:size(savedata.PsRF_lo.Z,2)
-%         Ps_lo_v1(:,is) = conv(trudata.PsRF_lo.ZRT(:,1),savedata.PsRF_lo.R(:,is),'full'); % Vobs*Hpre
-%         Ps_lo_v2(:,is) = conv(trudata.PsRF_lo.ZRT(:,2),savedata.PsRF_lo.Z(:,is),'full'); % Hobs*Vpre
+% if ~isempty(trudata.PsRF_lo.PSV)
+%     for is = 1:size(savedata.PsRF_lo.P,2)
+%         Ps_lo_v1(:,is) = conv(trudata.PsRF_lo.PSV(:,1),savedata.PsRF_lo.SV(:,is),'full'); % Vobs*Hpre
+%         Ps_lo_v2(:,is) = conv(trudata.PsRF_lo.PSV(:,2),savedata.PsRF_lo.P(:,is),'full'); % Hobs*Vpre
 %     end
-%     Ps_lo_tru = conv(trudata.PsRF_lo.ZRT(:,2),trudata.PsRF_lo.ZRT(:,1),'full'); % Vobs*Hobs or Hobs*Vobs (identical)
+%     Ps_lo_tru = conv(trudata.PsRF_lo.PSV(:,2),trudata.PsRF_lo.PSV(:,1),'full'); % Vobs*Hobs or Hobs*Vobs (identical)
 %     Ps_lo_max = max(abs(Ps_lo_tru));
 %     Ps_lo_t = [0:size(Ps_lo_v1,1)-1]'./trudata.PsRF_lo.samprate;
 %     plot(ax4,Ps_lo_t,Ps_lo_v1,'linewidth',1.5,'color',synthcol)
@@ -216,12 +233,12 @@ set(hl,'pos',get(hl,'pos')+[-0.01 -0.02 +0.02 +0.04])
 % end
 % 
 % %% Sp_lo
-% if ~isempty(trudata.SpRF_lo.ZRT)
-%     for is = 1:size(savedata.SpRF_lo.Z,2)
-%         Sp_lo_v1(:,is) = conv(trudata.SpRF_lo.ZRT(:,1),savedata.SpRF_lo.R(:,is),'full'); % Vobs*Hpre
-%         Sp_lo_v2(:,is) = conv(trudata.SpRF_lo.ZRT(:,2),savedata.SpRF_lo.Z(:,is),'full'); % Hobs*Vpre
+% if ~isempty(trudata.SpRF_lo.PSV)
+%     for is = 1:size(savedata.SpRF_lo.P,2)
+%         Sp_lo_v1(:,is) = conv(trudata.SpRF_lo.PSV(:,1),savedata.SpRF_lo.SV(:,is),'full'); % Vobs*Hpre
+%         Sp_lo_v2(:,is) = conv(trudata.SpRF_lo.PSV(:,2),savedata.SpRF_lo.P(:,is),'full'); % Hobs*Vpre
 %     end
-%     Sp_lo_tru = conv(trudata.SpRF_lo.ZRT(:,2),trudata.SpRF_lo.ZRT(:,1),'full'); % Vobs*Hobs or Hobs*Vobs (identical)
+%     Sp_lo_tru = conv(trudata.SpRF_lo.PSV(:,2),trudata.SpRF_lo.PSV(:,1),'full'); % Vobs*Hobs or Hobs*Vobs (identical)
 %     Sp_lo_max = max(abs(Sp_lo_tru));
 %     Sp_lo_t = (length(Sp_lo_v1)-[1:length(Sp_lo_v1)]')./trudata.SpRF_lo.samprate;
 %     plot(ax5,Sp_lo_t,Sp_lo_v1,'linewidth',1.5,'color',synthcol)

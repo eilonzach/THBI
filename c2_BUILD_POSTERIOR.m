@@ -12,7 +12,7 @@ posterior = struct('Niter',par.inv.niter*par.inv.nchains,'Nstored',0,...
                'fdVSsed',o,'fdVSmoh',o,'vpvs',o,...
                'datahparm',allmodels(1).datahparm);
 if nargin<3 || isempty(zmantle)
-    posterior.zmantle = linspace(par.mod.sed.hmax+par.mod.crust.hmax+0.1,par.mod.maxz,40)';
+    posterior.zmantle = linspace(par.mod.sed.hmax+par.mod.crust.hmin+0.1,par.mod.maxz,50)';
 else
     posterior.zmantle = zmantle;
 end
@@ -54,12 +54,18 @@ for iii = 1:nchains
         posterior.VSmantle(inds(ii),:) = linterp(am(ii).z,am(ii).VS,posterior.zmantle);
         posterior.vpvs(inds(ii),1) = am(ii).crustmparm.vpvs;
         for id = 1:length(dtypes)
-            posterior.datahparm.(char(dtypes(id)))(inds(ii),:) = am(ii).datahparm.(char(dtypes(id)));
+            posterior.datahparm.(dtypes{id})(:,inds(ii)) = am(ii).datahparm.(dtypes{id})';
         end
         
             
     end    
     
 end
+
+% flip the datahparm sigma values to be columns
+for id = 1:length(dtypes)
+    posterior.datahparm.(dtypes{id}) = posterior.datahparm.(dtypes{id})';
+end
+
 
 end

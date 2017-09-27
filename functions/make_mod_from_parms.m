@@ -15,8 +15,9 @@ zs = [0,mps.h]';
 vs_sed = mps.VS(:);
 vp_sed = sed_vs2vp(vs_sed);
 rho_sed = sed_vs2rho(vs_sed);
+xi_sed = ones(size(zs));
 
-if diff(zs)==0; zs=[]; vs_sed=[]; vp_sed=[]; rho_sed=[]; end
+if diff(zs)==0; zs=[]; vs_sed=[]; vp_sed=[]; rho_sed=[]; xi_sed=[]; end
 
 %% CRUST
 cminz = mps.h;
@@ -26,6 +27,7 @@ zc = unique([cminz:par.mod.dz:cmaxz,cmaxz])';
 vs_crust = sum(mpc.splines*diag(mpc.VS_sp),2);
 vp_crust = vs_crust*mpc.vpvs;
 rho_crust = sed_vs2rho(vs_crust); % use same expression as for sed (assume not ultramafic or other poorly-fit rocks)
+xi_crust = mpc.xi*ones(size(zc));
 
 
 %% MANTLE
@@ -36,6 +38,7 @@ zm = unique([mminz:par.mod.dz:mmaxz,mmaxz])';
 vs_mantle = sum(mpm.splines*diag(mpm.VS_sp),2);
 vp_mantle = mantle_vs2vp(vs_mantle,zm );
 rho_mantle = mantle_vs2rho(vs_mantle,zm );
+xi_mantle = mpm.xi*ones(size(zm));
 
 
 %% COLLATE
@@ -47,6 +50,7 @@ zmoh = mps.h+mpc.h;
 vs = [vs_sed;vs_crust;vs_mantle];
 vp = [vp_sed;vp_crust;vp_mantle];
 rho = [rho_sed;rho_crust;rho_mantle];
+xi = [xi_sed;xi_crust;xi_mantle];
 
 %% OUTPUT
 model.z    = zz;
@@ -59,7 +63,7 @@ model.zsed = zsed;
 model.zmoh = zmoh;
 model.fdVSsed = 100*diff(vs(zz==zsed))./mean(vs(zz==zsed)); if zsed==0, model.fdVSsed = nan; end
 model.fdVSmoh = 100*diff(vs(zz==zmoh))./mean(vs(zz==zmoh));
-model.Sanis = zeros(Nz,1);
+model.Sanis = 100*(xi-1); % in percentage 
 model.Panis = zeros(Nz,1);
 
 % re-order fields of model structure 

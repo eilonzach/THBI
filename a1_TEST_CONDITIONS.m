@@ -64,7 +64,7 @@ end
 if any(strcmp(fieldnames(cond),'pos_crustdV')) && cond.pos_crustdV==true
 %     if any(diff(model.VS(model.z<model.zmoh))<0) || ...
 %        any(diff(model.VP(model.z<model.zmoh))<0)
-    if any(diff(model.crustmparm.VS_kn) < 0)
+    if any(diff(model.crustmparm.VS_sp) < 0)
         ifpass = false;
         if ifverbose,fprintf('Failed: crustal velocity non-increasing\n'); end        
         return
@@ -121,6 +121,13 @@ end
 if any(model.VS(im0)>par.mod.mantle.vsmax); 
     ifpass = false;
     if ifverbose,fprintf('Failed: Mantle VS > %.2f km/s\n',par.mod.mantle.vsmax); end        
+    return
+end
+
+%% No spline knots below the cutoff, except for the basal one
+if any(model.mantmparm.knots(model.mantmparm.knots~=par.mod.maxz)>par.mod.maxkz)
+    ifpass = false;
+    if ifverbose,fprintf('Failed: Non-basal knot below cutoff\n'); end
     return
 end
 

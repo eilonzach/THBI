@@ -24,16 +24,39 @@ function [ predata ] = b3_FORWARD_MODEL( model,Kbase,par,data,ID,ifplot )
 %% ===================  PREPARE DATA STRUCTURE  ===================
 predata = data;
 
+for id = 1:length(par.inv.datatypes)
+    pdtyps(id,:) = parse_dtype(par.inv.datatypes{id}); 
+end
+
+% [predata.PsRF.Vp_surf] = deal(mean([predata.PsRF.Vp_surf]));
+% [predata.PsRF.Vs_surf] = deal(mean([predata.PsRF.Vs_surf]));
 
 
 %% ===================  LAYERISE PROFILE  ===================
-[zlayt,zlayb,Vslay,Vplay,rholay] = ...
-    layerise(model.z,model.VS,par.forc.mindV,0,model.VP,model.rho); 
+[zlayt,zlayb,Vslay] = ...
+    layerise(model.z,model.VS,par.forc.mindV,0); 
 nlay = length(Vslay);
-laymodel = struct('zlayt',zlayt,'zlayb',zlayb,'Vs',Vslay,'Vp',Vplay,'rho',rholay,'nlay',nlay);
+
+% S to P and rho structure
+xs = 1:find(zlayb==model.zsed); if model.zsed ==0, xs = []; end
+xc = find(zlayt==model.zsed):find(zlayb==model.zmoh);
+xm = find(zlayt==model.zmoh):nlay;
+Vplay = [sed_vs2vp(Vslay(xs));...
+         model.crustmparm.vpvs*Vslay(xc);...
+         mantle_vs2vp(Vslay(xm),mean([zlayt(xm),zlayb(xm)],2))];
+rholay = [sed_vs2rho(Vslay([xs,xc]));...
+          mantle_vs2rho(Vslay(xm),mean([zlayt(xm),zlayb(xm)],2))];
+xilay = [zeros(length(xs),1);...
+         model.crustmparm.xi*ones(length(xc),1);...
+         model.mantmparm.xi*ones(length(xm),1)]; % S radial anisotropy
+philay = ones(nlay,1); % P radial anisotropy
+etalay = ones(nlay,1); % eta anisotropy
+
+laymodel = struct('zlayt',zlayt,'zlayb',zlayb,'Vs',Vslay,'Vp',Vplay,'rho',rholay,'nlay',nlay,'xi',xilay,'phi',philay,'eta',etalay);
 if any(isnan(laymodel.rho))
     error('NaN densities')
 end
+
 
 if ifplot
     figure(1); clf, hold on
@@ -50,28 +73,41 @@ end
 
 %% ===================  PS RFs FROM PROPAGATOR MATRIX  ====================
 
-if any(strcmp(par.inv.datatypes,'PsRF'))
-    [ unique_rayps_P,irayps_P ] = rayp_vals( [data.PsRF.rayp] );
+if any(strcmp(pdtyps(:,2),'Ps'))
+    Psdat = par.inv.datatypes{find(strcmp(pdtyps(:,2),'Ps'),1,'first')};
+    [ unique_rayps_P,irayps_P ] = rayp_vals( [predata.(Psdat).rayp] );
     for ir = 1:length(unique_rayps_P)
         rayp = unique_rayps_P(ir);
-        samprate = unique([data.PsRF(irayps_P==ir).samprate]);
+        samprate = unique([predata.(Psdat)(irayps_P==ir).samprate]);
         P_inc = rayp2inc(rayp,laymodel.Vp(end),6371-laymodel.zlayb(end));
         [predat_ps,tt_ps] = run_propmat(laymodel,ID,'Ps',samprate, P_inc, par.forc.synthperiod,par.forc.nsamps);
-        predat_ps = predat_ps(:,[3,1,2]); % in Z,R,T
-        tt_ps_Par = mean(tt_ps(predat_ps(:,1)==min(predat_ps(:,1))));% estimate main P-wave arrival time from first big downswing
+        predat_ps_ZRT = predat_ps(:,[3,1,2]); % in Z,R,T
+        if strcmp(par.forc.PSVorZR,'PSV')
+            clear predat_ps_PSV;
+            % convert to P, SV
+            [predat_ps_PSV(:,1),predat_ps_PSV(:,2)] = ...
+                Rotate_XZ_to_PSV(predat_ps_ZRT(:,2),-predat_ps_ZRT(:,1),...
+                mean([predata.(Psdat).Vp_surf]),mean([predata.(Psdat).Vs_surf]),...
+                rayp_sdeg2skm(rayp,laymodel.zlayb(end)));
+        elseif strcmp(par.forc.PSVorZR,'ZR')
+            % keep as ZR (but kill T; Z positive UP)
+            predat_ps_PSV = predat_ps_ZRT(:,[1,2]);         
+        end
+        predat_ps_PSV = predat_ps_PSV./maxab(predat_ps_PSV(:,1)); % normalise on parental max, make positive
+        tt_ps_Par = mean(tt_ps(predat_ps_PSV(:,1)==max(predat_ps_PSV(:,1))));% estimate main P-wave arrival time from first big upswing
         tt_ps = tt_ps - tt_ps_Par;
         tt_ps = round_level(tt_ps,0.001);
 
         Ps_widewind = [-10 50];
         inwind = (tt_ps >= Ps_widewind(1)) & (tt_ps < Ps_widewind(2)); 
         % crop
-        predat_ps = predat_ps(inwind,:);
+        predat_ps_PSV = predat_ps_PSV(inwind,:);
         tt_ps = tt_ps(inwind);
         if ~any(inwind)
-            tt_ps = []; predat_ps = nan; % NO GOOD DATA
+            tt_ps = []; predat_ps_PSV = nan; % NO GOOD DATA
         else
             % taper
-            predat_ps = flat_hanning_win(tt_ps,predat_ps,Ps_widewind(1),Ps_widewind(2),1); % 1s taper
+            predat_ps_PSV = flat_hanning_win(tt_ps,predat_ps_PSV,Ps_widewind(1),Ps_widewind(2),1); % 1s taper
             % normalise to unit energy
             % normf_ps = predat_ps(:,1)'*predat_ps(:,1) + predat_ps(:,2)'*predat_ps(:,2) + predat_ps(:,3)'*predat_ps(:,3);
             % predat_ps = predat_ps/sqrt(normf_ps);'
@@ -80,75 +116,79 @@ if any(strcmp(par.inv.datatypes,'PsRF'))
         % -----------------  PUT INTO DATA STRUCTURE  -----------------
         inds = find(irayps_P==ir);
         for iir = 1:length(inds)
-            predata.PsRF(inds(iir),1).ZRT=predat_ps;
-            predata.PsRF(inds(iir),1).tt=tt_ps;
-            predata.PsRF(inds(iir),1).nsamp = length(predata.PsRF(inds(iir)).ZRT);
+            predata.(Psdat)(inds(iir),1).PSV=predat_ps_PSV; 
+            predata.(Psdat)(inds(iir),1).tt=tt_ps;
+            predata.(Psdat)(inds(iir),1).nsamp = length(predata.(Psdat)(inds(iir)).PSV);
         end
     end
-else
-    predata.PsRF = [];    
 end
 
-% Ps_lo
-if any(strcmp(par.inv.datatypes,'PsRF_lo'))
-    predata.PsRF_lo = predata.PsRF;
-else 
-    predata.PsRF_lo = [];
-end
-
-
-    
 %% ===================  SP RFs FROM PROPAGATOR MATRIX  ====================
-if any(strcmp(par.inv.datatypes,'SpRF'))
-    [ unique_rayps_S,irayps_S ] = rayp_vals( [data.SpRF.rayp] );
+if any(strcmp(pdtyps(:,2),'Sp'))
+    Spdat = par.inv.datatypes{find(strcmp(pdtyps(:,2),'Sp'),1,'first')};
+    [ unique_rayps_S,irayps_S ] = rayp_vals( [predata.(Spdat).rayp] );
     for ir = 1:length(unique_rayps_S)
         rayp = unique_rayps_S(ir);
-        samprate = unique([data.SpRF(irayps_S==ir).samprate]);
+        samprate = unique([predata.(Spdat)(irayps_S==ir).samprate]);
         S_inc = rayp2inc(rayp,laymodel.Vs(end),6371-laymodel.zlayb(end));
         % check if inhomogeneous
-        if isreal(asind(laymodel.Vp*sind(S_inc)./laymodel.Vs(end))) % 
+        if isreal(asind(laymodel.Vs*sind(S_inc)./laymodel.Vs(end))) % 
             [predat_sp,tt_sp] = run_propmat(laymodel,ID,'Sp',samprate, S_inc, par.forc.synthperiod,par.forc.nsamps);
-            predat_sp = predat_sp(:,[3,1,2]); % in Z,R,T
-            tt_sp_Sar = mean(tt_sp(predat_sp(:,2)==min(predat_sp(:,2)))); % estimate main S-wave arrival time from first big downswing
+            predat_sp_ZRT = predat_sp(:,[3,1,2]); % in Z,R,T
+            if strcmp(par.forc.PSVorZR,'PSV')
+                clear predat_sp_PSV;
+                % convert to P, SV
+                [predat_sp_PSV(:,1),predat_sp_PSV(:,2)] = ...
+                    Rotate_XZ_to_PSV(predat_sp_ZRT(:,2),-predat_sp_ZRT(:,1),...
+                    mean([predata.(Spdat).Vp_surf]),mean([predata.(Spdat).Vs_surf]),...
+                    rayp_sdeg2skm(rayp,laymodel.zlayb(end)));
+            elseif strcmp(par.forc.PSVorZR,'ZR')
+                % keep as ZR (but kill T; Z positive UP)
+                predat_sp_PSV = predat_sp_ZRT(:,[1,2]);         
+            end
+            predat_sp_PSV = predat_sp_PSV./maxab(predat_sp_PSV(:,2)); % normalise on parental max, make positive
+            tt_sp_Sar = mean(tt_sp(predat_sp_PSV(:,2)==max(predat_sp_PSV(:,2)))); % estimate main S-wave arrival time from first big uoswing
             tt_sp = tt_sp - tt_sp_Sar;
             tt_sp = round_level(tt_sp,0.001);
 
             Sp_widewind = [-50 10];
             inwind = (tt_sp >= Sp_widewind(1)) & (tt_sp < Sp_widewind(2)); 
             % crop
-            predat_sp = predat_sp(inwind,:);
+            predat_sp_PSV = predat_sp_PSV(inwind,:);
             tt_sp = tt_sp(inwind);
 
             if ~any(inwind)
-                tt_ps = []; predat_ps = nan; % NO GOOD DATA
+                tt_ps = []; predat_sp_PSV = nan; % NO GOOD DATA
             else
                 % taper
-                predat_sp = flat_hanning_win(tt_sp,predat_sp,Sp_widewind(1),Sp_widewind(2),1); % 1s taper
+                predat_sp_PSV = flat_hanning_win(tt_sp,predat_sp_PSV,Sp_widewind(1),Sp_widewind(2),1); % 1s taper
                 % normalise to unit energy
                 % normf_sp = predat_sp(:,1)'*predat_sp(:,1) + predat_sp(:,2)'*predat_sp(:,2) + predat_sp(:,3)'*predat_sp(:,3);
                 % predat_sp = predat_sp/sqrt(normf_sp);
             end
         else
-            tt_sp = NaN; predat_sp = NaN;    
+            tt_sp = NaN; predat_sp_PSV = NaN;    
         end
         
 % -----------------  PUT INTO DATA STRUCTURE  -----------------
         inds = find(irayps_S==ir);
         for iir = 1:length(inds)
-            predata.SpRF(inds(iir),1).ZRT=predat_sp;
-            predata.SpRF(inds(iir),1).tt=tt_sp;
-            predata.SpRF(inds(iir),1).nsamp = length(predata.SpRF(inds(iir)).ZRT);
+            predata.(Spdat)(inds(iir),1).PSV=predat_sp_PSV; 
+            predata.(Spdat)(inds(iir),1).tt=tt_sp;
+            predata.(Spdat)(inds(iir),1).nsamp = length(predata.(Spdat)(inds(iir)).PSV);
         end
     end
-else
-    predata.SpRF = [];
 end
 
-% Sp_lo
-if any(strcmp(par.inv.datatypes,'SpRF_lo'))
-    predata.SpRF_lo = predata.SpRF;
-else 
-    predata.SpRF_lo = [];
+
+
+%% distribute data for different processing (e.g. _lo, _cms)
+for idt = 1:length(par.inv.datatypes)
+    dtype = par.inv.datatypes{idt}; 
+    pdt = parse_dtype( dtype ); 
+    if strcmp(pdt{1},'BW') && (~strcmp(pdt{3},'def') || ~strcmp(pdt{4},'def'))
+        predata.(dtype) = predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+    end
 end
 
 
@@ -157,97 +197,50 @@ end
 if ifplot
     figure(2); clf, hold on
     comps = {'VERTICAL','RADIAL','TRANSVERSE'}; 
-    for ip = 1:3
+    for ip = 1:2
     subplot(3,2,2*ip-1)
-    plot(tt_ps,predat_ps(:,ip),'Linewidth',2)
-    xlim(par.datprocess.Twin_Ps);
+    plot(tt_ps,predat_ps_PSV(:,ip),'Linewidth',2)
+    xlim(par.datprocess.Ps.Twin.def);
     ylabel(comps{ip},'fontsize',19,'fontweight','bold')
     if ip == 1, title('Ps','fontsize',22,'fontweight','bold'), end
     subplot(3,2,2*ip)
-    plot(tt_sp,predat_sp(:,ip),'Linewidth',2)
-    xlim(par.datprocess.Twin.SpRF);
+    plot(tt_sp,predat_sp_PSV(:,ip),'Linewidth',2)
+    xlim(par.datprocess.Sp.Twin.def);
     if ip == 1, title('Sp','fontsize',22,'fontweight','bold'), end
     end
     set(gcf,'position',[780         282        1058         823]);
 end % on ifplot
 
 %% ===================  CALCULATE PHASE VELOCITIES  ===================
-if any(strcmp(par.inv.datatypes,'SW'))
-% phinmod = [laymodel.zlayb-laymodel.zlayt,laymodel.Vp,laymodel.Vs,laymodel.rho];
-% predat_cph = Calc_Ray_dispersion(data.SW.periods,phinmod,1,2000,0);
+for id = 1:length(par.inv.datatypes)
+    dtype = par.inv.datatypes{id};
+    pdtyp = parse_dtype(dtype);
+    if ~strcmp(pdtyp{1},'SW'), continue, end
 
-% calc. perturbation values from 0==>1 and use to calc dc/c
-[ modptb ] = calc_Vperturbation(Kbase.modelk,model);
-Np = length(Kbase.phV);
-est_dc_c = zeros(Np,1);
-kfld = {'Vsv','Vsh','Vpv','Vph','rho';'dvsv','dvsh','dvpv','dvph','drho'};
-for ip = 1:Np
-    for ik = 1:size(kfld,2)
-        dr = diff(modptb.Z).*1e3;
-        K = midpts(Kbase.K{ip}.(kfld{1,ik}));
-        dval = midpts(modptb.(kfld{2,ik}));
-        est_dc_c(ip) = est_dc_c(ip) + dr'*(K.*dval);
+    % calc. perturbation values from 0==>1 and use to calc dc/c
+    [ modptb ] = calc_Vperturbation(Kbase.modelk,model);
+    
+    Np = length(Kbase.(pdtyp{2}).phV);
+    est_dc_c = zeros(Np,1);
+    
+    kfld = {'Vsv','Vsh','Vpv','Vph','rho';'dvsv','dvsh','dvpv','dvph','drho'};
+    
+    zind = find(modptb.Z<max(Kbase.(pdtyp{2}).Kph{1}.Z/1000)); 
+
+    for ip = 1:Np
+        for ik = 1:size(kfld,2)
+            dr = diff(modptb.Z(zind))*1e3; % km to m
+            K = midpts(Kbase.(pdtyp{2}).(['K',pdtyp{3}(1:2)]){ip}.(kfld{1,ik})(zind));
+            dval = midpts(modptb.(kfld{2,ik})(zind));
+            est_dc_c(ip) = est_dc_c(ip) + dr'*(K.*dval);
+        end
     end
-end
-% estimated model1 phase velocities
-predat_cph = (1+est_dc_c).*Kbase.phV;
 
+    % estimated model1 phase velocities
+    predata.(dtype).phV = (1+est_dc_c).*Kbase.(pdtyp{2}).(pdtyp{3});
 
-% figure(13);plot(surfperiods,predat_cph,'o')
-else
-   predat_cph = [];
 end
 
-% -----------------  PUT INTO DATA STRUCTURE  -----------------
-% SW
-if any(strcmp(par.inv.datatypes,'SW'))
-    predata.SW.phV = predat_cph;
-end
-
-
-% %% ===================  PUT INTO DATA STRUCTURE  ===================
-% predata = data;
-% 
-% % Ps
-% if any(strcmp(par.inv.datatypes,'PsRF'))
-% predata.PsRF = predata.PsRF(1);
-% predata.PsRF.ZRT = predat_ps;
-% predata.PsRF.tt = tt_ps;
-% predata.PsRF.samprate = data.PsRF.samprate;
-% predata.PsRF.nsamp = length(predat_ps);
-% end
-% 
-% % Sp
-% if any(strcmp(par.inv.datatypes,'SpRF'))
-% predata.SpRF = predata.SpRF(1);
-% predata.SpRF.ZRT = predat_sp;
-% predata.SpRF.tt = tt_sp;
-% predata.SpRF.samprate = data.SpRF.samprate;
-% predata.SpRF.nsamp = length(predat_sp);
-% end
-% 
-% % SW
-% if any(strcmp(par.inv.datatypes,'SW'))
-% predata.SW.phV = predat_cph;
-% end
-% 
-% % Ps_lo
-% if any(strcmp(par.inv.datatypes,'PsRF_lo'))
-% predata.PsRF_lo = predata.PsRF_lo(1);
-% predata.PsRF_lo.ZRT = predat_ps;
-% predata.PsRF_lo.tt = tt_ps;
-% predata.PsRF_lo.samprate = data.PsRF.samprate;
-% predata.PsRF_lo.nsamp = length(predat_ps);
-% end
-% 
-% % Sp_lo
-% if any(strcmp(par.inv.datatypes,'SpRF_lo'))
-% predata.SpRF_lo = predata.SpRF_lo(1);
-% predata.SpRF_lo.ZRT = predat_sp;
-% predata.SpRF_lo.tt = tt_sp;
-% predata.SpRF_lo.samprate = data.SpRF.samprate;
-% predata.SpRF_lo.nsamp = length(predat_sp);
-% end
 
 end
 

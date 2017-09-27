@@ -1,5 +1,5 @@
-function [traces,tt,status,cmdout] = run_propmat(LAYmodel,ID,ph,samprate,inc,synthperiod,nsamps,cutf)
-% [traces,tt,LAYmodel1D] = run_propmat(model,ID,ph,mindV,samprate,inc,synthperiod,nsamps,cutf)
+function [traces,tt,status,cmdout] = run_propmat(LAYmodel,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
+% [traces,tt,LAYmodel1D] = run_propmat(model,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
 % 
 % Function to run the propagator matrix code for a given layerised model. 
 
@@ -13,7 +13,7 @@ if nargin < 4 || isempty(samprate)
     samprate = 3;
 end
 if nargin < 5 || isempty(inc)
-    inc = 5;
+    inc = 5; % this is the incidence angle at the bottom of the model
 end
 if nargin < 6 || isempty(synthperiod)
     synthperiod = 1;
@@ -27,6 +27,9 @@ if nargin < 8 || isempty(cutf)
     % fundamental frequency that is the actual Nyquist. Since we want a
     % nyquist at least half of the input period (4/synthperiod), we need
     % cutf = fNyq / f_fund      where    f_fund = samprate/nsamps
+end
+if nargin < 9 || isempty(sourc)
+    sourc = 'gauss';
 end
 
 if ~all(unique(factor(nsamps))==2)
@@ -59,11 +62,15 @@ nlay = LAYmodel.nlay;
 %% write to PropMatrix format
 writePROPMATmodfile( LAYmodel,modfile)
 writePROPMATparmfile(ifile, Vbot, nlay+1,nsamps,samprate,cutf) % add one layer for the halfspace
-writePROPMATexecfile( execfile,modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,ph,synthperiod,obsdist,ocomps)
+if strcmp(sourc,'gauss')
+    writePROPMATexecfile_gauss( execfile,modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,ph,synthperiod,obsdist,ocomps)
+elseif strcmp(sourc,'sine')
+    writePROPMATexecfile( execfile,modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,ph,synthperiod,obsdist,ocomps)
+end
 system(['chmod +u+x ' execfile]);
 
 %% do PropMatrix on it
-[status,cmdout] = system(['./',execfile]);
+[status,cmdout] = system(['/usr/local/bin/gtimeout 10 ./',execfile]);
 
 %% read PropMatrix output
 [traces,tt] = readPROPMATtr(odatfile);

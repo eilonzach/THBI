@@ -28,7 +28,6 @@ for ie = 1:eqar.norids
         if eqar.SNRs(ie,1) < SNRmin, continue, end
     end
     
-    ie
     rayp_skm = rayp_sdeg2skm(eqar.rayps(ie));
     
     %% Get data, filter

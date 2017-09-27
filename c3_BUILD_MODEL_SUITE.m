@@ -14,7 +14,7 @@ am([am.bestmods]'==false) =  [];
 fprintf('  > Building suite of models\n')
 
 %% =====================  Suite of models  =====================
-Zsuite = sort(unique([[0:2:par.mod.maxz]';[-5:0.2:5]'+mean([am.zsed]);[-5:0.2:5]'+mean([am.zmoh])]));
+Zsuite = sort(unique([[0:2:par.mod.maxz]';[-15:0.2:15]'+mean([am.zsed]);[-15:0.2:15]'+mean([am.zmoh])]));
 Zsuite(Zsuite<0) = [];
 Nz = length(Zsuite);
 Nm = length(am);

@@ -21,6 +21,9 @@ pdm_max = -inf;
 ch2_min = inf;
 ch2_max = -inf;
 
+downsampfac = 15;
+
+
 
 %% loop through each chain
 nchains = length(misfits);
@@ -39,6 +42,7 @@ for iii = 1:nchains
 
     % kill allmodels beyond N
     am(N+1:end) = [];
+    
 
     % kill misfits beyond N
     fns = fieldnames(mf);
@@ -63,14 +67,25 @@ for iii = 1:nchains
 
     bestind = [1:length(mf.iter)]';
     bestind(mf.iter <= par.inv.burnin) = []; % kill all before burnin
-    if isfield(mf,'chi2_ps') && isfield(mf,'chi2_sp') && isfield(mf,'chi2_SW')
-        [~,irank_mf_ps] = sort(mf.chi2_ps(bestind)); [~,rank_mf_ps] = sort(irank_mf_ps);
-        [~,irank_mf_sp] = sort(mf.chi2_sp(bestind)); [~,rank_mf_sp] = sort(irank_mf_sp);
-        [~,irank_mf_sw] = sort(mf.chi2_SW(bestind)); [~,rank_mf_sw] = sort(irank_mf_sw);
-        score_overall = rank_mf_ps + rank_mf_sp + rank_mf_sw;
-    else
-            [~,irank_mf] = sort(mf.chi2(bestind)); [~,score_overall] = sort(irank_mf);
+    score_overall = zeros(length(bestind),length(par.inv.datatypes));
+    for id = 1:length(par.inv.datatypes);
+        dtype = par.inv.datatypes{id};
+        pdtyp = parse_dtype(dtype);
+%         if strcmp(pdtype{1},'BW') && (~strcmp(pdtype{3},'def') || ~strcmp(pdtype{4},'def')), continue; end
+        chi2 = [mf.chi2.(dtype)]';
+        [~,irank_mf] = sort(sum(chi2(bestind,:),2));
+        [~,score_overall(:,id)] = sort(irank_mf);
     end
+    score_overall = sum(score_overall,2);
+    
+%     if isfield(mf.chi2,'BW_Ps') && isfield(mf,'BW_Ps') && isfield(mf,'SW')
+%         [~,irank_mf_ps] = sort(mf.chi2(bestind)); [~,rank_mf_ps] = sort(irank_mf_ps);
+%         [~,irank_mf_sp] = sort(mf.chi2_sp(bestind)); [~,rank_mf_sp] = sort(irank_mf_sp);
+%         [~,irank_mf_sw] = sort(mf.chi2_SW(bestind)); [~,rank_mf_sw] = sort(irank_mf_sw);
+%         score_overall = rank_mf_ps + rank_mf_sp + rank_mf_sw;
+%     else
+%             [~,irank_mf] = sort(mf.chi2sum(bestind)); [~,score_overall] = sort(irank_mf);
+%     end
 
         
     sort_score_overall = sort(score_overall);
@@ -97,12 +112,15 @@ for iii = 1:nchains
 
     
     %% PLOT IMPROVEMENT IN MODEL FIT
-    [ax1,h1,h2] = plotyy(ax1,mf.iter,mf.chi2,mf.iter,mf.logLike,'semilogy');
+    downsamp = (1:downsampfac:length(am));
+
+    [ax1,h1,h2] = plotyy(ax1,mf.iter(downsamp),mf.chi2sum(downsamp),mf.iter(downsamp),mf.logLike(downsamp),'semilogy');
+    
     hold(ax1(1),'on'),hold(ax1(2),'on')
     pdm_min = min([pdm_min,min(mf.logLike)-1]);
     pdm_max = max([pdm_max,max(mf.logLike)+10]);
-    ch2_min = min([ch2_min,min(mf.chi2)/2]);
-    ch2_max = max([ch2_max,max(mf.chi2)*2]);
+    ch2_min = min([ch2_min,min(mf.chi2sum)/2]);
+    ch2_max = max([ch2_max,max(mf.chi2sum)*2]);
 %     set(ax1(1),'Yscale','log','ylim',[min(mf.chi2)/2 max(mf.chi2)*2],'ytick',round_level(linspace(min(mf.chi2)/2,max(mf.chi2)*2,5),5));
 %     ytk = unique(round_level(linspace(min(mf.logLike),max(mf.logLike),5),5));
 %     set(ax1(2),'Yscale','log','ylim',[min(mf.logLike)-1 max(mf.logLike)+10],...
@@ -121,10 +139,12 @@ for iii = 1:nchains
     set(ax1,'Fontsize',16)
     
     
-    cols = [[0 0.447 0.741];[0.85 0.325 0.098];[0.929 0.694 0.125];[0.494 0.184 0.556];[0.466 0.674 0.188]];
+    cols = [[0 0.447 0.741];[0.85 0.325 0.098];[0.929 0.694 0.125];[0.494 0.184 0.556];[0.466 0.674 0.188];[0.1 0.76 0.288]];
     
     for idt = 1:length(par.inv.datatypes) 
-        hrms(idt)=plot(ax2,mf.iter,sum(mf.(['rms_',dtype_code(par.inv.datatypes{idt})]),2),'o');
+        dtype = par.inv.datatypes{idt};
+        rms = [mf.rms.(dtype)]';
+        hrms(idt)=plot(ax2,mf.iter(downsamp),sum(rms(downsamp,:),2),'o'); hold on
         set(hrms(idt),'marker','o','linestyle','none','markersize',5,...
            'markerfacecolor',basecol,'markeredgecolor',cols(idt,:));
     end
@@ -133,7 +153,7 @@ for iii = 1:nchains
     set(ax2,'yscale','log','Fontsize',16 )
     ylabel(ax2,'RMS misfit','Fontsize',20,'interpreter','latex')
     xlabel(ax2,'Iteration','Fontsize',20)
-    hl = legend(hrms(1:idt),par.inv.datatypes);
+    hl = legend(hrms(1:idt),strrep(par.inv.datatypes,'_','-'));
 
     
     % rate of acceptance past burnin
@@ -148,38 +168,42 @@ htit = title_custom([par.sta,' ',par.nwk],0.5,'fontweight','bold','fontsize',25)
 
 if ifsave
     fprintf('saving, may take a while\n')
-    save2png(88,ofile);
+    save2png(88,ofile,'/');
 end
 pause(0.05)
 
 %% PARSE GOOD AND BAD CHAINS
-chi2_alldata = zeros(nchains,length(par.inv.datatypes));
+rms_alldata = nan(nchains,length(par.inv.datatypes));
 
-% gather average chi2 errors of each chain
+% gather average rms errors of each chain
 for iii=1:nchains;
-    if goodchains(iii)==false, chi2_alldata(iii,:) = nan; continue; end % already know it's bad
+    if goodchains(iii)==false, rms_alldata(iii,:) = nan; continue; end % already know it's bad
     for id = 1:length(par.inv.datatypes)
         if nchains>1, mf = misfits{iii}; else mf = misfits; end
-        if isempty(mf), continue; end
+        if isempty(mf), goodchains(iii)=false; continue; end
         ind = mf.iter > par.inv.burnin;
-        switch char(par.inv.datatypes(id))
-            case 'SpRF'
-                chi2_alldata(iii,id) = mean(sum(mf.chi2_sp(ind,:),2)); 
-            case 'PsRF'
-                chi2_alldata(iii,id) = mean(sum(mf.chi2_ps(ind,:),2)); 
-            case 'SW'
-                chi2_alldata(iii,id) = mean(mf.chi2_SW(ind)); 
-            case 'SpRF_lo'
-                chi2_alldata(iii,id) = mean(sum(mf.chi2_sp_lo(ind,:),2)); 
-            case 'PsRF_lo'
-                chi2_alldata(iii,id) = mean(sum(mf.chi2_ps_lo(ind,:),2)); 
-        end
+        dtype = par.inv.datatypes{id};
+        rms = [mf.rms.(dtype)]';
+        rms_alldata(iii,id) = mean(sum(rms(ind,:),2)); 
+
+%         switch char(par.inv.datatypes(id))
+%             case 'SpRF'
+%                 rms_alldata(iii,id) = mean(sum(mf.rms_sp(ind,:),2)); 
+%             case 'PsRF'
+%                 rms_alldata(iii,id) = mean(sum(mf.rms_ps(ind,:),2)); 
+%             case 'SW'
+%                 rms_alldata(iii,id) = mean(mf.rms_SW(ind)); 
+%             case 'SpRF_lo'
+%                 rms_alldata(iii,id) = mean(sum(mf.rms_sp_lo(ind,:),2)); 
+%             case 'PsRF_lo'
+%                 rms_alldata(iii,id) = mean(sum(mf.rms_ps_lo(ind,:),2)); 
+%         end
     end
 end
 
 % goodchains = true(nchains,1);
 for id = 1:length(par.inv.datatypes)
-    goodchains = goodchains & (chi2_alldata(:,id) < 1.5*nanmean(chi2_alldata(:,id)));
+    goodchains = goodchains & (rms_alldata(:,id) < 1.3*nanmean(rms_alldata(:,id)));
 end
 goodchains=find(goodchains);
 
@@ -190,7 +214,7 @@ Z = TRUEmodel.Z;
 vs = TRUEmodel.vs;
 vp = TRUEmodel.vp;
 rho = TRUEmodel.rho;
-fprintf('TRUE sed thickness = %.1f km\n',Z(find(vs>=3.45,1,'first')))
+fprintf('TRUE sed thickness = %.1f km\n',Z(find(vs>=3.2,1,'first')))
 fprintf('TRUE moho depth = %.1f km\n',Z(find(vs>4.0,1,'first')))
 fprintf('TRUE Vs seds top = %.1f km/s\n',vs(1))
 fprintf('TRUE Vs seds bot = %.1f km/s\n',vs(find(vs<3.45,1,'last')))

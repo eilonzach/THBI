@@ -15,34 +15,11 @@ misfits.iter(N,1) = iter;
 misfits.logLike(N,1) = log_likelihood;
 misfits.Like(N,1) = likelihood;
 
-misfits.chi2(N,1)    = misfit.chi2;
+misfits.chi2sum(N,1)    = misfit.chi2sum;
 
-datatypes = fieldnames(predata);
-if any(strcmp(datatypes,'SW')) && isfield(misfit,'chi2_SW')
-misfits.chi2_SW(N,1) = misfit.chi2_SW;
-misfits.norm_SW(N,1) = misfit.SW;
-misfits.rms_SW(N,1) = misfit.rms_SW;
-end
-if any(strcmp(datatypes,'PsRF')) && isfield(misfit,'chi2_ps')
-misfits.chi2_ps(N,:) = misfit.chi2_ps;
-misfits.norm_ps(N,:) = misfit.PsRF;
-misfits.rms_ps(N,:) = misfit.rms_ps;
-end
-if any(strcmp(datatypes,'SpRF')) && isfield(misfit,'chi2_sp')
-misfits.chi2_sp(N,:) = misfit.chi2_sp;
-misfits.norm_sp(N,:) = misfit.SpRF;
-misfits.rms_sp(N,:) = misfit.rms_sp;
-end
-if any(strcmp(datatypes,'PsRF_lo')) && isfield(misfit,'chi2_ps_lo')
-misfits.chi2_ps_lo(N,:) = misfit.chi2_ps_lo;
-misfits.norm_ps_lo(N,:) = misfit.PsRF_lo;
-misfits.rms_ps_lo(N,:) = misfit.rms_ps_lo;
-end
-if any(strcmp(datatypes,'SpRF_lo')) && isfield(misfit,'chi2_sp_lo')
-misfits.chi2_sp_lo(N,:) = misfit.chi2_sp_lo;
-misfits.norm_sp_lo(N,:) = misfit.SpRF_lo;
-misfits.rms_sp_lo(N,:) = misfit.rms_sp_lo;
-end
+misfits.chi2(N,1) = misfit.chi2;
+misfits.rms(N,1) = misfit.rms;
+misfits.E2(N,1) = misfit.E2;
 
 misfits.Nstored = N;
 
@@ -59,17 +36,16 @@ allmodels(1).Nstored = N;
 dtypes = fieldnames(predata);
 for id = 1:length(dtypes)
     dtype = dtypes{id};
-    if regexp(dtype,'SW')
+    pdt = parse_dtype(dtype);
+    if strcmp(pdt{1},'SW')
         inds = 1:length(predata.(dtype).periods);         
-        savedat.(dtype).phV(N,inds) = predata.SW.phV;
-        savedat.(dtype).periods(N,inds) = predata.SW.periods;
-    elseif regexp(dtype,'RF')
-        if regexp(dtype,'_lo'), continue; end
+        savedat.(dtype).phV(N,inds) = predata.(dtype).phV;
+        savedat.(dtype).periods(N,inds) = predata.(dtype).periods;
+    elseif strcmp(pdt{1},'BW')
         for jj = 1:length(predata.(dtype))
             inds = 1:predata.(dtype)(jj).nsamp;
-            savedat.(dtype)(jj,1).Z(N,inds) = predata.(dtype)(jj).ZRT(:,1);
-            savedat.(dtype)(jj,1).R(N,inds) = predata.(dtype)(jj).ZRT(:,2);
-            savedat.(dtype)(jj,1).T(N,inds) = predata.(dtype)(jj).ZRT(:,3);
+            savedat.(dtype)(jj,1).P(N,inds) = predata.(dtype)(jj).PSV(:,1);
+            savedat.(dtype)(jj,1).SV(N,inds) = predata.(dtype)(jj).PSV(:,2);
             savedat.(dtype)(jj,1).tt(N,inds) = predata.(dtype)(jj).tt;
         end
     end

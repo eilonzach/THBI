@@ -6,18 +6,19 @@
 %  current value, by an amount dictated by the pre-defined standard
 %  deviation multiplied by the temperature (which settles down during the
 %  inversion, to produce smaller perturbations as iter time goes on).
-
+%
 % Temperature - a multiple of all the standard deviations that decays with
 % increasing iteration so that they settle down to smaller perturbations
 % temp = (par.inv.tempmax-1)*erfc(2*(ii-1)./par.inv.cooloff) + 1;
-
+%
 % Four options for model perturbation:
 %  ptb_Vmod - change velocity somewhere in current model
+%             {'sed','crust','mantle'}
 %  ptb_disc - change discontinuity depth, dV, or mean velocity in current model
 %  ptb_Mmod - add or remove splines from the model (transdimensional)
 %  ptb_sigdat - change the noise hyperparameters of the data (hierarchical)
 % 
-% The outputs areL
+% The outputs are:
 %  model   - the new model
 %  ptb     - a string with information about which model parm was changed
 %  p_bd    - the probability of a birth or death, if relevant
@@ -74,11 +75,8 @@ switch ptbopts{optflag} % decide what to modify
                     vma = par.mod.crust.vsmax;
                     vmi = par.mod.crust.vsmin;
                     ifgd = false;
-%                     while ifgd==false % only do perturbation within the permitted bounds
                     dV = ptb_val;
-%                     dV = random('norm',0,std,1); % calc. random perturbation
 %                     if (V0+dV <= vma) && (V0+dV >= vmi), ifgd = true; end
-%                     end
                     model.crustmparm.VS_sp(ind) = V0 + dV; % insert perturbed val
                     if par.inv.verbose, fprintf('    Changed crustal VS(%.0f) from %.2f to %.2f\n',ind,V0,V0+dV); end
                     ptb = ['crust_VS_',num2str(ind)];
@@ -88,11 +86,8 @@ switch ptbopts{optflag} % decide what to modify
                     vma = par.mod.crust.vpvsmax;
                     vmi = par.mod.crust.vpvsmin;
                     ifgd = false;
-                    while ifgd==false % only do perturbation within the permitted bounds
                     dV = ptb_val;
-%                    dV = random('norm',0,std,1); % calc. random perturbation
-                    if (V0+dV <= vma) && (V0+dV >= vmi), ifgd = true; end
-                    end
+%                     if (V0+dV <= vma) && (V0+dV >= vmi), ifgd = true; end
                     model.crustmparm.vpvs = V0 + dV; % insert perturbed val   
                     if par.inv.verbose, fprintf('    Changed crustal vpvs from %.2f to %.2f\n',V0,V0+dV); end
                     ptb = 'crust_vpvs';
@@ -247,8 +242,8 @@ switch ptbopts{optflag} % decide what to modify
                         h0 = model.sedmparm.h;
                         hma = par.mod.sed.hmax; 
                         hmi = par.mod.sed.hmin;
-                        if hma==hmi, error('sed not allowed to ptb'); end % don't perturb sed if no perturbation
-                        ifgd = false;
+%                         if hma==hmi, error('sed not allowed to ptb'); end % don't perturb sed if no perturbation
+%                         ifgd = false;
 %                         while ifgd==false % only do perturbation within the permitted bounds
 %                             dh = random('norm',0,std,1); % calc. random perturbation
                             dh = ptb_val;
@@ -607,9 +602,9 @@ switch ptbopts{optflag} % decide what to modify
    
 end
 
-if any(model.mantmparm.VS_sp<par.mod.mantle.vsmin) || any(model.mantmparm.VS_sp>par.mod.mantle.vsmax) 
-    1
-end
+% if any(model.mantmparm.VS_sp<par.mod.mantle.vsmin) || any(model.mantmparm.VS_sp>par.mod.mantle.vsmax) 
+%     1
+% end
 
 % USE PERTURBED PARAMS TO MAKE NEW 1D PROFILES ETC.
 [ model ] = make_mod_from_parms( model,par );

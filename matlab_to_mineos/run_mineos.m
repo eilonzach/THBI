@@ -1,5 +1,5 @@
-function [phV,grV] = run_mineos(model,swperiods,ID,ifdelete,ifplot,ifverbose)
-% [phV,grV] = run_mineos(model,swperiods,ID,ifdelete,ifplot,ifverbose)
+function [phV,grV] = run_mineos(model,swperiods,R_or_L,ID,ifdelete,ifplot,ifverbose)
+% [phV,grV] = run_mineos(model,swperiods,R_or_L,ID,ifdelete,ifplot,ifverbose)
 % 
 % Function to run the MINEOS for a given model and extract the phase
 % velocities at a bunch of input periods. If you keep the output files
@@ -7,21 +7,33 @@ function [phV,grV] = run_mineos(model,swperiods,ID,ifdelete,ifplot,ifverbose)
 % kernels with the complementary run_kernelcalc.m script
 
 
-if nargin < 3 || isempty(ID)
+if nargin < 3 || isempty(R_or_L)
+    R_or_L = 'R';
+end
+if nargin < 4 || isempty(ID)
     ID = 'eg';
 end
-if nargin < 4 || isempty(ifdelete)
+if nargin < 5 || isempty(ifdelete)
     ifdelete = true;
 end
-if nargin < 5 || isempty(ifplot)
+if nargin < 6 || isempty(ifplot)
     ifplot = false;
 end
-if nargin < 6 || isempty(ifverbose)
+if nargin < 7 || isempty(ifverbose)
     ifverbose = true;
+end
+
+
+if ~isfield(model,'Sanis')
+    model.Sanis = zeros(size(model.z));
+end
+if ~isfield(model,'Panis')
+    model.Panis = zeros(size(model.z));
 end
 
 %% filenames
 if ~ischar(ID), ID = num2str(ID);end
+ID = [ID,R_or_L(1)];
 execfile = [ID,'.run_mineos'];
 cardfile = [ID,'.model'];
 eigfile = [ID,'.eig'];
@@ -30,15 +42,25 @@ qfile = [ID,'.q'];
 logfile = [ID,'.log'];
 
 % standard inputs, don't get re-written
-modefile = 'safekeeping/modefile.200mhz';
+switch R_or_L(1)
+    case 'R'
+        modefile = 'safekeeping/s.modefile.200mhz';
+    case 'L'
+        modefile = 'safekeeping/t.modefile.200mhz';
+end
 qmod= 'safekeeping/qmod';
 %% =======================================================================
 wd = pwd;
 cd('/Users/zeilon/Documents/MATLAB/BayesianJointInv/matlab_to_mineos');
-ifanis = any(model.Sanis) || any(model.Panis);
+
+%% Radial anisotropy
+xi = 1 + model.Sanis/100;  % assumes Sanis is a percentage of anis about zero
+phi = 1 + model.Panis/100;  % assumes Panis is a percentage of anis about zero
+[ vsv,vsh ] = VsvVsh_from_VsXi( model.VS,xi );
+[ vpv,vph ] = VpvVph_from_VpPhi( model.VP,phi );
 
 %% write MINEOS executable and input files format
-write_cardfile(cardfile,model.z,model.VP,model.VS,model.rho);
+write_cardfile(cardfile,model.z,vpv,vsv,model.rho,[],[],vph,vsh);
 % writeMINEOSmodefile(modefile, ) 
 writeMINEOSexecfile( execfile,cardfile,modefile,qmod,eigfile,ofile1,qfile,logfile);
 system(['chmod u+x ' execfile]);
@@ -48,14 +70,19 @@ system(['chmod u+x ' execfile]);
 if ifverbose
     fprintf('    > Running MINEOS normal mode summation code. \n    > Will take some time...')
 end
-[status,cmdout] = system(['./',execfile]);
+[status,cmdout] = system(['/usr/local/bin/gtimeout 100 ./',execfile]);
 if ifverbose
      fprintf(' success!\n')
 end
 %% read modes output
-[phV,grV] = readMINEOS_qfile(qfile,swperiods);
-phV = phV(:);
-grV = grV(:);
+if status~=124
+    [phV,grV] = readMINEOS_qfile(qfile,swperiods);
+    phV = phV(:);
+    grV = grV(:);
+else 
+    error('MINEOS did not finish in 100s')
+end
+    
 
 
 %% delete files

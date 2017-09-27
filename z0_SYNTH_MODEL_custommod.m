@@ -1,5 +1,5 @@
-    function [model,laymodel] = z0_SYNTH_MODEL_custommod(par,ifplot)
-
+function [model,laymodel] = z0_SYNTH_MODEL_custommod(par,ifplot)
+%  [model,laymodel] = z0_SYNTH_MODEL_custommod(par,ifplot)
 
 if nargin < 2 || isempty(ifplot)
     ifplot=false;
@@ -8,10 +8,10 @@ end
 global TRUEmodel TLM
 
 
-%% CHOOSE CUSTOM KEY PARAMETERS
+%% resolve important values from prior distributions
 selev =0;
 h_sed = 5;
-h_crust = 50;
+h_crust = 50.5;
 
 k_crust = 4;
 k_mantle = 6;
@@ -24,7 +24,11 @@ kvs_mantle = [4.1 4.4 4.4 4.05 4.2 4.4];
 k_mantle = 9;
 kvs_mantle = [4.2 4.4 4.4 4.45 4.5 4.0 4.1 4.2 4.45];
 
-vpvs = 1.8;
+vpvs_crust = 1.8;
+
+xi_crust = 1.04;
+xi_mantle = 1.05;
+
 
 
 %% DERIVATIVE PARMS
@@ -36,26 +40,22 @@ mminz = h_sed+h_crust;
 mmaxz = par.mod.maxz + selev;
 zm = unique([mminz:par.mod.dz:mmaxz,mmaxz])';
 % CRUST splines
-dzsp = (cmaxz-cminz)/(k_crust-2);
-knots = [repmat(cminz,1,3),cminz:dzsp:cmaxz,repmat(cmaxz,1,3)]';
-sp = fastBSpline.lsqspline(knots,2,linspace(cminz,cmaxz,k_crust)',kvs_crust); % dummy velocities as placeholder
-cspbasis = sp.getBasis(zc); cspbasis = cspbasis(:,2:end-1);
+cknots = linspace(cminz,cmaxz,k_crust-1)';
+[cspbasis] = make_splines(cknots,par,zc,zc);
 % MANTLE splines
-dzsp = (mmaxz-mminz)/(k_mantle-2);
-knots = [repmat(mminz,1,3),mminz:dzsp:mmaxz,repmat(mmaxz,1,3)]';
-sp = fastBSpline.lsqspline(knots,2,linspace(mminz,mmaxz,k_mantle)',kvs_mantle); % dummy velocities as placeholder
-mspbasis = sp.getBasis(zm); mspbasis = mspbasis(:,2:end-1);
+mknots = linspace(mminz,mmaxz,k_mantle-1)';
+[mspbasis] = make_splines(mknots,par,zm,zm);
 % OVERALL
-M = 1 + 2 + 1 + k_crust + k_mantle + 1;
+M = 1 + 2 + 1 + k_crust + k_mantle + 1 + 2;
 
 
 %% MAKE ALL PARAMETER STRUCTURES
 sed = struct('h',h_sed,'VS',vs_sed);
-crust = struct('h',h_crust,'Nkn',k_crust,'VS_sp',kvs_crust,'splines',cspbasis,'vpvs',vpvs);
-mantle = struct('Nkn',k_mantle,'VS_sp',kvs_mantle,'splines',mspbasis);
-data = struct('sigmaPsRF',par.mod.data.prior_sigmaPsRF,...
-              'sigmaSpRF',par.mod.data.prior_sigmaSpRF,...
-              'sigmaSW',par.mod.data.prior_sigmaSW);
+crust = struct('h',h_crust,'Nsp',k_crust+1,'Nkn',k_crust,'VS_sp',kvs_crust,'vpvs',vpvs_crust,'xi',xi_crust,'splines',cspbasis,'knots',cknots,'z_sp',zc);
+mantle = struct('Nsp',k_mantle+1,'Nkn',k_mantle,'VS_sp',kvs_mantle,'xi',xi_mantle,'splines',mspbasis,'knots',mknots,'z_sp',zm);
+data = struct('sig_Ps_RF',par.mod.data.prior_sigma.BW.Ps,...
+              'sig_Sp_RF',par.mod.data.prior_sigma.BW.Ps,...
+              'sig_SW',par.mod.data.prior_sigma.SW);
 
 
 %% MODEL WITH ALL PARMS

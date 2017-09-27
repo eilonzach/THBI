@@ -22,10 +22,10 @@ maxdepth = 50;  % maximum EQ depth
 min4clust = 20; % minimum # of EQ to even try the stack
 min4stack = 5;  % minumum # of traces in order to keep the stack
 
-ifsave = true;
+ifsave = false;
 verbose = true;
 
-load(sprintf('dat_%s_%s_%.0fto%.0f',station,network,gc_lims(1),gc_lims(2)));
+load(sprintf('DATA/dat_%s_%s_%.0fto%.0f',station,network,gc_lims(1),gc_lims(2)));
 addpath('matguts')
 
 %% cluster analysis on events

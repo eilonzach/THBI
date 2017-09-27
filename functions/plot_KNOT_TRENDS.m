@@ -5,6 +5,8 @@ if nargin<3
     ofile=[];
 end
 
+downsampfac = 12;
+
 figure(83), clf, set(gcf,'pos',[65 297 1127 808])
 
 ax1 = axes('pos',[0.07,0.2,0.73,0.7]); hold on
@@ -24,6 +26,9 @@ for iii = 1:nchains
         am = allmodels;
     end
     
+    downsamp = (1:downsampfac:length(am));
+    ydownsamp = false(length(am),1); ydownsamp(downsamp)=true;
+
     %% Knot locations
     knmat_c = nan(par.mod.crust.kmax,length(am));
     knmat_m = nan(par.mod.mantle.kmax,length(am));
@@ -46,6 +51,8 @@ for iii = 1:nchains
     knz = [knzc;knzm];
     Xkn = midpts([0:par.mod.dz:par.mod.maxz]);
     pkn = hist(knz,Xkn)/sum([am.bestmods]);
+    % fill out edges w/ zeros
+    Xkn = [0,Xkn,par.mod.maxz]'; pkn = [0,pkn,0]';
     
     %% # of splines
     Nsp = zeros(length(am),1);
@@ -58,10 +65,10 @@ for iii = 1:nchains
     %% plotting
 
     % knot locations
-    plot(ax1,itmat_c,knmat_c,'.','color',[0.8 0.8 0.8])
-    plot(ax1,itmat_c(:,[am.bestmods]),knmat_c(:,[am.bestmods]),'s','color',basecol,'markerfacecolor',basecol)
-    plot(ax1,itmat_m,knmat_m,'.','color',[0.8 0.8 0.8])
-    plot(ax1,itmat_m(:,[am.bestmods]),knmat_m(:,[am.bestmods]),'o','color',basecol,'markerfacecolor',basecol)
+    plot(ax1,itmat_c(:,downsamp),knmat_c(:,downsamp),'.','color',[0.8 0.8 0.8])
+    plot(ax1,itmat_c(:,[am.bestmods]'&ydownsamp),knmat_c(:,[am.bestmods]'&ydownsamp),'s','color',basecol,'markerfacecolor',basecol)
+    plot(ax1,itmat_m(:,downsamp),knmat_m(:,downsamp),'.','color',[0.8 0.8 0.8])
+    plot(ax1,itmat_m(:,[am.bestmods]'&ydownsamp),knmat_m(:,[am.bestmods]'&ydownsamp),'o','color',basecol,'markerfacecolor',basecol)
     plot(ax1,[am.iter],[am.zmoh],'-k','linewidth',2)
     plot(ax1,[am.iter],[am.zsed],'--k','linewidth',2)
     set(ax1,'ydir','reverse','fontsize',15,'xticklabel',[])
@@ -91,7 +98,11 @@ end
 
 
 if ~isempty(ofile)
-    save2pdf(83,ofile,'/')
+    if nchains>1
+        save2jpg(83,ofile,'/')
+    else
+        save2pdf(83,ofile,'/')
+    end
 end
 
 end

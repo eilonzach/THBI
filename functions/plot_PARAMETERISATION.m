@@ -37,8 +37,8 @@ end
 plot(ax,[0,1],max(z_sed)*[1,1],':','linewidth',3,'color',[0.5 0.5 0.5])
 % sed/crust boundary
 plot(ax,[0,1],max(z_sed)*[1,1],':','linewidth',3,'color',[0.5 0.5 0.5])
-text(ax,0.5,max(z_sed),'Sed/crust','HorizontalAlignment','center','verticalalignment','top','fontsize',15,'fontweight','bold','color',[0.5 0.5 0.5])
-% crust/mantle boundary
+text(ax,0.5,max(z_sed),'Basement','HorizontalAlignment','center','verticalalignment','top','fontsize',15,'fontweight','bold','color',[0.5 0.5 0.5])
+% crust/mantle boundary 
 plot(ax,[0,1],max(z_crust)*[1,1],':','linewidth',3,'color',[0.5 0.5 0.5])
 text(ax,0.5,max(z_crust),'Moho','HorizontalAlignment','center','verticalalignment','top','fontsize',15,'fontweight','bold','color',[0.5 0.5 0.5])
 

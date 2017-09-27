@@ -4,10 +4,10 @@ datadir = '~/Documents/MATLAB/THBI_paper/DATA/'; % need final slash
 station = 'RSSD';
 network = 'IU';
 gc_lims = [65,75];
-gc_lims = [45,55];
+% gc_lims = [45,55];
 
 RFphase = {'Ps','Sp'};
-RFphase = {'Ps'};
+% RFphase = {'Ps'};
 
 
 %% processing parms
@@ -30,6 +30,7 @@ maxlag = 5;
 
 maxdepth = 50;  % maximum EQ depth
 min4clust = 15; % minimum # of EQ to even try the stack
+clust_cutoff = 5; % minimum Delta of clustered EQ locations (deg)
 min4stack = 5;  % minumum # of traces in order to keep the stack
 
 ifsave = false;
@@ -40,7 +41,7 @@ addpath('matguts')
 
 %% cluster analysis on events
 Z = linkage([eqar.gcarcs.*sind(eqar.seazs),eqar.gcarcs.*cosd(eqar.seazs)]);
-T = cluster(Z,'cutoff',500,'criterion','distance');
+T = cluster(Z,'cutoff',clust_cutoff,'criterion','distance');
 nT = histcounts(T);
 iclusts = find(nT>min4clust);
 
@@ -85,7 +86,7 @@ for ip = 1:length(RFphase)
     evinds = 1:eqar.norids;
     % QC on depth, only include this cluster
     edeps = [eqar.edeps];
-% 	evinds(edeps(evinds)>=maxdepth) = [];
+	evinds(edeps(evinds)>=maxdepth) = [];
 	evinds(T(evinds)~=iclust) = [];
     evinds_clust = evinds;
     plot_rec_sec_align(eqar,RFphase{ip}(1),eqar.components{chp},filtfs,evinds)
@@ -128,8 +129,8 @@ for ip = 1:length(RFphase)
     %% SNRest
     % data clean for SNRest
     cp = struct('samprate',samprate,'fhi',xcor_filtfs(2,ip),'flo',xcor_filtfs(1,ip),...
-                'pretime',-eqar.tt(1,1,ip),'prex',-xcor_win(1),'postx',xcor_win(2),...
-                'taperx',1./diff(xcor_win),'npoles',npoles,'norm',1);
+                'pretime',-eqar.tt(1,1,ip),'prex',-datwind(1),'postx',datwind(2),...
+                'taperx',1./diff(datwind),'npoles',npoles,'norm',1);
     [ SNRdat,~,~,~,~,SNRtt] = data_clean(  eqar.dataZRT(:,:,chidx,ip),cp ); 
     
     % SNR after the filter
@@ -270,6 +271,7 @@ for ip = 1:length(RFphase)
         dataZRT_stk1(:,ic,ip) = sum(dataZRT_proc(:,evinds,ic,ip),2)/length(evinds); %#ok<SAGROW>
     end
     
+
     %% Xcorr again!
     fprintf('Xcorr on stack\n')
     dataZRT_proc2 = nan([size(eqar.dataZRT(:,:,1,ip)),3]);
@@ -322,12 +324,27 @@ for ip = 1:length(RFphase)
         dataZRT_stk(:,ic,ip) = sum(dataZRT_proc2(:,gdinds,ic,ip),2)/length(gdinds); %#ok<SAGROW>
     end
 
+    %% estimate Vp, Vs at surface from trace
+    err_surface = [];
+    for ie = 1:length(evinds)
+    ei = evinds(ie);
+    [ ~,~,err_surface(:,:,ie),vp_range,vs_range ] = ...
+            surf_vp_vs_est( squeeze(dataZRT_proc(:,ei,:,ip))*[1 0 0;0 -1 0;0 0 1],eqar.tt(:,ei),eqar.rayps(ei),[0 10] );
+    end   
+    figure(1),clf, contourf(vs_range,vp_range,sum(err_surface,3),40,'edgecolor','none'), colorbar
+    Esurf(:,:,ip) = sum(err_surface,3);
+    [~,x,y] = mingrid(Esurf(:,:,ip));
+    Vp_est(icl,ip) = vp_range(y);
+    Vs_est(icl,ip) = vs_range(x);
+   
+
+
     if verbose
     figure(34)
     subplot(211);plot(eqar.tt(:,1,ip),dataZRT_stk1(:,chp,ip),eqar.tt(:,1,ip),dataZRT_stk(:,chp,ip))
     subplot(212);plot(eqar.tt(:,1,ip),dataZRT_stk1(:,chd,ip),eqar.tt(:,1,ip),dataZRT_stk(:,chd,ip))
     end
-
+ 
 	%% continue if not enough for stack
     if length(gdinds) < min4stack, fprintf('Not enough good traces\n'), continue; end
     fprintf('%.0f good traces\n',length(gdinds))
@@ -352,6 +369,7 @@ for ip = 1:length(RFphase)
         htr(ic).XData = tt_stk(:,ip);
         htr(ic).YData = dataZRT_stk(:,ic,ip);
     end
+
     pause(0.1)
 
     %% other averaged parms
@@ -377,6 +395,16 @@ for ip = 1:length(RFphase)
     end
     pause
 end % loop on phases
+    
+% [ Vp_est_stk_p,Vs_est_stk_p,errmap_p ] = ...
+%             surf_vp_vs_est( dataZRT_stk(:,:,1)*[1 0 0;0 -1 0;0 0 1],tt_stk(:,1),rayp_av(1),[-5 10],1 );
+% [ Vp_est_stk_s,Vs_est_stk_s,errmap_s,vp_range,vs_range ] = ...
+%             surf_vp_vs_est( dataZRT_stk(:,:,2)*[1 0 0;0 -1 0;0 0 1],tt_stk(:,2),rayp_av(2),[-5 10],1 );
+% errmap = errmap_p/mingrid(errmap_p) + errmap_s/mingrid(errmap_s);
+% [~,x,y] = mingrid(errmap);
+% Vp_est_stk = vp_range(y)
+% Vs_est_stk = vs_range(x)
+% figure(5),clf, hold on; contourf(vs_range,vp_range,errmap,40,'edgecolor','none'), colorbar
 
 if ~exist('rayp_av','var'), continue; end
 

@@ -20,3 +20,7 @@ addpath('/Users/zeilon/Dropbox/MATLAB/seis_tools/surface_waves');
 
 % turn warning back on
 warning('on','MATLAB:dispatcher:nameConflict');
+
+global prem_anisotropic prem_isotropic
+prem_anisotropic = prem_perfect('SPVW',0.25);
+prem_isotropic = prem;

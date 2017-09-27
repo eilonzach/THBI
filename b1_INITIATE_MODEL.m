@@ -30,14 +30,18 @@ mod = par.mod;
 h_sed = random('unif',mod.sed.hmin,mod.sed.hmax);
 h_crust = random('unif',mod.crust.hmin,mod.crust.hmax);
 
-k_crust = mod.crust.kmin + random('unid',mod.crust.kmax-mod.crust.kmin+1)-1;
-k_mantle = mod.mantle.kmin + random('unid',mod.mantle.kmax-mod.mantle.kmin+1)-1;
+k_crust = mod.crust.kmin + ceil(random('unid',mod.crust.kmax-mod.crust.kmin+1)/2)-1;
+k_mantle = mod.mantle.kmin + ceil(random('unid',mod.mantle.kmax-mod.mantle.kmin+1)/3)-1;
 
 vs_sed = random('unif',mod.sed.vsmin,mod.sed.vsmax,2,1);
 kvs_crust = random('unif',mod.crust.vsmin,mod.crust.vsmax,k_crust+1,1);
 kvs_mantle = random('unif',mod.mantle.vsmin,mod.mantle.vsmax,k_mantle+1,1);
 
 vpvs_crust = random('unif',mod.crust.vpvsmin,mod.crust.vpvsmax);
+
+xi_crust = random('unif',mod.crust.ximin,mod.crust.ximax);
+xi_mantle = random('unif',mod.mantle.ximin,mod.mantle.ximax);
+
 
 % impose monotonic increase conditions:
 vs_sed = sort(vs_sed);
@@ -57,7 +61,7 @@ cknots = cminz + (cmaxz-cminz)*fcknots; % linearly spaced knots
 
 [spbasis]=make_splines(cknots,par,zc,zc);
 
-crust = struct('h',h_crust,'Nsp',k_crust+1,'Nkn',k_crust,'VS_sp',kvs_crust,'vpvs',vpvs_crust,'splines',spbasis,'knots',cknots,'fknots',fcknots,'z_sp',zc);
+crust = struct('h',h_crust,'Nsp',k_crust+1,'Nkn',k_crust,'VS_sp',kvs_crust,'vpvs',vpvs_crust,'xi',xi_crust,'splines',spbasis,'knots',cknots,'fknots',fcknots,'z_sp',zc);
 
 
 %% MANTLE PARMS
@@ -66,31 +70,35 @@ mmaxz = mod.maxz + selev;
 zm = unique([mminz:mod.dz:mmaxz,mmaxz])';
 
 % set up splines
-fmknots = linspace(0,1,k_mantle)';  % linearly spaced knots
-mknots = mminz + (mmaxz-mminz)*fmknots;
+fmknots_ = linspace(0,1,k_mantle-1)';  % linearly spaced knots
+mknots = [mminz + (mod.maxkz-mminz)*fmknots_ ; mmaxz];
+fmknots = (mknots - mminz)./(mmaxz-mminz);
 
 [spbasis] = make_splines(mknots,par,zm,zm);
 
-mantle = struct('Nsp',k_mantle+1,'Nkn',k_mantle,'VS_sp',kvs_mantle,'splines',spbasis,'knots',mknots,'fknots',fmknots,'z_sp',zm);
+mantle = struct('Nsp',k_mantle+1,'Nkn',k_mantle,'VS_sp',kvs_mantle,'xi',xi_mantle,'splines',spbasis,'knots',mknots,'fknots',fmknots,'z_sp',zm);
 
 %% DATA PARMS
-data = struct('sigmaPsRF',par.mod.data.prior_sigmaPsRF,...
-              'sigmaSpRF',par.mod.data.prior_sigmaSpRF,...
-              'sigmaSW',par.mod.data.prior_sigmaSW,...
-              'sigmaPsRF_lo',par.mod.data.prior_sigmaPsRF_lo,...
-              'sigmaSpRF_lo',par.mod.data.prior_sigmaSpRF_lo);
+hparm = struct([]);
+for id = 1:length(par.inv.datatypes)
+    dtype = par.inv.datatypes{id};
+    [ ~,sigma_prior ] = get_sigma_min_prior( dtype,par );
+    hparm(1).(['sig_',dtype]) = sigma_prior;
+end
 
 %% OVERALL PARMS
-M = 1 + 2 + 1 + k_crust + k_mantle ...
-      + double(mod.crust.vpvsmin~=mod.crust.vpvsmax);
+M = 2 + 1 + k_crust + k_mantle ...
+      + double(mod.sed.hmin~=mod.sed.hmax) ...
+      + double(mod.crust.vpvsmin~=mod.crust.vpvsmax) ...
+      + double(mod.crust.ximin~=mod.crust.ximax) ...
+      + double(mod.mantle.ximin~=mod.mantle.ximax);
 
 %% MODEL WITH ALL PARMS
-model = struct('sedmparm',sed,'crustmparm',crust,'mantmparm',mantle,'datahparm',data,...
+model = struct('sedmparm',sed,'crustmparm',crust,'mantmparm',mantle,'datahparm',hparm,...
                'M',M,'selev',selev);
            
 %% TURN PARMS INTO REAL MODEL
 model = make_mod_from_parms(model,par);
-
 
 % fknots = linspace(0,1,model.mantmparm.Nsp-1);
 % [ aa,bb,cc ] = make_splines_fraction( model,par,fknots,'mantle',model.z(15:end),model.VS(15:end) )

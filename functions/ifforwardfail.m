@@ -6,25 +6,25 @@ function [ iffail ] = ifforwardfail( predata,par )
 
 iffail = false;
 
-if ~isempty(predata.PsRF) 
-    if any([predata.PsRF.nsamp]<[predata.PsRF.samprate]*diff(par.datprocess.Twin.PsRF))
+if ~isempty(predata.BW_Ps) 
+    if any([predata.BW_Ps.nsamp]<[predata.BW_Ps.samprate]*diff(par.datprocess.Ps.Twin.def))
         fprintf('Not enough P data!\n');
         iffail = true;
     end
     
-    if any(any(isnan([predata.PsRF.ZRT]))) 
+    if any(any(isnan([predata.BW_Ps.PSV]))) 
         fprintf('NaN P DATA!\n')
         iffail = true;
     end
 end
 
-if ~isempty(predata.SpRF)
-    if any([predata.SpRF.nsamp]<[predata.SpRF.samprate]*diff(par.datprocess.Twin.SpRF))
+if ~isempty(predata.BW_Sp)
+    if any([predata.BW_Sp.nsamp]<[predata.BW_Sp.samprate]*diff(par.datprocess.Sp.Twin.def))
         fprintf('Not enough S data!\n');
         iffail = true;
     end
 
-    if any(any(isnan([predata.SpRF.ZRT])))
+    if any(any(isnan([predata.BW_Sp.PSV])))
         fprintf('inhomogeneous!\n'); 
         iffail = true;
     end

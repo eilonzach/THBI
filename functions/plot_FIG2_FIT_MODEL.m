@@ -20,27 +20,29 @@ ax3 = axes('position',[0.36 0.09 0.27 0.36]); hold on
 ax4 = axes('position',[0.67 0.58 0.27 0.36]); hold on
 ax5 = axes('position',[0.71 0.09 0.21 0.36]); hold on
 
-
+vslims = [3.2 5.1];
 
 
 %%  =========================  MODEL FIT  =========================  
 
 %% Vs profile
-% target model for comparison
-% global TRUEmodel
-% TRvs = TRUEmodel.vs;
-% TRZ = TRUEmodel.Z;
-% final model
 Z = final_model.Z;
-VSbest = final_model.VSbest;
-VSstd = final_model.VSstd;
 
 % plot(ax1,TRvs,TRZ,'-b','Linewidth',2.5);
-plot(ax1,VSbest+2*VSstd,Z,'-','color',[0.4 0.4 0.4],'Linewidth',2);
-plot(ax1,VSbest-2*VSstd,Z,'-','color',[0.4 0.4 0.4],'Linewidth',2);
-plot(ax1,VSbest,Z,'-r','Linewidth',2.5);
+fill(ax1,[final_model.VSsig1(:,1);...
+          flipud(final_model.VSsig1(:,2))],...
+          [Z;flipud(Z)],'-','Linewidth',1.5,'Facecolor',[0.7 0.7 0.7],'Edgecolor',[0.6 0.6 0.6]);
+plot(ax1,final_model.VSav,Z,'-r','Linewidth',2);
+plot(ax1,final_model.VSsig2,Z,'-','color',[0.4 0.4 0.4],'Linewidth',1);
+
+Zmoh(1) = final_model.Zd(2).mu;
+Zmoh(2) = final_model.Zd(2).std;
+plot(ax1,vslims(1,:)-0.1,Zmoh(1)*[1 1],'--k','linewidth',2)
+text(ax1,vslims(1,1)+0.1,Zmoh(1)+8,sprintf('$%.1f \\pm %.1f$',Zmoh),...
+    'fontsize',17,'interpreter','latex')    
+
 set(ax1,'ydir','reverse','fontsize',14,'ytick',[0:25:max(Z)],...
-    'color','none','xlim',[3.2 5.1]);
+'color','none','xlim',vslims);
 title(ax1,'\textbf{Vs model}','fontsize',20,'Interpreter','latex')
 xlabel(ax1,'\textbf{Vs (km/s)}','fontsize',18,'Interpreter','latex')
 ylabel(ax1,'\textbf{Depth (km)}','fontsize',18,'Interpreter','latex')
@@ -69,7 +71,7 @@ set(ax2,'fontsize',14),
 xlim(ax2,[par.mod.crust.vpvsmin,par.mod.crust.vpvsmax])
 xlabel(ax2,'\textbf{Crustal $\mathbf{V_P/V_S}$ ratio}','fontsize',18,'Interpreter','latex')
 
-
+par.sta = regexprep(par.sta,'_','\\_');
 title(ax2,['\textbf{',par.sta,' ',par.nwk,'}'],'fontsize',22,'interpreter','latex')
 
 

@@ -42,7 +42,7 @@ if iffill
         tt_b1 = tt_pos(2*ib + k);
         tt_bl = [tt_b0;tt(tt>tt_b0 & tt<tt_b1);tt_b1];
         RF_bl = interp1(tt,RF,tt_bl);
-        hpos(ib) = patch(ax,RF_bl+xshift,tt_bl,pcol,'linestyle','none');
+        hpos(ib) = patch(ax,RF_bl+xshift,tt_bl,pcol,'linestyle','none','facealpha',0.6);
     end
 
     % negative patch
@@ -56,7 +56,7 @@ if iffill
         tt_bl = [tt_b0;tt(tt>tt_b0 & tt<tt_b1);tt_b1];
         RF_bl = interp1(tt,RF,tt_bl);
         hold on
-        hneg(ib) = patch(ax,RF_bl+xshift,tt_bl,ncol,'linestyle','none');
+        hneg(ib) = patch(ax,RF_bl+xshift,tt_bl,ncol,'linestyle','none','facealpha',0.6);
     end
 else
     hpos = [];

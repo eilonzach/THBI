@@ -13,6 +13,7 @@ for ip = 1:Np
     Kf2 = sum(abs(K{ip}.Vsh(0.001*K{ip}.Z<par.mod.maxz)))/sum(abs(K{ip}.Vsh));
     Kf3 = sum(abs(K{ip}.Vpv(0.001*K{ip}.Z<par.mod.maxz)))/sum(abs(K{ip}.Vpv));
     Kf4 = sum(abs(K{ip}.Vph(0.001*K{ip}.Z<par.mod.maxz)))/sum(abs(K{ip}.Vph));
-    SWwt(ip) = (Kf1 + Kf2 + Kf3 + Kf4) / 4;
+    Kf = [Kf1,Kf2,Kf3,Kf4];
+    SWwt(ip) = nansum(Kf)/sum(~isnan(Kf));
 end
 

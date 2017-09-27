@@ -1,9 +1,12 @@
-function ikernelfiles = writeKERNELCALCexecfile(swperiods,execfile,stripfile,eigfile,qmod,tabfile,qfile,kernelfile,ikprefix,logfile)
-% ikernelfiles = writeKERNELCALCexecfile(swperiods,execfile,stripfile,eigfile,tabfile,qfile,kernelfile,ikprefix,logfile)
+function ikernelfiles = writeKERNELCALCexecfile(swperiods,R_or_L,ph_gr,execfile,stripfile,eigfile,qmod,tabfile,qfile,kernelfile,ikprefix,logfile)
+% ikernelfiles = writeKERNELCALCexecfile(swperiods,R_o_rL,ph_or_gr,execfile,stripfile,eigfile,tabfile,qfile,kernelfile,ikprefix,logfile)
 %   
 % Function to write execution file for kernel calculator having run MINEOS code
 % 
 % INPUTS:
+%  swperiods - vector of surface wave periods (will be rounded to integers)
+%  R_or_L    - string of Rayleygh ('Ray'|'R') or Love ('Lov'|'R')
+%  ph_gr     - (1x2) vector to do phase [1 0] or group [0 1] or both [1 1]
 %  swperiods - vector of surface wave periods (will be rounded to integers)
 %  execfile  - name of executable file 
 %  modefile  - name of strip file
@@ -20,6 +23,16 @@ ikernelfiles = cell({});
 if exist(execfile,'file')==2
     delete(execfile); % kill if it is there 
 end
+
+switch R_or_L
+    case {'R','Ray','Rayleigh'}
+        maxangl = 3000;
+    case {'L','Lov','Love'}
+        maxangl = 3500;
+end
+
+
+
 
 %% write synth.in parameter file
 fid = fopen(execfile,'w');
@@ -49,7 +62,7 @@ fprintf(fid,'$xdir/mineos_table <<! >> %s\n',logfile);
 fprintf(fid,'%s\n',tabfile);
 fprintf(fid,'40000\n');
 fprintf(fid,'0 200.1\n');
-fprintf(fid,'0 3000\n');
+fprintf(fid,'0 %.0f\n',maxangl);
 fprintf(fid,'%s\n',qfile);
 fprintf(fid,'%s\n',stripfile);
 fprintf(fid,'\n');
@@ -77,12 +90,33 @@ fprintf(fid,'!\n');
 %
 fprintf(fid,'#\n');
 %% =======================================================================
-fprintf(fid,'echo "Making frechet kernels binary"\n');
+ckernelfile = regexprep(kernelfile,'.frech','.cvfrech');
+fprintf(fid,'echo "Making frechet phV kernels binary"\n');
 %
 fprintf(fid,'#\n');
 %
-fprintf(fid,'trash %s\n',kernelfile);
+fprintf(fid,'rm %s\n',ckernelfile);
 fprintf(fid,'$xdir/frechet_cv <<! >> %s\n',logfile);
+fprintf(fid,'%s\n',qmod);
+fprintf(fid,'%s_hdr.branch\n',tabfile);
+fprintf(fid,'%s\n',ckernelfile);
+fprintf(fid,'%s\n',eigfile);
+fprintf(fid,'0\n');
+fprintf(fid,'\n');
+fprintf(fid,'!\n');
+%
+fprintf(fid,'#\n');
+
+%% =======================================================================
+if ph_gr(2)
+gkernelfile = regexprep(kernelfile,'.frech','.gvfrech');
+% frechet file
+fprintf(fid,'echo "Making frechet grV kernels binary"\n');
+%
+fprintf(fid,'#\n');
+%
+fprintf(fid,'rm %s\n',kernelfile);
+fprintf(fid,'$xdir/frechet <<! >> %s\n',logfile);
 fprintf(fid,'%s\n',qmod);
 fprintf(fid,'%s_hdr.branch\n',tabfile);
 fprintf(fid,'%s\n',kernelfile);
@@ -92,21 +126,59 @@ fprintf(fid,'\n');
 fprintf(fid,'!\n');
 %
 fprintf(fid,'#\n');
-%% =======================================================================
-fprintf(fid,'echo "Writing kernel files for each period"\n');
-for ip = 1:length(swperiods)
+% gvfrechet file
+fprintf(fid,'echo "Making frechet grV kernels binary"\n');
 %
 fprintf(fid,'#\n');
 %
-fprintf(fid,'$xdir/draw_frechet_gv <<!\n');
+fprintf(fid,'rm %s\n',gkernelfile);
+fprintf(fid,'$xdir/frechet_gv <<! >> %s\n',logfile);
 fprintf(fid,'%s\n',kernelfile);
-fprintf(fid,'%s_cvfrechet_%.0fs\n',ikprefix,round(swperiods(ip)));
-fprintf(fid,'%.0f\n',round(swperiods(ip)));
+fprintf(fid,'0\n');
+fprintf(fid,'%s\n',gkernelfile);
 fprintf(fid,'!\n');
 %
-ikernelfiles{ip} = sprintf('%s_cvfrechet_%.0fs',ikprefix,round(swperiods(ip)));
-end
 fprintf(fid,'#\n');
+end
+    
+
+%% CV kernels =======================================================================
+if ph_gr(1) % only if ph_gr instructs
+    fprintf(fid,'echo "Writing phV kernel files for each period"\n');
+    for ip = 1:length(swperiods)
+    ickernelfile = sprintf('%s_cvfrechet_%.0fs',ikprefix,round(swperiods(ip)));
+    %
+    fprintf(fid,'#\n');
+    %
+    fprintf(fid,'$xdir/draw_frechet_gv <<!\n');
+    fprintf(fid,'%s\n',ckernelfile);
+    fprintf(fid,'%s\n',ickernelfile);
+    fprintf(fid,'%.0f\n',round(swperiods(ip)));
+    fprintf(fid,'!\n');
+    %
+    ikernelfiles{ip,1} = ickernelfile;
+    end % loop on periods
+    fprintf(fid,'#\n');
+end % only if ph_gr instructs
+
+%% GV kernels =======================================================================
+if ph_gr(2) % only if ph_gr instructs
+    fprintf(fid,'echo "Writing grV kernel files for each period"\n');
+    for ip = 1:length(swperiods)
+    igkernelfile = sprintf('%s_gvfrechet_%.0fs',ikprefix,round(swperiods(ip)));
+    %
+    fprintf(fid,'#\n');
+    %
+    fprintf(fid,'$xdir/draw_frechet_gv <<!\n');
+    fprintf(fid,'%s\n',gkernelfile);
+    fprintf(fid,'%s\n',igkernelfile);
+    fprintf(fid,'%.0f\n',round(swperiods(ip)));
+    fprintf(fid,'!\n');
+    %
+    ikernelfiles{ip,2} = igkernelfile;
+    end % loop on periods
+    fprintf(fid,'#\n');
+end % only if ph_gr instructs
 %% =======================================================================
 fprintf(fid,'echo "Done velocity calculation, cleaning up..."\n');
 %

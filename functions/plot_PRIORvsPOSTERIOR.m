@@ -98,14 +98,15 @@ set(gca,'fontsize',14,'xlim',[par.mod.crust.vpvsmin,par.mod.crust.vpvsmax])
 
 %% velocity at depth
 X = midpts(linspace(par.mod.mantle.vsmin,par.mod.mantle.vsmax,20));
+zdo = [50,65,75,90,120,150]; for iz = 1:length(zdo), izdo(iz) = crossing(posterior.zmantle,[],zdo(iz));end
 for iz = 1:6
 subplot(3,8,18+iz), cla, hold on
-No = hist(posterior.VSmantle(:,iz),X)/posterior.Nstored;
-Ni = hist(prior.VSmantle(:,iz),X)/prior.Npass;
+No = hist(posterior.VSmantle(:,izdo(iz)),X)/posterior.Nstored;
+Ni = hist(prior.VSmantle(:,izdo(iz)),X)/prior.Npass;
 bar(X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
 bar(X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',1.5);
 % legend(num2str(model_summary.zmantle(:)),'location','northwest')
-set(gca,'fontsize',14,'xlim',[3.5 4.9]), title(sprintf('Vs at %.0f km',prior.zmantle(iz)),'fontsize',16)
+set(gca,'fontsize',14,'xlim',[3.5 4.9]), title(sprintf('Vs at %.0f km',prior.zmantle(izdo(iz))),'fontsize',16)
 end
 
 %% title

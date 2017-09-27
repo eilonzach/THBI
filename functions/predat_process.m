@@ -6,7 +6,7 @@ function [ data ] = predat_process( data,dtype,par )
 % 
 % INPUT:
 %  dat_in  - structure with fields:
-%             .ZRT - data in columns, ordered Z,R,T
+%             .PSV - data in columns, ordered Z,R,T
 %             .tt  - tt vector, w/ significant padding before phase arrival
 %             .nsamp - number of samples
 %  cp      - cleaning_parm structure, as for use with data_clean
@@ -20,7 +20,9 @@ function [ data ] = predat_process( data,dtype,par )
 % 
 %  Z. Eilon 09/2016
 
-if strcmp(dtype,'SW'), return; end
+[ pdt ] = parse_dtype( dtype );
+
+if ~strcmp(pdt{1},'BW'), return; end
 
 dat_in = data.(dtype);
 
@@ -28,49 +30,65 @@ dat_out = dat_in;
 
 % loop on number of data time series (each will be 3 component)
 for itr = 1:length(dat_in)
-if isempty(dat_in(itr).ZRT), continue; end
+if isempty(dat_in(itr).PSV), continue; end
+
+%% cut mis-rotated main arrival out of daughter
+if isfield(par.datprocess,'clipdaughter') && par.datprocess.clipdaughter==true; 
+    % set daughter channel and clips
+    if strcmp(pdt{2}(1),'P')
+        chd = 2; winkeep = [0  max(dat_out(itr).tt)+2]; tapertime=1;
+    elseif strcmp(pdt{2}(1),'S'), 
+        chd = 1; winkeep = [min(dat_out(itr).tt)-2 -0.5]; tapertime=1.5;
+    end 
+    [ dat_out(itr).PSV(:,chd) ] = flat_hanning_win(dat_out(itr).tt,dat_out(itr).PSV(:,chd),winkeep(1),winkeep(2),tapertime);
+end
     
 %% make cp
 cp = struct('samprate',dat_in(itr).samprate,                 ...
             'pretime',-dat_out(itr).tt(1),  ...
-            'prex',-par.datprocess.Twin.(dtype)(1),     ...
-            'postx',par.datprocess.Twin.(dtype)(2),     ...                 
-            'fhi',par.datprocess.filtf.(dtype)(1),      ...
-            'flo',par.datprocess.filtf.(dtype)(2),      ...
-            'taperx',0.06,'npoles',2,'norm',0           );
+            'prex',-par.datprocess.(pdt{2}).Twin.(pdt{3})(1),     ...
+            'postx',par.datprocess.(pdt{2}).Twin.(pdt{3})(2),     ...                 
+            'fhi',par.datprocess.(pdt{2}).filtf.(pdt{4})(1),      ...
+            'flo',par.datprocess.(pdt{2}).filtf.(pdt{4})(2),      ...
+            'taperx',0.02,'npoles',2,'norm',0           );
 
 
 %% clean, filter, window, taper
-[ dat_out(itr).ZRT,~,~,~,~,dat_out(itr).tt,~ ] = data_clean(dat_out(itr).ZRT,cp);
+[ dat_out(itr).PSV,~,~,~,~,dat_out(itr).tt,~ ] = data_clean(dat_out(itr).PSV,cp);
 % apply windowing (i.e. cut out the zeros from existing taper)
-gdind = find( (dat_out(itr).tt>= par.datprocess.Twin.(dtype)(1)) & (dat_out(itr).tt < par.datprocess.Twin.(dtype)(2)) );
-dat_out(itr).ZRT = dat_out(itr).ZRT(gdind,:);
+gdind = find( (dat_out(itr).tt>= par.datprocess.(pdt{2}).Twin.(pdt{3})(1)) & (dat_out(itr).tt < par.datprocess.(pdt{2}).Twin.(pdt{3})(2)) );
+dat_out(itr).PSV = dat_out(itr).PSV(gdind,:);
 dat_out(itr).tt = dat_out(itr).tt(gdind,:);
 dat_out(itr).nsamp = length(dat_out(itr).tt);
 
 %% cut some of main arrival
+if par.datprocess.clipmain 
+    [ dat_out(itr).PSV ] = clip_main_arrival( dat_out(itr).PSV,dat_out(itr).tt,1./cp.fhi,pdt{2}(1) );
+end
 % inwind = (tt_ps >= par.datprocess.Twin.PsRF(1)) & (tt_ps <= par.datprocess.Twin.PsRF(2)); 
 % % crop
 % predat_ps = predat_ps(inwind,:);
 % tt_ps = tt_ps(inwind);
 
-if par.datprocess.clipmain 
-    [ dat_out(itr).ZRT ] = clip_main_arrival( dat_out(itr).ZRT,dat_out(itr).tt,1./cp.fhi,dtype(1) );
-end
 
-%% normalise to unit energy
-if par.datprocess.normdata && ~isempty(dat_out(itr).ZRT)
-    normf_ps = dat_out(itr).ZRT(:,1)'*dat_out(itr).ZRT(:,1) + ...
-               dat_out(itr).ZRT(:,2)'*dat_out(itr).ZRT(:,2) + ...
-               dat_out(itr).ZRT(:,3)'*dat_out(itr).ZRT(:,3);
-    dat_out(itr).ZRT = dat_out(itr).ZRT/sqrt(normf_ps);
+% inwind = (tt_ps >= par.datprocess.Twin.PsRF(1)) & (tt_ps <= par.datprocess.Twin.PsRF(2)); 
+% % crop
+% predat_ps = predat_ps(inwind,:);
+% tt_ps = tt_ps(inwind);
+
+
+%% normalise to unit energy, flip so max is positive
+if par.datprocess.normdata && ~isempty(dat_out(itr).PSV)
+    norm2f_ps = dat_out(itr).PSV(:,1)'*dat_out(itr).PSV(:,1) + ...
+               dat_out(itr).PSV(:,2)'*dat_out(itr).PSV(:,2);
+    dat_out(itr).PSV = dat_out(itr).PSV/sqrt(norm2f_ps)./sign(maxab(dat_out(itr).PSV(:)));
 end
     
 %% decimate
-if par.datprocess.decdata && ~isempty(dat_out(itr).ZRT)
+if par.datprocess.decdata && ~isempty(dat_out(itr).PSV)
     resamprate = cp.fhi*4;
     tt_new = [dat_out(itr).tt(1):1./resamprate:dat_out(itr).tt(end)]';
-    dat_out(itr).ZRT = interp1(dat_out(itr).tt,dat_out(itr).ZRT,tt_new);
+    dat_out(itr).PSV = interp1(dat_out(itr).tt,dat_out(itr).PSV,tt_new);
     dat_out(itr).tt = tt_new;
     dat_out(itr).nsamp = length(dat_out(itr).tt);
     dat_out(itr).samprate=resamprate;

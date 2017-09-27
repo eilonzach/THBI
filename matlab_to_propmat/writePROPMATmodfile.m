@@ -10,8 +10,11 @@ function writePROPMATmodfile( model1D,modfile )
 %   .Vp     - Vp (m/s)
 %   .Vs     - Vs (m/s)
 %   .rho    - density (kg/m^3)
-%   .VpAnis - Vp anisotropy percent (peak-to-peak)
-%   .VsAnis - Vs anisotropy percent (peak-to-peak)
+%   .xi     - S radial anisotropy (Vsh/Vsv)^2
+%   .phi    - S radial anisotropy (Vpv/Vph)^2
+%   .eta    - eta factor, F/(A-2L)
+%   .VpAnis - Vp azimuthal anisotropy percent (peak-to-peak)
+%   .VsAnis - Vs azimuthal anisotropy percent (peak-to-peak)
 %   .faz    - azimuth of fast axis of anisotropy (deg from N)
 %   .fpl    - plunge of fast axis of anisotropy (deg from horiz)
 %   .intstr - strike of dipping interface (deg from N)
@@ -23,6 +26,7 @@ nlay = length(model1D.zlayt);
 % defaults
 wmod = struct('thick',model1D.zlayb(:)-model1D.zlayt(:),...
               'rho',nan(nlay,1),'alph',nan(nlay,1),'beta',nan(nlay,1),...
+              'xi',ones(nlay,1),'phi',ones(nlay,1),'eta',ones(nlay,1),...
               'iso',ones(nlay,1),'Panis',zeros(nlay,1),'Sanis',zeros(nlay,1),...
               'tr',ones(nlay,1),'pl',zeros(nlay,1),...
               'strk',zeros(nlay,1),'dip',zeros(nlay,1));          
@@ -31,9 +35,9 @@ wmod = struct('thick',model1D.zlayb(:)-model1D.zlayt(:),...
 modparms = fieldnames(model1D);
 for ii = 1:length(modparms)
     switch modparms{ii}
-        case {'Vp','Vpv','vpv'}
+        case {'Vp'}
             wmod.alph = model1D.(modparms{ii});
-        case {'Vs','Vsv','vsv'}
+        case {'Vs'}
             wmod.beta = model1D.(modparms{ii});
         case {'rho','density'}
             wmod.rho = model1D.(modparms{ii});
@@ -41,30 +45,33 @@ for ii = 1:length(modparms)
             wmod.Panis = model1D.(modparms{ii});
         case {'Sanis','Vs_anis','anisS'}
             wmod.Sanis = model1D.(modparms{ii});    
+        case {'xi','Xi','VshVsv'}
+            wmod.xi = model1D.(modparms{ii});    
+        case {'phi','Phi','VpvVph'}
+            wmod.phi = model1D.(modparms{ii});    
+        case {'eta','Eta'}
+            wmod.eta = model1D.(modparms{ii});    
     end
 end
 
-% Lamé parameters
 
-xs = wmod.beta.*(1 - wmod.Sanis/100); % if no anis, is just Vs
-ys = wmod.beta.*(1 + wmod.Sanis/100); % if no anis, is just Vs
-xp = wmod.alph.*(1 - wmod.Panis/100); % if no anis, is just Vp
-yp = wmod.alph.*(1 + wmod.Panis/100); % if no anis, is just Vp
+%% Radial anisotropy
+[ ys,xs ] = VsvVsh_from_VsXi( wmod.beta,model1D.xi );
+[ yp,xp ] = VpvVph_from_VpPhi( wmod.alph,model1D.phi );
 
 anisflag = zeros(nlay,1);
 for kk = 1:nlay
-    if (xs==ys) & (xp==yp), 
+    if all((xs==ys) & (xp==yp) & (wmod.eta==ones(nlay,1))) 
         anisflag(kk) = 1;
     else
         anisflag(kk) = 1;
     end
 end
-eta = 1;
-A = wmod.rho .* xp.^2; % if no anis, is just P-wave modulus
-C = wmod.rho .* yp.^2; % if no anis, is just P-wave modulus
-L = wmod.rho .* ys.^2; % if no anis, is just shear modulus
-N = wmod.rho .* xs.^2; % if no anis, is just shear modulus
-F = eta*(A - 2*L);     % if no anis, is just lambda
+A = wmod.rho .* xp.^2; % if no anis, xp just P-wave modulus
+C = wmod.rho .* yp.^2; % if no anis, yp just P-wave modulus
+L = wmod.rho .* ys.^2; % if no anis, ys just shear modulus
+N = wmod.rho .* xs.^2; % if no anis, xs just shear modulus
+F = wmod.eta.*(A - 2*L);     % if no anis, is just lambda
 
 %% write model  file
 fid = fopen(modfile,'w');
