@@ -126,7 +126,7 @@ switch ptbopts{optflag} % decide what to modify
                     end
                     model.crustmparm.knots(isp2mod) = z0 + dz; % insert perturbed val  
                     model.crustmparm.knots = sort(model.crustmparm.knots);
-                    if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
+%                     if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
 
                     model.crustmparm.fknots = (model.crustmparm.knots-zmi)/(zma-zmi); % insert perturbed frac  
                     model.crustmparm.splines = make_splines(model.crustmparm.knots,par,model.crustmparm.z_sp);
@@ -184,7 +184,8 @@ switch ptbopts{optflag} % decide what to modify
                     end
                     model.mantmparm.knots(isp2mod) = z0 + dz; % insert perturbed val  
                     model.mantmparm.knots = sort(model.mantmparm.knots);
-                    if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot                    
+%                     if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot                    
+
                     model.mantmparm.fknots = (model.mantmparm.knots-zmi)/(zma-zmi); % insert perturbed frac  
                     model.mantmparm.splines = make_splines(model.mantmparm.knots,par,model.mantmparm.z_sp);
                     if par.inv.verbose, fprintf('    Moved mantle knot %.0f from %.2f to %.2f\n',isp2mod,z0,z0+dz); end
@@ -283,8 +284,8 @@ switch ptbopts{optflag} % decide what to modify
                         cminz = model.crustmparm.knots(1);
                         cmaxz = model.crustmparm.knots(end);
                         
-                        if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
-                        if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
+%                         if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
+%                         if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
 
                         
                         model.sedmparm.h = cminz;
@@ -391,8 +392,8 @@ switch ptbopts{optflag} % decide what to modify
                             model.mantmparm.knots = sort(model.mantmparm.knots);  
                             model.crustmparm.knots(end) = model.mantmparm.knots(1);
                         end
-                        if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
-                        if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
+%                         if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
+%                         if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
 
                         
                         % -------- modify splines in crust -------- 
@@ -475,7 +476,7 @@ switch ptbopts{optflag} % decide what to modify
                     maxz = zci(end-1);
                     znewk = random('unif',minz,maxz); % depth of new knot
                     model.crustmparm.knots = sort([model.crustmparm.knots;znewk]); % new vector of knots
-                    if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
+%                     if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
                     model.crustmparm.fknots = (model.crustmparm.knots-zci(1))/(zci(end)-zci(1));
                     % new splines from old vels
                     [model.crustmparm.splines,model.crustmparm.VS_sp] ...
@@ -542,7 +543,7 @@ switch ptbopts{optflag} % decide what to modify
                     maxz = zmi(end-1);
                     znewk = random('unif',minz,maxz); % depth of new knot
                     model.mantmparm.knots = sort([model.mantmparm.knots;znewk]); % new vector of knots
-                    if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
+%                     if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
                     model.mantmparm.fknots = (model.mantmparm.knots-zmi(1))/(zmi(end)-zmi(1));
                     % new splines from old vels
                     [model.mantmparm.splines,model.mantmparm.VS_sp] ...

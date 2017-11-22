@@ -61,6 +61,7 @@ for iii = 1:nchains
     end
     Xnsp = midpts([0:1:par.mod.mantle.kmax+par.mod.crust.kmax+2]);
     pnsp = hist(Nsp([am.bestmods]),Xnsp)/sum([am.bestmods]);
+    knlim = 2+[par.mod.mantle.kmin+par.mod.crust.kmin,par.mod.mantle.kmax+par.mod.crust.kmax]; if diff(knlim)==0, knlim = knlim+[-0.5 0.5]; end
     
     %% plotting
 
@@ -84,14 +85,14 @@ for iii = 1:nchains
     % # of splines
     plot(ax3,[am.iter],Nsp,'.','color',[0.8 0.8 0.8])
     plot(ax3,[am([am.bestmods]).iter],Nsp([am.bestmods]),'o','color',basecol,'markerfacecolor',basecol)
-    set(ax3,'fontsize',15,'ylim',2+[par.mod.mantle.kmin+par.mod.crust.kmin,par.mod.mantle.kmax+par.mod.crust.kmax]) 
+    set(ax3,'fontsize',15,'ylim',knlim) 
     xlabel(ax3,'Iteration','fontsize',20)
     
     % pdf of splines
     fill(ax4,pnsp,Xnsp,basecol)
     plot(ax4,pnsp,Xnsp,'k')
     set(ax4,'fontsize',15,...
-        'ylim',2+[par.mod.mantle.kmin+par.mod.crust.kmin,par.mod.mantle.kmax+par.mod.crust.kmax],...
+        'ylim',knlim,...
         'xlim',[0,1.05*max(pnsp)]) 
     
 end 

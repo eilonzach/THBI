@@ -1,63 +1,69 @@
 close all
 clear all
+avardir = 'STA_inversions/RSSD_dat20/';% need final slash
 station = 'RSSD';
 network = 'IU';
-gcarc_av = 71;
+gcarc_av = 69;
+baz_av = 147;
 
 RFphase = {'Ps','Sp'};
 filtfs = [[1/50 ;1/4],[1/2000;1/5]];
 npoles = 4;
-wdo = [-30 30];
+wdo = [-40 40];
 tapertime = 5;
 
-ifsave = true;
+ifsave = false;
 
-load(sprintf('avar_dat_%s_%s_%.0f',station,network,gcarc_av));
+load(sprintf('%savar_dat_%s_%s_%.0f_%.0f',avardir,station,network,gcarc_av,baz_av));
 
 addpath('plotting','matguts','../functions')
-[~,~,vslay] = RD_1D_Vprofile;
+% [~,~,vslay] = RD_1D_Vprofile;
+% Vs_surf = vslay(1);
+% Vp_surf = sed_vs2vp(Vs_surf);
+% Vs_surf = 3.5;
+% Vp_surf = 1.68*Vs_surf;
 
-Vs_surf = vslay(1);
-Vp_surf = sed_vs2vp(Vs_surf);
+
+
 for ip = 1:length(RFphase)
     ph = RFphase{ip};
     
     rayp_skm = rayp_sdeg2skm(avar.rayp(ip));
     
     %% Get data, filter
-    datR = avar.dataZRT(:,2,ip);
-    datZ = avar.dataZRT(:,1,ip);
+    datSV = avar.dataPSVSH(:,2,ip);
+    datP = avar.dataPSVSH(:,1,ip);
     tt = avar.tt(:,ip); 
     
     %% Window
-    datR = flat_hanning_win(tt,datR,wdo(1),wdo(2),tapertime);
-    datZ = flat_hanning_win(tt,datZ,wdo(1),wdo(2),tapertime);
-    datR = datR(tt>=wdo(1) & tt < wdo(2));
-    datZ = datZ(tt>=wdo(1) & tt < wdo(2));
+    datSV = flat_hanning_win(tt,datSV,wdo(1),wdo(2),tapertime);
+    datP = flat_hanning_win(tt,datP,wdo(1),wdo(2),tapertime);
+    datSV = datSV(tt>=wdo(1) & tt < wdo(2));
+    datP = datP(tt>=wdo(1) & tt < wdo(2));
     tt = tt(tt>=wdo(1) & tt < wdo(2));
     
     figure(ip); 
     subplot(311)
-    plot(tt,datR,'r',tt,datZ,'k')
+    plot(tt,datSV,'r',tt,datP,'k')
     samprate = unique(round(1./diff(tt)));
     
-    datR = filt_quick(datR,filtfs(1,ip),filtfs(2,ip),1./samprate,npoles);
-    datZ = filt_quick(datZ,filtfs(1,ip),filtfs(2,ip),1./samprate,npoles);
+    datSV = filt_quick(datSV,filtfs(1,ip),filtfs(2,ip),1./samprate,npoles);
+    datP = filt_quick(datP,filtfs(1,ip),filtfs(2,ip),1./samprate,npoles);
     
     subplot(312)
-    plot(tt,datR,'r',tt,datZ,'k'),%pause
+    plot(tt,datSV,'r',tt,datP,'k'),%pause
     
 
     % rotate to P-SV
-    [P,SV] = Rotate_XZ_to_PSV(datR,datZ,Vp_surf,Vs_surf,rayp_skm);
+%     [P,SV] = Rotate_XZ_to_PSV(datSV,datP,Vp_surf,Vs_surf,rayp_skm);
     
     subplot(313)
-    plot(tt,P,'r',tt,SV,'k'),%pause
+    plot(tt,datP,'r',tt,datSV,'k'),%pause
     
-    pow = max(max(abs([P,SV])));
-    P = P./pow; 
-    SV = SV./pow;
-    plot(tt,P,'k',tt,SV,'r')
+    pow = max(max(abs([datP,datSV])));
+    datP = datP./pow; 
+    datSV = datSV./pow;
+    plot(tt,datP,'k',tt,datSV,'r')
 
     % Receiver function
     TB = 1.5;%1.5
@@ -65,9 +71,9 @@ for ip = 1:length(RFphase)
     w_len = 60;
     Poverlap = 0.9;
     if strcmp(ph,'Sp')
-        Parent = SV; Daughter = P;
+        Parent = datSV; Daughter = datP;
     elseif strcmp(ph,'Ps')
-        Parent = P; Daughter = SV;
+        Parent = datP; Daughter = datSV;
     end
 
     % taper Parent and daughter
