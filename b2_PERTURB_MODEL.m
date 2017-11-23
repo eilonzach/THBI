@@ -426,7 +426,7 @@ switch ptbopts{optflag} % decide what to modify
                             zmi = model.z(imzt:end);
                             vmi = model.VS(imzt:end);
                         elseif dh<0
-                             zmi = [model.zmoh+dh;model.z(imzt:end)];
+                             zmi = [cmaxz;model.z(imzt:end)];
                              vmi = [model.VS(imzt);model.VS(imzt:end)];
                         end
                         
