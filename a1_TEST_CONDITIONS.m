@@ -93,34 +93,56 @@ end
 is0 = 1:find(model.z==model.zsed,1,'first');  if model.zsed==0, is0 = 0; end
 ic0 = is0(end)+1:find(model.z==model.zmoh,1,'first');
 im0 = ic0(end)+1:model.Nz;
-if model.zsed~=0 && any(model.VS(is0)<par.mod.sed.vsmin); 
+if model.zsed~=0 && any(model.VS(is0)<par.mod.sed.vsmin)
     ifpass = false;
     if ifverbose,fprintf('Failed: Sed VS < %.2f km/s\n',par.mod.sed.vsmin); end        
     return
 end
-if model.zsed~=0 && any(model.VS(is0)>par.mod.sed.vsmax);  
+if model.zsed~=0 && any(model.VS(is0)>par.mod.sed.vsmax)  
     ifpass = false;
     if ifverbose,fprintf('Failed: Sed VS > %.2f km/s\n',par.mod.sed.vsmax); end        
     return
 end
-if any(model.VS(ic0)<par.mod.crust.vsmin); 
+if any(model.VS(ic0)<par.mod.crust.vsmin) 
     ifpass = false;
     if ifverbose,fprintf('Failed: Crust VS < %.2f km/s\n',par.mod.crust.vsmin); end        
     return
 end
-if any(model.VS(ic0)>par.mod.crust.vsmax); 
+if any(model.VS(ic0)>par.mod.crust.vsmax) 
     ifpass = false;
     if ifverbose,fprintf('Failed: Crust VS > %.2f km/s\n',par.mod.crust.vsmax); end        
     return
 end
-if any(model.VS(im0)<par.mod.mantle.vsmin); 
+if any(model.VS(im0)<par.mod.mantle.vsmin) 
     ifpass = false;
     if ifverbose,fprintf('Failed: Mantle VS < %.2f km/s\n',par.mod.mantle.vsmin); end        
     return
 end
-if any(model.VS(im0)>par.mod.mantle.vsmax); 
+if any(model.VS(im0)>par.mod.mantle.vsmax) 
     ifpass = false;
     if ifverbose,fprintf('Failed: Mantle VS > %.2f km/s\n',par.mod.mantle.vsmax); end        
+    return
+end
+
+% indiv. knots
+if any(model.crustmparm.VS_sp<par.mod.crust.vsmin) 
+    ifpass = false;
+    if ifverbose,fprintf('Failed: A Crust VS spline < %.2f km/s\n',par.mod.crust.vsmin); end        
+    return
+end
+if any(model.crustmparm.VS_sp>par.mod.crust.vsmax) 
+    ifpass = false;
+    if ifverbose,fprintf('Failed: A Crust VS spline > %.2f km/s\n',par.mod.crust.vsmax); end        
+    return
+end
+if any(model.mantmparm.VS_sp<par.mod.mantle.vsmin)
+    ifpass = false;
+    if ifverbose,fprintf('Failed: A Mantle VS spline < %.2f km/s\n',par.mod.mantle.vsmin); end        
+    return
+end
+if any(model.mantmparm.VS_sp>par.mod.mantle.vsmax) 
+    ifpass = false;
+    if ifverbose,fprintf('Failed: A Mantle VS spline > %.2f km/s\n',par.mod.mantle.vsmax); end        
     return
 end
 

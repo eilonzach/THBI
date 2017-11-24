@@ -28,6 +28,7 @@ model0 = model;
 ptbopts = {'ptb_Vmod','ptb_disc','ptb_Mmod','ptb_sigdat'};
 % opt_rel_P = [3,2,2,1]; % relative probabilities of altering each one
 opt_rel_P = [3,2,2,1];
+% opt_rel_P = [0,1,0,0];
 
 opt_plim = cumsum(opt_rel_P)/sum(opt_rel_P);
 

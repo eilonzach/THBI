@@ -34,7 +34,7 @@ par_ORIG = par;
 save([resdir,'/par_',STAMP],'par');
 copyfile('bayes_inv_parms.m',[resdir,STAMP,'_parms.m']);
 
-for id = 1:length(par.inv.datatypes);
+for id = 1:length(par.inv.datatypes)
     allpdytp(id,:)=parse_dtype(par.inv.datatypes{id});
 end
 
@@ -109,7 +109,9 @@ for ii = 1:par.inv.niter
         while ifpass==0
             [model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
             ifpass = a1_TEST_CONDITIONS( model1, par );
-            if ~ifpass, if par.inv.verbose, fprintf('  nope\n'); end; end
+            if ~ifpass, 
+                if par.inv.verbose, fprintf('  nope\n'); end; 
+            end
         end
     end
     
@@ -132,7 +134,7 @@ for ii = 1:par.inv.niter
     end
     
     
-end % oniterations
+end % on iterations
 %% -------------------------- End iteration  ------------------------------
 fprintf('\n =========== ENDING ITERATIONS %s ===========\n',char(64+iii))
 
@@ -156,7 +158,7 @@ allmodels_collated = dealto(allmodels_collated,'bestmods',true(length(allmodels_
 for iii = 1:par.inv.nchains, allmodels_perchain{iii} = dealto(allmodels_perchain{iii},'bestmods',true(length(allmodels_perchain{iii}),1)); end
 % [ hypparm_trends ] = plot_HYPERPARAMETER_TRENDS( allmodels_perchain,[resdir,'/hyperparmtrend.pdf'] );
 plot_KNOT_TRENDS( allmodels_perchain,par,[resdir,'/knottrends']  )
-
+load prior
 posterior = c2_BUILD_POSTERIOR(allmodels_collated,par);
 
 fprintf('  > Plotting posterior\n')
