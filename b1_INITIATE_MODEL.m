@@ -45,7 +45,7 @@ xi_mantle = random('unif',mod.mantle.ximin,mod.mantle.ximax);
 
 % impose monotonic increase conditions:
 vs_sed = sort(vs_sed);
-kvs_crust = sort(kvs_crust);
+% kvs_crust = sort(kvs_crust);
 
 %% SEDIMENT PARMS
 sed = struct('h',h_sed,'VS',vs_sed);
