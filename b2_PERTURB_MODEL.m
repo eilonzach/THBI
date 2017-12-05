@@ -467,6 +467,8 @@ switch ptbopts{optflag} % decide what to modify
                 zci = model.z(iczt:iczb);
                 vci = model.VS(iczt:iczb);
                 
+                k = model.crustmparm.Nkn;
+                
                 if add_or_rm == 1 % ADDING a layer
                     if model.crustmparm.Nkn+1>par.mod.crust.kmax, continue, end % can't add more than max knots
                     % add knot
@@ -490,16 +492,22 @@ switch ptbopts{optflag} % decide what to modify
                     vmin = par.mod.crust.vsmin;
                     std = temp.*par.mod.crust.vsstd; % get std of perturbation
                     ifgd = false;
+                    
+                    kk=0;badness=false;
                     while ifgd==false % only do perturbation within the permitted bounds
                     dV = random('norm',0,std,1); % calc. random perturbation
                     if length(isp2mod)>1, dV = [dV/2;-dV/2]; end
                     if all(V0+dV <= vmax) && all(V0+dV >= vmin), ifgd = true; end
+                    kk=kk+1;
+                    if kk>100, badness=true; break; end
                     end
+                    if badness, badness=false; continue; end
+                    
                     model.crustmparm.VS_sp(isp2mod) = V0 + dV; % insert perturbed val 
                     % prob of the new velocity - see Bodin 2016 eqn D4
                     if length(isp2mod)>1, absdV = diff(dV); else absdV = abs(dV); end
                     % probability of birth
-%                     qV2_vnewk = q_v_given_V( 0,absdV,std );
+%                     qV2_vnewk = q_v_given_V( 0,dV,std );
 %                     DeltaV = vmax-vmin;
 %                     qV = qV2_vnewk*DeltaV;
 %                     p_bd = (1./qV) * k/(k+1);
@@ -510,6 +518,7 @@ switch ptbopts{optflag} % decide what to modify
                     
                 elseif add_or_rm == 2 % REMOVING a layer
                     if model.crustmparm.Nkn-1<par.mod.crust.kmin, continue, end % can't have fewer than min knots
+                    oldknots = model.crustmparm.knots;
                     isp2rm = 1+randi(model.crustmparm.Nkn-2); % can't remove an edge one
                     V0 = model.crustmparm.VS_sp(isp2rm); zv0 = model.crustmparm.knots(isp2rm);
                     model.crustmparm.knots(isp2rm) = []; % remove selected knot
@@ -535,7 +544,9 @@ switch ptbopts{optflag} % decide what to modify
                 imzt = find(model.z==model.zmoh,1,'last');
                 zmi = model.z(imzt:end);
                 vmi = model.VS(imzt:end);
-                            
+                
+                k = model.mantmparm.Nkn;
+
                 if add_or_rm == 1 % ADDING a layer
                     if model.mantmparm.Nkn+1>par.mod.mantle.kmax, continue, end % can't add more than max knots
                     model.mantmparm.Nkn = model.mantmparm.Nkn+1;
