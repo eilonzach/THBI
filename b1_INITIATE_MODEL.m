@@ -30,8 +30,10 @@ mod = par.mod;
 h_sed = random('unif',mod.sed.hmin,mod.sed.hmax);
 h_crust = random('unif',mod.crust.hmin,mod.crust.hmax);
 
-k_crust = mod.crust.kmin + ceil(random('unid',mod.crust.kmax-mod.crust.kmin+1)/2)-1;
-k_mantle = mod.mantle.kmin + ceil(random('unid',mod.mantle.kmax-mod.mantle.kmin+1)/3)-1;
+% k_crust = mod.crust.kmin + ceil(random('unid',mod.crust.kmax-mod.crust.kmin+1)/2)-1;
+% k_mantle = mod.mantle.kmin + ceil(random('unid',mod.mantle.kmax-mod.mantle.kmin+1)/3)-1;
+k_crust = mod.crust.kmin + random('unid',mod.crust.kmax-mod.crust.kmin+1)-1;
+k_mantle = mod.mantle.kmin + random('unid',mod.mantle.kmax-mod.mantle.kmin+1)-1;
 
 vs_sed = random('unif',mod.sed.vsmin,mod.sed.vsmax,2,1);
 kvs_crust = random('unif',mod.crust.vsmin,mod.crust.vsmax,k_crust+1,1);
