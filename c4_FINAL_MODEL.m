@@ -15,6 +15,8 @@ o4 = ones(1,4);
 % don't use pre burn-in models!
 allmodels([allmodels.bestmods]'==false) =  []; 
 
+Nm = posterior.Nstored;
+
 
 %% ===================== GATHER MODELS, FIT WITH GAUSSIANS ================
 %% DISCONTINUITIES
@@ -38,13 +40,32 @@ else
     [Zd(2).std,Zd(2).mu] = gaussfit( X, Nds,(X(end)-X(1))/4, mean(X(Nds==max(Nds))) );
 end
 
+%% Vp/Vs
+vord = sort(posterior.vpvs);
+final_model.vpvsav = vord(round(0.5*Nm));      % median value
+final_model.vpvsminmax = [vord([round(0.005*Nm) round(0.995*Nm)])];
+final_model.vpvssig1 = [vord([round(0.3173*Nm) round(0.6827*Nm)])];
+final_model.vpvssig2 = [vord([round(0.055*Nm) round(0.9545*Nm)])];
+
+%% xi
+vord = sort(posterior.xicrust);
+final_model.xicrav = vord(round(0.5*Nm));      % median value
+final_model.xicrminmax = [vord([round(0.005*Nm) round(0.995*Nm)])];
+final_model.xicrsig2 = [vord([round(0.055*Nm) round(0.9545*Nm)])];
+
+vord = sort(posterior.ximant);
+final_model.ximaav = vord(round(0.5*Nm));      % median value
+final_model.ximaminmax = [vord([round(0.005*Nm) round(0.995*Nm)])];
+final_model.ximasig2 = [vord([round(0.055*Nm) round(0.9545*Nm)])];
+
+
+
 %% Loop through depths obtaining max/min
 Z = sort(unique([[0:par.mod.dz:par.mod.maxz],...
                  Zd(1).mu+[0,-3*Zd(1).std:0.1:3*Zd(1).std],...
                  Zd(2).mu+[0,-3*Zd(2).std:0.2:3*Zd(2).std]]')); 
              Z(Z<0)=[];
 Nz = length(Z);
-Nm = posterior.Nstored;
 
 fprintf('  > Gathering models (layer-wise)\n    & fitting gaussians to each parm/depth\n      ')
 

@@ -72,12 +72,19 @@ if nargin > 4 && ~isempty(lalo)
     vp = squeeze(model.Vpv(mindex(model.lon,mod(lalo(2),360)),mindex(model.lat,lalo(1)),:));
     Z = model.Z;
 
-else 
+else
+    global TRUEmodel;
+    if isstruct(TRUEmodel)
+        vs = TRUEmodel.VS;
+        vp = TRUEmodel.VP;
+        Z = TRUEmodel.z;
+    else
     % read in prem
     PRmodel = prem('depths',sm.Z);
     vs = PRmodel.vs;
     vp = PRmodel.vp;
     Z = sm.Z;
+    end
 end
 plot(ax1,vs,Z,'-r','Linewidth',1.5);
 plot(ax2,vp,Z,'-r','Linewidth',1.5);
