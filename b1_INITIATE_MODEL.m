@@ -32,8 +32,10 @@ h_crust = random('unif',mod.crust.hmin,mod.crust.hmax);
 
 % k_crust = mod.crust.kmin + ceil(random('unid',mod.crust.kmax-mod.crust.kmin+1)/2)-1;
 % k_mantle = mod.mantle.kmin + ceil(random('unid',mod.mantle.kmax-mod.mantle.kmin+1)/3)-1;
-k_crust = mod.crust.kmin + random('unid',mod.crust.kmax-mod.crust.kmin+1)-1;
-k_mantle = mod.mantle.kmin + random('unid',mod.mantle.kmax-mod.mantle.kmin+1)-1;
+% k_crust = mod.crust.kmin + random('unid',mod.crust.kmax-mod.crust.kmin+1)-1;
+% k_mantle = mod.mantle.kmin + random('unid',mod.mantle.kmax-mod.mantle.kmin+1)-1;
+k_crust = sample_Jeffreys( 1,mod.crust.kmax,mod.crust.kmin);
+k_mantle = sample_Jeffreys( 1,mod.mantle.kmax,mod.mantle.kmin);
 
 vs_sed = random('unif',mod.sed.vsmin,mod.sed.vsmax,2,1);
 kvs_crust = random('unif',mod.crust.vsmin,mod.crust.vsmax,k_crust+1,1);
@@ -58,8 +60,10 @@ cmaxz = h_sed+h_crust;
 zc = unique([cminz:mod.dz:cmaxz,cmaxz])';
 
 % set up splines
-fcknots = linspace(0,1,k_crust)';
-cknots = cminz + (cmaxz-cminz)*fcknots; % linearly spaced knots
+% fcknots = linspace(0,1,k_crust)';% linearly spaced knots
+% cknots = cminz + (cmaxz-cminz)*fcknots; % linearly spaced knots
+fcknots = sort(rand(k_crust-2,1));  % randomly spaced knots
+cknots = [cminz ; cminz+(cmaxz-cminz)*fcknots ; cmaxz];
 
 [spbasis]=make_splines(cknots,par,zc,zc);
 
@@ -72,8 +76,10 @@ mmaxz = mod.maxz + selev;
 zm = unique([mminz:mod.dz:mmaxz,mmaxz])';
 
 % set up splines
-fmknots_ = linspace(0,1,k_mantle-1)';  % linearly spaced knots
-mknots = [mminz + (mod.maxkz-mminz)*fmknots_ ; mmaxz];
+% fmknots_ = linspace(0,1,k_mantle-1)';  % linearly spaced knots
+% mknots = [mminz + (mod.maxkz-mminz)*fmknots_  ; mmaxz];
+fmknots_ = sort(rand(k_mantle-3,1));  % randomly spaced knots
+mknots = [mminz ; mminz+(mod.maxkz-mminz)*fmknots_ ; mod.maxkz ; mmaxz];
 fmknots = (mknots - mminz)./(mmaxz-mminz);
 
 [spbasis] = make_splines(mknots,par,zm,zm);

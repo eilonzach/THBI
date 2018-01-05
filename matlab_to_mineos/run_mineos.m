@@ -60,8 +60,14 @@ phi = 1 + model.Panis/100;  % assumes Panis is a percentage of anis about zero
 [ vpv,vph ] = VpvVph_from_VpPhi( model.VP,phi );
 
 %% write MINEOS executable and input files format
-write_cardfile(cardfile,model.z,vpv,vsv,model.rho,[],[],vph,vsh);
-% writeMINEOSmodefile(modefile, ) 
+if ischar(model) && exist(model,'file')==2
+    cardfile = model;
+    delcard = false;
+else
+	write_cardfile(cardfile,model.z,vpv,vsv,model.rho,[],[],vph,vsh);
+    delcard =true;
+end
+
 writeMINEOSexecfile( execfile,cardfile,modefile,qmod,eigfile,ofile1,qfile,logfile);
 system(['chmod u+x ' execfile]);
 
@@ -76,7 +82,12 @@ if ifverbose
 end
 %% read modes output
 if status~=124
+    try
     [phV,grV] = readMINEOS_qfile(qfile,swperiods);
+    catch
+        fprintf('some error - check model file layers not too thin!\n')
+        error
+    end
     phV = phV(:);
     grV = grV(:);
 else 
@@ -87,8 +98,9 @@ end
 
 %% delete files
 if ifdelete
-    delete(execfile,cardfile,eigfile,ofile1,qfile);
+    delete(execfile,eigfile,ofile1,qfile);
     if exist(logfile,'file')==2, delete(logfile); end
+    if delcard, delete(cardfile); end
 end
 cd(wd);
 

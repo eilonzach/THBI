@@ -14,7 +14,8 @@ prior = struct('Niter',Niter','Npass',0,...
                'kcrust',o,'kmantle',o,...
                'VSsedtop',o,'VSsedbot',o,'VScrusttop',o,'VScrustbot',o,...
                'VSmantle',repmat(o,1,6),'zatdep',zeros(6,1),...
-               'fdVSsed',o,'fdVSmoh',o,'vpvs',o);
+               'Zkn_crust',nan(1,par.mod.crust.kmax),'Zkn_mantle',nan(1,par.mod.mantle.kmax),...
+               'fdVSsed',o,'fdVSmoh',o,'vpvs',o,'cxi',o,'mxi',o);
 
 if nargin<3 || isempty(zatdep)
     prior.zatdep = linspace(par.mod.sed.hmax+par.mod.crust.hmin+0.1,par.mod.maxz,50)';
@@ -29,7 +30,7 @@ parprior(Niter) = prior(1); % set last val to give prior right dimension
 passed = zeros(Niter,1);
            
 for kk = 1:Niter
-    model = b1_INITIATE_MODEL(par);
+    model = b1_INITIATE_MODEL(par,0,1);
     ifpass = a1_TEST_CONDITIONS( model, par );
     
     if ~ifpass, continue; end
@@ -47,6 +48,8 @@ for kk = 1:Niter
     parprior(kk).VSmantle(1,:) = linterp(model.z,model.VS,prior.zatdep);
     parprior(kk).fdVSsed = model.fdVSsed;
     parprior(kk).fdVSmoh = model.fdVSmoh;
+    parprior(kk).Zkn_crust(1:model.crustmparm.Nkn-2) = model.crustmparm.knots(2:end-1);
+    parprior(kk).Zkn_mantle(1:model.mantmparm.Nkn-2) = model.mantmparm.knots(2:end-1);    
     parprior(kk).vpvs = model.crustmparm.vpvs;    
     parprior(kk).cxi = model.crustmparm.xi;    
     parprior(kk).mxi = model.mantmparm.xi;    

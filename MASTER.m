@@ -104,7 +104,8 @@ plot_TRUvsPRE(trudata,trudata);
 
 % PRIOR
 fprintf('  > Building prior distribution from %.0f runs\n',min([par.inv.niter,1e4]))
-prior = a2_BUILD_PRIOR(par,min([par.inv.niter,1e4]));
+zatdep = [5:5:par.mod.maxz]';
+prior = a2_BUILD_PRIOR(par,min([par.inv.niter,1e5]),zatdep);
 plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
 save([resdir,'/prior'],'prior');
 
@@ -161,7 +162,7 @@ fail_chain = 0;
 reset_likelihood;
 fprintf('\n =========== STARTING ITERATIONS ===========\n')
 for ii = 1:par.inv.niter
-    fprintf('Iteration %.0f\n',ii); 
+    if rem(ii,100)==0, fprintf('Iteration %.0f\n',ii);  end
     if par.inv.verbose, pause(0.1); end
     ifaccept=false;
     newK = false;
@@ -177,16 +178,12 @@ for ii = 1:par.inv.niter
         p_bd = 1;
         ptb{ii,1} = 'start';
     else
-        ifpass = 0;
-        % only let perturbed model out of the loop if it passes conditions
-        while ifpass==0
-            [model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
-            ifpass = a1_TEST_CONDITIONS( model1, par );
-            if ~ifpass, if par.inv.verbose, fprintf('  nope\n'); end; end
-            
-            [ modptb ] = calc_Vperturbation( Kbase.modelk,model1);
-            ptbnorm = norm(modptb.dvsv) + norm(modptb.dvsh);
-        end
+		[model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
+		ifpass = a1_TEST_CONDITIONS( model1, par, par.inv.verbose  );
+		if ~ifpass, if par.inv.verbose, fprintf('  nope\n'); end; end
+		
+		[ modptb ] = calc_Vperturbation( Kbase.modelk,model1);
+		ptbnorm = norm(modptb.dvsv) + norm(modptb.dvsh);
     end
 
     if exist('h','var'), delete(h); end
@@ -203,9 +200,11 @@ for ii = 1:par.inv.niter
     
     nchain  = kchain_addcount( nchain,ptbnorm,par );
     
+	% don't re-calc if new mod didn't pass
+	if ifpass
 
 %% ===========================  FORWARD MODEL  ===========================
-	% don't re-caalc if the only thing perturbed is the error
+	% don't re-calc if the only thing perturbed is the error
     if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
         % make random run ID (to avoid overwrites in parfor)
 		ID = [num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
@@ -252,9 +251,10 @@ for ii = 1:par.inv.niter
 %      plot_TRUvsPRE_old(trudata,predata)]
 
     % continue if any Sp or PS inhomogeneous or nan or weird output
-    if ifforwardfail(predata,par), fail_chain=fail_chain+1; continue, end
+    if ifforwardfail(predata,par), fail_chain=fail_chain+1; ifpass==0, end
 
-    
+	end % on ifpass
+	if ifpass	
 %% =========================  CALCULATE MISFIT  ===========================
     
     % SW weights, if applicable 
@@ -268,8 +268,9 @@ for ii = 1:par.inv.niter
 %     fprintf('MISFITS: Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.SpRF,misfit.PsRF,misfit.SW)
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
     
+    end % ifpass
 %% ========================  ACCEPTANCE CRITERION  ========================
-    [ ifaccept ] = b6_IFACCEPT( log_likelihood+log(p_bd),misfits,temp );
+    [ ifaccept ] = b6_IFACCEPT( log_likelihood,misfits,temp,p_bd*ifpass);
     
     % ======== PLOT ========  if accept
     if ifaccept && par.inv.verbose
@@ -279,7 +280,7 @@ for ii = 1:par.inv.niter
         end
     end
     
-%% ========================  IF ACCEPT ==> STORE  =========================
+%% ========================  IF ACCEPT ==> CHANGE TO NEW MODEL  =========================
     if ifaccept 
         if par.inv.verbose
             fprintf('  *********************\n  Accepting model! logL:  %.4e ==>  %.4e\n  *********************\n',...
@@ -287,7 +288,6 @@ for ii = 1:par.inv.niter
         end
         model = model1;
         
-        [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model1,misfits,allmodels,predata0,savedat);
     %% UPDATE KERNEL if needed 
         if newK==true
             Kbase.modelk = model;
@@ -304,6 +304,9 @@ for ii = 1:par.inv.niter
         if newK, delete_mineos_files(ID,'R'); end
         if newK, delete_mineos_files(ID,'L'); end
     end
+    
+	BB[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model1,misfits,allmodels,predata0,savedat);
+
     
     fail_chain = 0;
     

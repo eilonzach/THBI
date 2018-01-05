@@ -43,7 +43,7 @@ if any(strcmp(fieldnames(cond),'pos_moho')) && cond.pos_moho==true
 end
 
 %% No negative sed bottom jumps
-if any(strcmp(fieldnames(cond),'pos_sed2basement')) && cond.pos_sed2basement==true
+if any(strcmp(fieldnames(cond),'pos_sed2basement')) && cond.pos_sed2basement==true && model.zsed>0
     if diff(model.VS(model.z==model.zsed))<0
         ifpass = false;
         if ifverbose,fprintf('Failed: negative sed bottom jump\n'); end
@@ -103,27 +103,6 @@ if model.zsed~=0 && any(model.VS(is0)>par.mod.sed.vsmax)
     if ifverbose,fprintf('Failed: Sed VS > %.2f km/s\n',par.mod.sed.vsmax); end        
     return
 end
-if any(model.VS(ic0)<par.mod.crust.vsmin) 
-    ifpass = false;
-    if ifverbose,fprintf('Failed: Crust VS < %.2f km/s\n',par.mod.crust.vsmin); end        
-    return
-end
-if any(model.VS(ic0)>par.mod.crust.vsmax) 
-    ifpass = false;
-    if ifverbose,fprintf('Failed: Crust VS > %.2f km/s\n',par.mod.crust.vsmax); end        
-    return
-end
-if any(model.VS(im0)<par.mod.mantle.vsmin) 
-    ifpass = false;
-    if ifverbose,fprintf('Failed: Mantle VS < %.2f km/s\n',par.mod.mantle.vsmin); end        
-    return
-end
-if any(model.VS(im0)>par.mod.mantle.vsmax) 
-    ifpass = false;
-    if ifverbose,fprintf('Failed: Mantle VS > %.2f km/s\n',par.mod.mantle.vsmax); end        
-    return
-end
-
 % indiv. knots
 if any(model.crustmparm.VS_sp<par.mod.crust.vsmin) 
     ifpass = false;
@@ -145,6 +124,28 @@ if any(model.mantmparm.VS_sp>par.mod.mantle.vsmax)
     if ifverbose,fprintf('Failed: A Mantle VS spline > %.2f km/s\n',par.mod.mantle.vsmax); end        
     return
 end
+
+if any(model.VS(ic0)<par.mod.crust.vsmin) 
+    ifpass = false;
+    if ifverbose,fprintf('Failed: Crust VS < %.2f km/s\n',par.mod.crust.vsmin); end        
+    return
+end
+if any(model.VS(ic0)>par.mod.crust.vsmax) 
+    ifpass = false;
+    if ifverbose,fprintf('Failed: Crust VS > %.2f km/s\n',par.mod.crust.vsmax); end        
+    return
+end
+if any(model.VS(im0)<par.mod.mantle.vsmin) 
+    ifpass = false;
+    if ifverbose,fprintf('Failed: Mantle VS < %.2f km/s\n',par.mod.mantle.vsmin); end        
+    return
+end
+if any(model.VS(im0)>par.mod.mantle.vsmax) 
+    ifpass = false;
+    if ifverbose,fprintf('Failed: Mantle VS > %.2f km/s\n',par.mod.mantle.vsmax); end        
+    return
+end
+
 
 %% No spline knots below the cutoff, except for the basal one
 if any(model.mantmparm.knots(model.mantmparm.knots~=par.mod.maxz)>par.mod.maxkz)
