@@ -21,7 +21,7 @@ pdm_max = -inf;
 ch2_min = inf;
 ch2_max = -inf;
 
-downsampfac = 15;
+downsampfac = 2;
 
 
 
@@ -96,7 +96,7 @@ for iii = 1:nchains
         min_score_overall = sort_score_overall(min([par.inv.bestNmod2keep,length(bestind)]));
         bestind(score_overall>min_score_overall) = [];
     elseif par.inv.bestNmod2keep<0
-        bestind = bestind(randperm(length(bestind),-par.inv.bestNmod2keep));
+        bestind = bestind(randperm(length(bestind),min([-par.inv.bestNmod2keep,length(bestind)])));
     end
     end
     

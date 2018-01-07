@@ -1,4 +1,4 @@
-function [ misfits,allmodels,savedat ] = b0_RESULTS_SETUP(par )
+function [ misfits,allmodels,savedat,log_likelihood ] = b0_RESULTS_SETUP(par )
 % [ misfits,allmodels,savedat ] = b0_RESULTS_SETUP(par )
 % 
 %  Function to set up the results structures for the inversion
@@ -14,6 +14,9 @@ misfits = struct('globmaxL',0,'lastL',0,'lastlogL',-Inf,... % minimum global err
                  'chi2sum',nn,...  % chi2 is the chi-squared misfit, accounting for data error
                  'Nstored',0);
                  % norm is the sum of the squared error
+                 
+% log likelihood
+log_likelihood = -Inf;
 
 % allmodels
 allmodels = struct('z',o,'z0',o,'iter',o,...

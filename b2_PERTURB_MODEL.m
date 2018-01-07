@@ -28,11 +28,6 @@ model0 = model;
 ptbopts = {'ptb_Vmod','ptb_disc','ptb_Mmod','ptb_sigdat'};
 % opt_rel_P = [3,2,2,1]; % relative probabilities of altering each one
 opt_rel_P = [3,2,2,1];
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-opt_rel_P = [3,2,2,0];
 
 opt_plim = cumsum(opt_rel_P)/sum(opt_rel_P);
 
@@ -83,11 +78,6 @@ switch ptbopts{optflag} % decide what to modify
                 
                 val2mod = {'Vs','vpvs','xi','kz'}; % select whether to perturb velocity, vpvs ratio, xi value, or knot location
                 val2mod_rel_P = [5,2,2,2]; % relative probabilities of altering each one
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                 val2mod_rel_P = [1,0,0,1]; % relative probabilities of altering each one
 
                 val2mod_plim = cumsum(val2mod_rel_P)/sum(val2mod_rel_P);
                 valflag = find(val2mod_plim>=rand(1),1,'first'); % randomly select which value to perturb
@@ -173,11 +163,6 @@ switch ptbopts{optflag} % decide what to modify
                 
                 val2mod = {'Vs','xi','kz'}; % select whether to perturb velocity, xi value, or knot location
                 val2mod_rel_P = [5,2,2]; % relative probabilities of altering each one
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%                 val2mod_rel_P = [0,1,0]; % relative probabilities of altering each one
 
                 val2mod_plim = cumsum(val2mod_rel_P)/sum(val2mod_rel_P);
                 valflag = find(val2mod_plim>=rand(1),1,'first'); % randomly select which value to perturb
@@ -377,11 +362,6 @@ switch ptbopts{optflag} % decide what to modify
                 
                 dattrib = {'dV','avV','h'};
                 attflag = randi(3); % equal prob of changing any attribute
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                attflag = 3;
                 
                 switch dattrib{attflag}
                     
@@ -527,12 +507,6 @@ switch ptbopts{optflag} % decide what to modify
         
         lithlay = {'crust','mantle'};
         lay_rel_P = [1,4]; % relative probabilities of altering each one
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-%         lay_rel_P = [1,1]; % relative probabilities of altering each one
-
         
         lay_plim = cumsum(lay_rel_P)/sum(lay_rel_P);
         layflag = find(lay_plim>=rand(1),1,'first'); % randomly select which layer to perturb

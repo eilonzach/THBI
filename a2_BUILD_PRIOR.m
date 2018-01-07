@@ -30,7 +30,7 @@ parprior(Niter) = prior(1); % set last val to give prior right dimension
 passed = zeros(Niter,1);
            
 for kk = 1:Niter
-    model = b1_INITIATE_MODEL(par,0,1);
+    model = b1_INITIATE_MODEL(par,0,0);
     ifpass = a1_TEST_CONDITIONS( model, par );
     
     if ~ifpass, continue; end
