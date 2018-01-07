@@ -1,3 +1,3 @@
-ifaccept=true; 
-predata=[]; 
-misfits.lastlogL = -Inf; 
+ifaccept=true;
+log_likelihood = -Inf;
+predata=[];
