@@ -163,7 +163,7 @@ reset_likelihood;
 fprintf('\n =========== STARTING ITERATIONS ===========\n')
 for ii = 1:par.inv.niter
     if rem(ii,50)==0 || ii==1, fprintf('Iteration %.0f\n',ii);  end
-    if par.inv.verbose, pause(0.1); end
+    if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
     newK = false;
@@ -172,7 +172,7 @@ for ii = 1:par.inv.niter
     % temperature - for perturbation scaling and likelihood increase
     temp = (par.inv.tempmax-1)*erfc(2*(ii-1)./par.inv.cooloff) + 1;
     
-    while ifpass == false
+    while ifpass == false % only keep calculating if model passes (otherwise save and move on)
 
 %% ===========================  PERTURB  ===========================  
     if ii==1
@@ -180,6 +180,7 @@ for ii = 1:par.inv.niter
         ptbnorm = 0;
         ifpass = 1;
         p_bd = 1;
+        log_likelihood1 = -Inf;
         ptb{ii,1} = 'start';
     else
 		[model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
@@ -259,10 +260,10 @@ for ii = 1:par.inv.niter
     % SW weights, if applicable 
     [ SWwt ] = make_SW_weight( par,Kbase );
     
-    [ misfit ] = b4_CALC_MISFIT( trudata,predata,par,0,SWwt ); % misfit has structures of summed errors
+    [ misfit1 ] = b4_CALC_MISFIT( trudata,predata,par,0,SWwt ); % misfit has structures of summed errors
 
 %% =======================  CALCULATE LIKELIHOOD  =========================
-    [ log_likelihood,misfit ] = b5_CALC_LIKELIHOOD( misfit,trudata,model1.datahparm,par);
+    [ log_likelihood1,misfit1 ] = b5_CALC_LIKELIHOOD( misfit1,trudata,model1.datahparm,par);
     
 %     fprintf('MISFITS: Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.SpRF,misfit.PsRF,misfit.SW)
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
@@ -270,7 +271,7 @@ for ii = 1:par.inv.niter
     end % while ifpass
     
 %% ========================  ACCEPTANCE CRITERION  ========================
-    [ ifaccept ] = b6_IFACCEPT( log_likelihood,misfits,temp,p_bd*ifpass);
+    [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass);
     
     % ======== PLOT ========  if accept
     if ifaccept && par.inv.verbose
@@ -286,7 +287,10 @@ for ii = 1:par.inv.niter
             fprintf('  *********************\n  Accepting model! logL:  %.4e ==>  %.4e\n  *********************\n',...
                 misfits.lastlogL,log_likelihood)
         end
+        % save new model!
         model = model1;
+        log_likelihood = log_likelihood1;
+        misfit = misfit1;
         
     %% UPDATE KERNEL if needed 
         if newK==true
@@ -305,8 +309,12 @@ for ii = 1:par.inv.niter
         if newK, delete_mineos_files(ID,'L'); end
     end
     
+    % restart-chain if immediate failure
+    if isinf(log_likelihood), fail_chain=100; break; end 
+    
+    if mod(ii,par.inv.saveperN)==0 || ii==1
 	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predata0,savedat);
-
+    end
     
     fail_chain = 0;
     
