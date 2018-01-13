@@ -78,9 +78,7 @@ prior.mxi = [parprior.mxi]';
 prior.zatdep = round(prior.zatdep);
 prior.zmantle = prior.zatdep;
 
-prior.Zkn_crust(1,:) = parprior(1).Zkn_crust;
-prior.Zkn_mantle(1,:) = parprior(1).Zkn_mantle;
-for ii = 2:Npass
+for ii = 1:Npass
 prior.Zkn_crust(ii,:) = [parprior(ii).Zkn_crust,nan(1,par.mod.crust.kmax-length(parprior(ii).Zkn_crust))];
 prior.Zkn_mantle(ii,:) = [parprior(ii).Zkn_mantle,nan(1,par.mod.mantle.kmax-length(parprior(ii).Zkn_mantle))];
 end

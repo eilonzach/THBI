@@ -5,7 +5,7 @@ if nargin<3
     ofile=[];
 end
 
-downsampfac = 12;
+downsampfac = 1;
 
 figure(83), clf, set(gcf,'pos',[65 297 1127 808])
 
