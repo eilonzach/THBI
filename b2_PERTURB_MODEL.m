@@ -78,6 +78,11 @@ switch ptbopts{optflag} % decide what to modify
                 
                 val2mod = {'Vs','vpvs','xi','kz'}; % select whether to perturb velocity, vpvs ratio, xi value, or knot location
                 val2mod_rel_P = [5,2,2,2]; % relative probabilities of altering each one
+%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                val2mod_rel_P = [5,2,0,2]; % relative probabilities of altering each one
 
                 val2mod_plim = cumsum(val2mod_rel_P)/sum(val2mod_rel_P);
                 valflag = find(val2mod_plim>=rand(1),1,'first'); % randomly select which value to perturb
@@ -163,6 +168,11 @@ switch ptbopts{optflag} % decide what to modify
                 
                 val2mod = {'Vs','xi','kz'}; % select whether to perturb velocity, xi value, or knot location
                 val2mod_rel_P = [5,2,2]; % relative probabilities of altering each one
+%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                val2mod_rel_P = [5,0,2]; % relative probabilities of altering each one
 
                 val2mod_plim = cumsum(val2mod_rel_P)/sum(val2mod_rel_P);
                 valflag = find(val2mod_plim>=rand(1),1,'first'); % randomly select which value to perturb

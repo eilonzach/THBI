@@ -31,7 +31,9 @@ for id = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{id};
     pdt = parse_dtype(dtype);
     
-    sig = datahparm.(['sig_',dtype]);
+    sig = datahparm.(['sig_',dtype]); 
+    % account for sig coming from final_model, w/ both mu and std fields
+    if isstruct(sig), sig = 10.^(sig.mu_log10); end
     M(id) = length(data.(dtype));
     % calculate N - # of periods if SW, # of degrees of freedom if BW
 	N = zeros(M(id),1);
