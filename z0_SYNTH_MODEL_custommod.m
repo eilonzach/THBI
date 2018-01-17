@@ -80,11 +80,31 @@ TRUEmodel.vp = TRUEmodel.VP;
 
 %% MAKE LAYERISED TARGET MODEL
 % layerise
-[zlayt,zlayb,Vslay,Vplay,rholay] = ...
-    layerise(TRUEmodel.z,TRUEmodel.vs,par.forc.mindV,0,TRUEmodel.vp,TRUEmodel.rho); 
+[zlayt,zlayb,Vslay] = ...
+    layerise(TRUEmodel.z,TRUEmodel.VS,par.forc.mindV,0); 
 nlay = length(Vslay);
-laymodel = struct('zlayt',zlayt,'zlayb',zlayb,'Vs',Vslay,'Vp',Vplay,'rho',rholay,'nlay',nlay);
+
+% S to P and rho structure
+xs = 1:find(zlayb==model.zsed); if model.zsed ==0, xs = []; end
+xc = find(zlayt==model.zsed):find(zlayb==model.zmoh);
+xm = find(zlayt==model.zmoh):nlay;
+Vplay = [sed_vs2vp(Vslay(xs));...
+         TRUEmodel.crustmparm.vpvs*Vslay(xc);...
+         mantle_vs2vp(Vslay(xm),mean([zlayt(xm),zlayb(xm)],2))];
+rholay = [sed_vs2rho(Vslay([xs,xc]));...
+          mantle_vs2rho(Vslay(xm),mean([zlayt(xm),zlayb(xm)],2))];
+xilay = [zeros(length(xs),1);...
+         TRUEmodel.crustmparm.xi*ones(length(xc),1);...
+         TRUEmodel.mantmparm.xi*ones(length(xm),1)]; % S radial anisotropy
+philay = ones(nlay,1); % P radial anisotropy
+etalay = ones(nlay,1); % eta anisotropy
+
+laymodel = struct('zlayt',zlayt,'zlayb',zlayb,'Vs',Vslay,'Vp',Vplay,'rho',rholay,'nlay',nlay,'xi',xilay,'phi',philay,'eta',etalay);
+if any(isnan(laymodel.rho))
+    error('NaN densities')
+end
 TLM = laymodel;
+
 
 
 %% PLOT FINAL MODEL

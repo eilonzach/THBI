@@ -2,8 +2,8 @@ clear all
 close all
 
 
-projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'ECSD';
+projname = 'SYNTHETICS'; % SYNTHETICS or WYOMING, for now
+sta = 'SYNTH';
 nwk = 'US';
 gc = [69,59,40,38]; % will search for gcarcs +/-3 of this value;
 datN = 20;
@@ -24,15 +24,14 @@ global projdir THBIpath TRUEmodel
 THBIpath = '/Users/zeilon/Documents/MATLAB/BayesianJointInv';
 projdir = [THBIpath,'/',projname,'/'];
 avardir = sprintf('STA_inversions/%s_dat%.0f/',sta,datN);
-stadeets = irisFetch.Stations('station',nwk,sta,'*','*');
 
 run([THBIpath,'/a0_STARTUP_BAYES']);
 cd(projdir);
 
 %% PARMS
 run parms/bayes_inv_parms
-if strcmp(projname,'SYNTHETICS'),
-    if strcmp(par.synth.noisetype,'real'), sta=['SYNTH_',sta]; else sta = 'SYNTH'; end
+if strcmp(projname,'SYNTHETICS')
+    if isfield(par.synth,'noisetype') && strcmp(par.synth.noisetype,'real'), sta=['SYNTH_',sta]; else sta = 'SYNTH'; end
     par.sta = sta; 
     par.nwk = '--';
 else
@@ -59,6 +58,7 @@ end
 %% Load & prep data
 fprintf('LOADING data\n')
 if strcmp(projname,'WYOMING')
+    stadeets = irisFetch.Stations('station',nwk,sta,'*','*');
 
     addpath('matguts')
 %     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
@@ -78,7 +78,8 @@ elseif strcmp(projname,'SYNTHETICS')
     
     % make synth model
     addpath('~/Documents/MATLAB/THBI_paper/Figure_3/')
-    z0_SYNTH_MODEL_fig3_splinemod(par,0);  %close(95)
+%     z0_SYNTH_MODEL_fig3_splinemod(par,0);  %close(95)
+    z0_SYNTH_MODEL_custommod(par,0);  %close(95)
     save([resdir,'/trumodel'],'TRUEmodel');
 
     % make synth data
@@ -103,9 +104,9 @@ plot_TRU_WAVEFORMS(trudata);
 plot_TRUvsPRE(trudata,trudata);
 
 %% PRIOR
-fprintf('  > Building prior distribution from %.0f runs\n',min([par.inv.niter,1e4]))
+fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
 zatdep = [5:5:par.mod.maxz]';
-prior = a2_BUILD_PRIOR(par,min([par.inv.niter,1e5]),zatdep);
+prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
 plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
 save([resdir,'/prior'],'prior');
 
@@ -143,7 +144,7 @@ while ifpass==0
         pdtyp = parse_dtype(dtype); 
         if ~strcmp(pdtyp{1},'SW'), continue; end
         [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},'start',0,0,1);
-        K  = run_kernels(model,trudata.(dtype).periods,pdtyp{2},pdtyp{3},'start',1,0,1);
+        K  = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},'start',1,0,1);
         [ Kbase ] = populate_Kbase( Kbase,dtype,phV,grV,{K} );
     
         if any(isnan(phV)),ifpass = false; end
@@ -159,20 +160,31 @@ t = now;
 ptb = cell({});
 nchain = 0;
 fail_chain = 0;
-reset_likelihood;
+ifaccept=true;
+% preSW = zeros(length(trudata.SW_Ray_phV.periods),ceil(par.inv.niter./par.inv.saveperN));
+log_likelihood = -Inf;
+predata=[];
 fprintf('\n =========== STARTING ITERATIONS ===========\n')
 for ii = 1:par.inv.niter
     if rem(ii,50)==0 || ii==1, fprintf('Iteration %.0f\n',ii);  end
-    if par.inv.verbose, pause(0.1); end
+    if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
     newK = false;
-    if fail_chain>9, break, end
+    if fail_chain>9
+        % if not enough saved in this chain, abort and restart
+        if (ii - par.inv.burnin)/par.inv.saveperN < 200
+            break
+        % if enough saved in chain, abort and keep the incomplete chain
+        else 
+            fail_chain = -fail_chain; break
+        end
+    end
     
     % temperature - for perturbation scaling and likelihood increase
     temp = (par.inv.tempmax-1)*erfc(2*(ii-1)./par.inv.cooloff) + 1;
     
-    while ifpass == false
+    while ifpass == false % only keep calculating if model passes (otherwise save and move on)
 
 %% ===========================  PERTURB  ===========================  
     if ii==1
@@ -180,6 +192,7 @@ for ii = 1:par.inv.niter
         ptbnorm = 0;
         ifpass = 1;
         p_bd = 1;
+        log_likelihood1 = -Inf;
         ptb{ii,1} = 'start';
     else
 		[model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
@@ -213,7 +226,8 @@ for ii = 1:par.inv.niter
 		try
             predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); predata0=predata;
         catch
-            fprintf('Forward model error\n'); fail_chain=fail_chain+1; break;
+            fail_chain=fail_chain+1;
+            fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
         end
         
         % continue if any Sp or PS inhomogeneous or nan or weird output
@@ -226,7 +240,8 @@ for ii = 1:par.inv.niter
 		% Explicitly use mineos if ptb is too large
 		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
 		if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmed/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
-
+            SW = struct('Ray',struct('phV',[],'grV',[]),'Lov',struct('phV',[],'grV',[]));
+            
             if any(strcmp(allpdytp(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'Ray'),1,'first'));
                 [SW.Ray.phV,SW.Ray.grV] = run_mineos(model1,trudata.(itp{1}).periods,'R',ID,0,0,par.inv.verbose);
             end
@@ -252,25 +267,26 @@ for ii = 1:par.inv.niter
 %      plot_TRUvsPRE_old(trudata,predata)]
 
     % continue if any Sp or PS inhomogeneous or nan or weird output
-    if ifforwardfail(predata,par), fail_chain=fail_chain+1; ifpass=0; break, end
+    if ifforwardfail(predata,par), fail_chain=fail_chain+1; ifpass=0; break, else fail_chain = 0; end
 
 %% =========================  CALCULATE MISFIT  ===========================
     
     % SW weights, if applicable 
     [ SWwt ] = make_SW_weight( par,Kbase );
     
-    [ misfit ] = b4_CALC_MISFIT( trudata,predata,par,0,SWwt ); % misfit has structures of summed errors
+    [ misfit1 ] = b4_CALC_MISFIT( trudata,predata,par,0,SWwt ); % misfit has structures of summed errors
 
 %% =======================  CALCULATE LIKELIHOOD  =========================
-    [ log_likelihood,misfit ] = b5_CALC_LIKELIHOOD( misfit,trudata,model1.datahparm,par);
+    [ log_likelihood1,misfit1 ] = b5_CALC_LIKELIHOOD( misfit1,trudata,model1.datahparm,par);
     
 %     fprintf('MISFITS: Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.SpRF,misfit.PsRF,misfit.SW)
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
     
+    fail_chain = 0;
     end % while ifpass
     
 %% ========================  ACCEPTANCE CRITERION  ========================
-    [ ifaccept ] = b6_IFACCEPT( log_likelihood,misfits,temp,p_bd*ifpass);
+    [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass);
     
     % ======== PLOT ========  if accept
     if ifaccept && par.inv.verbose
@@ -286,7 +302,10 @@ for ii = 1:par.inv.niter
             fprintf('  *********************\n  Accepting model! logL:  %.4e ==>  %.4e\n  *********************\n',...
                 misfits.lastlogL,log_likelihood)
         end
+        % save new model!
         model = model1;
+        log_likelihood = log_likelihood1;
+        misfit = misfit1;
         
     %% UPDATE KERNEL if needed 
         if newK==true
@@ -305,10 +324,13 @@ for ii = 1:par.inv.niter
         if newK, delete_mineos_files(ID,'L'); end
     end
     
-	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predata0,savedat);
-
+    % restart-chain if immediate failure
+    if isinf(log_likelihood), fail_chain=100; break; end 
     
-    fail_chain = 0;
+    if mod(ii,par.inv.saveperN)==0 || ii==1
+	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predata0,savedat);
+    end
+    
     
 %% =========  redo kernel at end of burn in or if chain is too long =======
     if (newK == false) && (nchain > par.inv.maxnkchain);

@@ -38,7 +38,7 @@ zatdep = [5:5:par.mod.maxz]';
 
 %% PRIOR
 fprintf('  > Building prior distribution from %.0f runs\n',min([par.inv.niter,5e5]))
-prior = a2_BUILD_PRIOR(par,min([par.inv.niter,1e5]),zatdep);
+prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
 plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
 save([resdir,'/prior'],'prior');
 %     
