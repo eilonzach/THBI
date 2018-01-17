@@ -2,8 +2,8 @@ clear all
 close all
 
 
-projname = 'SYNTHETICS'; % SYNTHETICS or WYOMING, for now
-sta = 'SYNTH';
+projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
+sta = 'WVOR';
 nwk = 'US';
 gc = [69,59,40,38]; % will search for gcarcs +/-3 of this value;
 datN = 20;
@@ -12,7 +12,7 @@ datN = 20;
 ifsavedat = true;
 
 notes = [...
-    '1 chain inversion testing what happens at ECSD. \n',...
+    '1 chain inversion testing what happens at WVOR. \n',...
     'For this run, we are NOT permitting sediments \n',...
     'For this run, we are using Sp and low-pass Ps \n',...
     'phases along with Rayleigh and AN Love waves/n',...
@@ -39,7 +39,7 @@ else
     par.nwk = nwk;
     par.gc = gc;
 end
-par.inv.verbose=true;
+par.inv.verbose=false;
 
 STAMP=[sta,datestr(now,'_yyyymmddHHMM')]; par.STAMP = STAMP;
 resdir = [projdir,avardir,STAMP];
@@ -104,11 +104,11 @@ plot_TRU_WAVEFORMS(trudata);
 plot_TRUvsPRE(trudata,trudata);
 
 %% PRIOR
-fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-zatdep = [5:5:par.mod.maxz]';
-prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
-plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-save([resdir,'/prior'],'prior');
+% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+% zatdep = [5:5:par.mod.maxz]';
+% prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
+% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+% save([resdir,'/prior'],'prior');
 
 
 %% Fail-safe to restart chain if there's a succession of failures
@@ -219,12 +219,12 @@ for ii = 1:par.inv.niter
     
 %% ===========================  FORWARD MODEL  ===========================
 	% don't re-calc if the only thing perturbed is the error
-    if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
+    if ~strcmp('sig',ptb{ii}(1:3)) || isempty(predata)
         % make random run ID (to avoid overwrites in parfor)
 		ID = [num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
 
 		try
-            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); predata0=predata;
+            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); 
         catch
             fail_chain=fail_chain+1;
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
@@ -232,6 +232,8 @@ for ii = 1:par.inv.niter
         
         % continue if any Sp or PS inhomogeneous or nan or weird output
         if ifforwardfail(predata,par), fail_chain=fail_chain+1; break, end
+        
+        predata0=predata;
         
         for idt = 1:length(par.inv.datatypes)
             [ predata ] = predat_process( predata,par.inv.datatypes{idt},par);
@@ -283,13 +285,15 @@ for ii = 1:par.inv.niter
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
     
     fail_chain = 0;
+    predat_save = predata0;
+
     end % while ifpass
     
 %% ========================  ACCEPTANCE CRITERION  ========================
     [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass);
     
     % ======== PLOT ========  if accept
-    if ifaccept && par.inv.verbose
+    if ifaccept && par.inv.verbose && fail_chain==0
         plot_TRUvsPRE( trudata,predata);
         if strcmp(projname,'SYNTHETICS')
             plot_MOD_TRUEvsTRIAL( TRUEmodel, model1 );
@@ -312,7 +316,7 @@ for ii = 1:par.inv.niter
             Kbase.modelk = model;
             for id = 1:length(par.inv.datatypes)
                 dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
-                K = run_kernels(model,trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+                K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
                 Kbase = populate_Kbase( Kbase,dtype,predata.(dtype).phV,[],{K} );
             end
             nchain = 0;
@@ -328,7 +332,7 @@ for ii = 1:par.inv.niter
     if isinf(log_likelihood), fail_chain=100; break; end 
     
     if mod(ii,par.inv.saveperN)==0 || ii==1
-	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predata0,savedat);
+	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
     end
     
     
@@ -339,7 +343,7 @@ for ii = 1:par.inv.niter
         for id = 1:length(par.inv.datatypes)
             dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
             [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-            K = run_kernels(model,trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+            K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
             Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
         end
         nchain = 0;
@@ -350,7 +354,7 @@ for ii = 1:par.inv.niter
         for id = 1:length(par.inv.datatypes)
             dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
             [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-            K = run_kernels(model,trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+            K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
             Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
         end
         nchain = 0;

@@ -28,8 +28,8 @@ cd(projdir);
 
 %% PARMS
 run parms/bayes_inv_parms
-if strcmp(projname,'SYNTHETICS'),
-    if strcmp(par.synth.noisetype,'real'), sta=['SYNTH_',sta]; else sta = 'SYNTH'; end
+if strcmp(projname,'SYNTHETICS')
+    if isfield(par.synth,'noisetype') && strcmp(par.synth.noisetype,'real'), sta=['SYNTH_',sta]; else sta = 'SYNTH'; end
     par.sta = sta; 
     par.nwk = '--';
 else
@@ -223,12 +223,12 @@ try
     
 %% ===========================  FORWARD MODEL  ===========================
 	% don't re-calc if the only thing perturbed is the error
-    if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
+    if ~strcmp('sig',ptb{ii}(1:3)) || isempty(predata)
         % make random run ID (to avoid overwrites in parfor)
 		ID = [char(64+iii),num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
 
 		try
-            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); predata0=predata;
+            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); 
         catch
             fail_chain=fail_chain+1;
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
@@ -236,6 +236,8 @@ try
         
         % continue if any Sp or PS inhomogeneous or nan or weird output
         if ifforwardfail(predata,par), fail_chain=fail_chain+1; break, end
+        
+        predata0=predata;
         
         for idt = 1:length(par.inv.datatypes)
             [ predata ] = predat_process( predata,par.inv.datatypes{idt},par);
@@ -287,13 +289,15 @@ try
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
     
     fail_chain = 0;
+    predat_save = predata0;
+
     end % while ifpass
     
 %% ========================  ACCEPTANCE CRITERION  ========================
     [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass);
     
     % ======== PLOT ========  if accept
-    if ifaccept && par.inv.verbose
+    if ifaccept && par.inv.verbose && fail_chain==0
         plot_TRUvsPRE( trudata,predata);
         if strcmp(projname,'SYNTHETICS')
             plot_MOD_TRUEvsTRIAL( TRUEmodel, model1 );
@@ -316,7 +320,7 @@ try
             Kbase.modelk = model;
             for id = 1:length(par.inv.datatypes)
                 dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
-                K = run_kernels(model,trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+                K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
                 Kbase = populate_Kbase( Kbase,dtype,predata.(dtype).phV,[],{K} );
             end
             nchain = 0;
@@ -332,7 +336,7 @@ try
     if isinf(log_likelihood), fail_chain=100; break; end 
     
     if mod(ii,par.inv.saveperN)==0 || ii==1
-		[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predata0,savedat);
+	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
 %         preSW(:,1) = predata
     end
     
@@ -344,7 +348,7 @@ try
         for id = 1:length(par.inv.datatypes)
             dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
             [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-            K = run_kernels(model,trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+            K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
             Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
         end
         nchain = 0;
@@ -355,7 +359,7 @@ try
         for id = 1:length(par.inv.datatypes)
             dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
             [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-            K = run_kernels(model,trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+            K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
             Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
         end
         nchain = 0;
@@ -375,6 +379,7 @@ fprintf('\n =========== ENDING ITERATIONS %s ===========\n',char(64+iii))
 model0_perchain{iii} = model0;
 misfits_perchain{iii} = misfits;
 allmodels_perchain{iii} = allmodels;
+SWs_perchain{iii} = preSW;	
 
 
 end % parfor loop
