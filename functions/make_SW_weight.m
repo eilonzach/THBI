@@ -3,7 +3,7 @@ function [ SWwt ] = make_SW_weight( par,Kbase )
 %   
 % function to get surface wave weights if par says to do so, and otherwise
 % not weight
-
+SWwt=[];
 for id = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{id}; pdtyp = parse_dtype(dtype);
     if ~strcmp(pdtyp{1},'SW'),continue; end
