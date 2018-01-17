@@ -187,7 +187,9 @@ for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt}; 
     pdt = parse_dtype( dtype ); 
     if strcmp(pdt{1},'BW') && (~strcmp(pdt{3},'def') || ~strcmp(pdt{4},'def'))
-        predata.(dtype) = predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+        if any(strcmp(par.inv.datatypes,['BW_',pdt{2}])) % only if there IS a standard!
+            predata.(dtype) = predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+        end
     end
 end
 
