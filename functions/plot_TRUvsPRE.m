@@ -30,7 +30,11 @@ switch pdtyp{1}
 
 %% BWs
     case 'BW'
-    xa = axs(mod(id+1,4)+1); % order [3,4,1,2]
+
+    if strcmp(pdtyp{2},'Ps'), ipl = 3; elseif strcmp(pdtyp{2},'Sp'), ipl = 4; end
+    if ~strcmp(pdtyp{3},'def') || ~strcmp(pdtyp{4},'def'), ipl = ipl-2; end
+    xa = axs(ipl); % order [3,4,1,2]
+    
     samprate = trudata.(dtype)(1).samprate;
     if ~isempty(predata.(dtype)) && ~isempty(predata.(dtype)(1).PSV)
         for itr = 1:length(trudata.(dtype))
