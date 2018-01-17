@@ -1,26 +1,29 @@
-function [SW_V_kernels] = run_kernels(model,swperiods,R_or_L,ph_or_gr,ID,ifdelete,ifplot,ifverbose)
-% [SWV_kernels] = run_kernels(model,swperiods,R_or_L,ph_or_gr,ID,ifdelete,ifplot,ifverbose)
+function [SW_V_kernels] = run_kernels(swperiods,R_or_L,ph_or_gr,ID,ifdelete,ifplot,ifverbose,ifanis)
+% [SWV_kernels] = run_kernels(swperiods,R_or_L,ph_or_gr,ID,ifdelete,ifplot,ifverbose,ifanis)
 % 
 % Function to calculate perturbational phase velocity kernels, having
 % previously run MINEOS
 
-if nargin < 3 || isempty(R_or_L)
+if nargin < 2 || isempty(R_or_L)
     R_or_L = 'R';
 end
-if nargin < 4 || isempty(ph_or_gr)
+if nargin < 3 || isempty(ph_or_gr)
     ph_or_gr = 'ph';
 end
-if nargin < 5 || isempty(ID)
+if nargin < 4 || isempty(ID)
     ID = 'eg';
 end
-if nargin < 6 || isempty(ifdelete)
+if nargin < 5 || isempty(ifdelete)
     ifdelete = true;
 end
-if nargin < 7 || isempty(ifplot)
+if nargin < 6 || isempty(ifplot)
     ifplot = false;
 end
-if nargin < 8 || isempty(ifverbose)
+if nargin < 7 || isempty(ifverbose)
     ifverbose = true;
+end
+if nargin < 8 || isempty(ifanis)
+    ifanis = false;
 end
 
 % phase or group or both ([1 0] or [0 1] or [1 1] respectively)
@@ -56,7 +59,6 @@ qmod= 'safekeeping/qmod';
 %% =======================================================================
 wd = pwd;
 cd('/Users/zeilon/Documents/MATLAB/BayesianJointInv/matlab_to_mineos');
-ifanis = any(model.Sanis) || any(model.Panis);
 
 %% read modes output
 [phV,grV] = readMINEOS_qfile(qfile,swperiods);

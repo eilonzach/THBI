@@ -30,7 +30,7 @@ fprintf(fid,'echo "Calculating eigenfunctions with MINEOS"\n');
 fprintf(fid,'#\n');
 %
 fprintf(fid,'set xdir=/Users/zeilon/Work/codes/MINEOS_Dalton/bin\n');
-fprintf(fid,'$xdir/mineos_nohang <<! > %s\n',logfile);
+fprintf(fid,'$xdir/mineos_nohang << ! > %s\n',logfile);
 fprintf(fid,'%s\n',cardfile);
 fprintf(fid,'%s\n',ofile1);
 fprintf(fid,'%s\n',eigfile);
@@ -43,7 +43,7 @@ fprintf(fid,'echo "Done eigenfunctions, now calculating velocities"\n');
 %
 fprintf(fid,'#\n');
 %
-fprintf(fid,'$xdir/mineos_q <<! >> %s\n',logfile);
+fprintf(fid,'$xdir/mineos_q << ! >> %s\n',logfile);
 fprintf(fid,'%s\n',qmod);
 fprintf(fid,'%s\n',qfile);
 fprintf(fid,'%s\n',eigfile);
