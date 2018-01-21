@@ -121,8 +121,8 @@ plot_TRUvsPRE(trudata,trudata);
 
 
 %% Fail-safe to restart chain if there's a succession of failures
-fail_chain=10;
-while fail_chain>=10
+fail_chain=50;
+while fail_chain>=50
 
 
 %% ---------------------------- INITIATE ----------------------------
@@ -170,10 +170,10 @@ ptb = cell({});
 nchain = 0;
 fail_chain = 0;
 ifaccept=true;
-% preSW = zeros(length(trudata.SW_Ray_phV.periods),ceil(par.inv.niter./par.inv.saveperN));
+preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
+% reset_likelihood;
 log_likelihood = -Inf;
 predata=[];
-preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
 fprintf('\n =========== STARTING ITERATIONS ===========\n')
 for ii = 1:par.inv.niter
     if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %.0f\n',ii);  end
@@ -181,7 +181,7 @@ for ii = 1:par.inv.niter
     ifaccept=false;
     ifpass = false;
     newK = false;
-    if fail_chain>9
+    if fail_chain>49
         % if not enough saved in this chain, abort and restart
         if (ii - par.inv.burnin)/par.inv.saveperN < 200
             break
@@ -442,7 +442,7 @@ for idt = 1:length(par.inv.datatypes)
 end
    
 [ final_misfit ] = b4_CALC_MISFIT( trudata,final_predata,par,0 );
-[ final_log_likelihood,final_misfit ] = b5_CALC_LIKELIHOOD( final_misfit,trudata,model1.datahparm,par );
+[ final_log_likelihood,final_misfit ] = b5_CALC_LIKELIHOOD( final_misfit,trudata,final_model.hyperparms,par );
 plot_TRUvsPRE( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data.pdf']);
 plot_TRUvsPRE_WAVEFORMS( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data_wavs.pdf']);
 
