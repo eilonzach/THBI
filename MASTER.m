@@ -94,6 +94,15 @@ end
 % save data
 save([resdir,'/trudata_ORIG'],'trudata');
 
+% get rid of data that wont be used in inversion - NB NEED EXACT DATA MATCH
+trudtypes = fieldnames(trudata);
+for idt = 1:length(trudtypes)
+    if all(~strcmp(trudtypes{idt},par.inv.datatypes)) % no match
+        fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
+        trudata = rmfield(trudata,trudtypes{idt});
+    end
+end
+
 % window, filter data 
 for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt};
@@ -164,9 +173,10 @@ ifaccept=true;
 % preSW = zeros(length(trudata.SW_Ray_phV.periods),ceil(par.inv.niter./par.inv.saveperN));
 log_likelihood = -Inf;
 predata=[];
+preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
 fprintf('\n =========== STARTING ITERATIONS ===========\n')
 for ii = 1:par.inv.niter
-    if rem(ii,50)==0 || ii==1, fprintf('Iteration %.0f\n',ii);  end
+    if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %.0f\n',ii);  end
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
@@ -331,8 +341,12 @@ for ii = 1:par.inv.niter
     % restart-chain if immediate failure
     if isinf(log_likelihood), fail_chain=100; break; end 
     
+    %% SAVE every saveperN
     if mod(ii,par.inv.saveperN)==0 || ii==1
+        
 	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
+    preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
+    
     end
     
     
@@ -408,6 +422,18 @@ plot_FINAL_MODEL( final_model,posterior,1,[resdir,'/final_model.pdf']);
 
 %% predict data with the final model, and calculate the error!
 [ final_predata ] = c5_FINAL_FORWARD_MODEL( final_model,par,trudata );
+
+% distribute data for different processing (e.g. _lo, _cms)
+for idt = 1:length(par.inv.datatypes)
+    dtype = par.inv.datatypes{idt}; 
+    pdt = parse_dtype( dtype ); 
+    if strcmp(pdt{1},'BW') && (~strcmp(pdt{3},'def') || ~strcmp(pdt{4},'def'))
+        if any(strcmp(par.inv.datatypes,['BW_',pdt{2}])) % only if there IS a standard!
+            disp(['replacing ',dtype,' with ',[pdt{1},'_',pdt{2}]])
+            final_predata.(dtype) = final_predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+        end
+    end
+end
 
 % window, filter data 
 for idt = 1:length(par.inv.datatypes)

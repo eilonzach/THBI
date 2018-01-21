@@ -3,8 +3,8 @@ close all
 
 
 projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'RSSD';
-nwk = 'IU';
+sta = 'ECSD';
+nwk = 'US';
 gc = [69,59,40,38]; % will search for gcarcs +/-3 of this value;
 datN = 20;
 % baz = 315;
