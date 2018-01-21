@@ -2,112 +2,60 @@ clear all
 close all
 
 
-projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'WVOR';
-nwk = 'US';
-gc = [69,59,40,38,32,66]; % will search for gcarcs +/-3 of this value;
-datN = 20;
-% baz = 315;
+projname = 'LAB_tests'; 
+zsed = 0;
+zmoh = 30;
+zlab = 100;
+wlab = 10;
+flab = 0.07;
+dtps = {'BW_Ps','BW_Sp','SW_Ray_phV'};     
 
-notes = [...
-    'Par inversion with data made using new clustering scheme \n',...
-    'bining by baz and gcarc.  \n'...
-    'Using all data types: Ps,Pslo,Pscms,Sp,Splo,SW.\n',...
-    'This run has a sediment layer DISallowed.\n',...
-    'Max depth 300 km.\n',...
-        ];
+% noise details, if "real"
+noisesta = 'RSSD';
+noisenwk = 'IU';
+noisegcarcs = [73,38];
+noiseup = 1; % factor to increase real noise
+
+% naming convention
+dtpstr='_';
+if any(strcmp(dtps,'BW_Ps')), dtpstr=[dtpstr,'Ps']; end
+if any(strcmp(dtps,'BW_Sp')), dtpstr=[dtpstr,'Sp']; end
+if any(strcmp(dtps,'SW_Ray_phV')), dtpstr=[dtpstr,'SW']; end
+
+ifsavedat = true;
+
+
+% sta = ['LAB_m',num2str(zmoh),'_z',num2str(zlab),'_w',num2str(wlab),'_f',num2str(100*flab),dtpstr];
+sta = ['LAB_s',num2str(zsed),'_m',num2str(zmoh),'_z',num2str(zlab),'_w',num2str(wlab),'_f',num2str(100*flab),dtpstr];
+% sta = ['neg',sta];
 
 %% ------------------------- START ------------------------- 
 global projdir THBIpath TRUEmodel
 THBIpath = '/Users/zeilon/Documents/MATLAB/BayesianJointInv';
 projdir = [THBIpath,'/',projname,'/'];
-avardir = sprintf('STA_inversions/%s_dat%.0f/',sta,datN);
 
 run([THBIpath,'/a0_STARTUP_BAYES']);
 cd(projdir);
 
 %% PARMS
-run parms/bayes_inv_parms
-if strcmp(projname,'SYNTHETICS')
-    if isfield(par.synth,'noisetype') && strcmp(par.synth.noisetype,'real'), sta=['SYNTH_',sta]; else sta = 'SYNTH'; end
-    par.sta = sta; 
-    par.nwk = '--';
-else
-    par.sta = sta;
-    par.nwk = nwk;
-    par.gc = gc;
-end
+run([projdir,'/parms/bayes_inv_parms'])
+par.inv.datatypes = dtps;
+par.sta = sta;
+par.nwk=[];
 par.inv.verbose=false;
 
 STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')]; par.STAMP = STAMP;
-resdir = [projdir,avardir,STAMP];
+resdir = [projdir,STAMP];
 mkdir(resdir);
-fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
 
 par_ORIG = par;
 % par came from above script
 save([resdir,'/par'],'par');
 copyfile('parms/bayes_inv_parms.m',resdir);
 
-for id = 1:length(par.inv.datatypes);
+for id = 1:length(par.inv.datatypes)
     allpdytp(id,:)=parse_dtype(par.inv.datatypes{id});
 end
-
-%% Load & prep data
-fprintf('LOADING data\n')
-if strcmp(projname,'WYOMING')
-	stadeets = irisFetch.Stations('station',nwk,sta,'*','*');
-
-%     addpath('matguts')
-%     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
-    [trudata,cheatstr] = load_data(avardir,sta,nwk,gc);
-    sta = [sta,cheatstr];
-    % distribute data for different processing (e.g. _lo, _cms)
-    for idt = 1:length(par.inv.datatypes)
-        dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
-        if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
-            trudata.(dtype) = trudata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
-        end
-    end
-    
-elseif strcmp(projname,'SYNTHETICS')
-    
-    fprintf(' > Creating custom model and synthetic data\n')
-    
-    % make synth model
-    addpath('~/Documents/MATLAB/THBI_paper/Figure_3/')
-    z0_SYNTH_MODEL_fig3_splinemod(par,0);  %close(95)
-    save([resdir,'/trumodel'],'TRUEmodel');
-
-    % make synth data
-    [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
-    if strcmp(par.synth.noisetype,'real')
-        noise_sta_deets = struct('datadir',[THBIpath,'/WYOMING/AVARS/'],'sta',sta,'nwk',nwk,'gc',par.synth.gcarcs);
-        par.synth.noise_sta_deets = noise_sta_deets;
-        [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par,noise_sta_deets );
-    end 
-end
-
-% save data
-save([resdir,'/trudata_ORIG'],'trudata');
-
-% get rid of data that wont be used in inversion - NB NEED EXACT DATA MATCH
-trudtypes = fieldnames(trudata);
-for idt = 1:length(trudtypes)
-    if all(~strcmp(trudtypes{idt},par.inv.datatypes)) % no match
-        fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
-        trudata = rmfield(trudata,trudtypes{idt});
-    end
-end
-
-% window, filter data 
-for idt = 1:length(par.inv.datatypes)
-    dtype = par.inv.datatypes{idt};
-    [ trudata ] = predat_process( trudata,dtype,par);
-end
-plot_TRU_WAVEFORMS(trudata);
-% plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG);
-plot_TRUvsPRE(trudata,trudata);
 
 %% PRIOR
 % fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
@@ -115,6 +63,47 @@ plot_TRUvsPRE(trudata,trudata);
 % prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
 % plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
 % save([resdir,'/prior'],'prior');
+    
+
+%% Load & prep data
+fprintf(' > Creating custom model and synthetic data\n')
+
+% make synth model
+addpath('~/Documents/MATLAB/THBI_paper/Figure_3/')
+z0_SYNTH_MODEL_LAB_TEST(par,zsed,zmoh,zlab,wlab,flab,1) ;
+save([resdir,'/trumodel'],'TRUEmodel');
+
+% make synth data
+[ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
+trudata_noiseless = trudata;
+if strcmp(par.synth.noisetype,'real')
+    noise_sta_deets = struct('datadir',[THBIpath,'/WYOMING/STA_inversions/',noisesta,'_dat20/'],...
+                             'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup);
+    par.synth.noise_sta_deets = noise_sta_deets;
+    [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par,noise_sta_deets );
+end
+
+% save data
+save([resdir,'/trudata_ORIG'],'trudata');
+
+% distribute data for different processing (e.g. _lo, _cms)
+for idt = 1:length(par.inv.datatypes)
+	dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
+	if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
+		trudata.(dtype) = trudata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+	end
+end
+
+% window, filter data 
+for idt = 1:length(par.inv.datatypes)
+    dtype = par.inv.datatypes{idt};
+    [ trudata ] = predat_process( trudata,dtype,par);
+end
+
+plot_TRU_WAVEFORMS(trudata);
+% plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG);
+plot_TRUvsPRE(trudata,trudata);
+
 
 %% ---------------------------- INITIATE ----------------------------
 profile clear
@@ -137,8 +126,8 @@ t = now;
 parfor iii = 1:par.inv.nchains 
 
 %% Fail-safe to restart chain if there's a succession of failures
-fail_chain=50;
-while fail_chain>=50
+fail_chain=10;
+while fail_chain>=10
 
 
 %% Prep posterior structure
@@ -157,7 +146,6 @@ while ifpass==0
 
     %% starting model kernel
     fprintf('\nCreating starting kernel %s\n',char(64+iii))
-
     Kbase = initiate_Kbase; Kbase.modelk = model;
     for id = 1:length(par.inv.datatypes)
         dtype = par.inv.datatypes{id};
@@ -169,7 +157,6 @@ while ifpass==0
     
         if any(isnan(phV)),ifpass = false; end
     end % loop on datatypes
-
 end % now we have a starting model!
 
 
@@ -180,9 +167,7 @@ ptb = cell({});
 nchain = 0;
 fail_chain = 0;
 ifaccept=true;
-if isfield(trudata,'SW_Ray')
-preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
-end
+% preSW = zeros(length(trudata.SW_Ray_phV.periods),ceil(par.inv.niter./par.inv.saveperN));
 % reset_likelihood;
 log_likelihood = -Inf;
 predata=[];
@@ -190,12 +175,12 @@ predata=[];
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',char(64+iii))
 for ii = 1:par.inv.niter
 try
-    if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
+    if rem(ii,10)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
     newK = false;
-    if fail_chain>49
+    if fail_chain>9
         % if not enough saved in this chain, abort and restart
         if (ii - par.inv.burnin)/par.inv.saveperN < 200
             break
@@ -207,9 +192,6 @@ try
     
     % temperature - for perturbation scaling and likelihood increase
     temp = (par.inv.tempmax-1)*erfc(2*(ii-1)./par.inv.cooloff) + 1;
-%     if round_level(temp,0.01)>1
-%         if par.inv.verbose, fprintf('TEMPERATURE = %.2f\n',temp); end
-%     end
     
     while ifpass == false % only keep calculating if model passes (otherwise save and move on)
 
@@ -234,12 +216,12 @@ try
     
 %% ===========================  FORWARD MODEL  ===========================
 	% don't re-calc if the only thing perturbed is the error
-    if ~strcmp('sig',ptb{ii}(1:3)) || isempty(predata)
+    if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
         % make random run ID (to avoid overwrites in parfor)
 		ID = [char(64+iii),num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
 
 		try
-            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); 
+            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); predata0=predata;
         catch
             fail_chain=fail_chain+1;
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
@@ -250,8 +232,6 @@ try
             fail_chain=fail_chain+1; break
         end
         
-        predata0=predata;
-            
         for idt = 1:length(par.inv.datatypes)
             [ predata ] = predat_process( predata,par.inv.datatypes{idt},par);
         end
@@ -302,15 +282,13 @@ try
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
     
     fail_chain = 0;
-    predat_save = predata0;
-
     end % while ifpass
     
 %% ========================  ACCEPTANCE CRITERION  ========================
     [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass);
     
     % ======== PLOT ========  if accept
-    if ifaccept && par.inv.verbose && fail_chain==0
+    if ifaccept && par.inv.verbose
         plot_TRUvsPRE( trudata,predata);
         if strcmp(projname,'SYNTHETICS')
             plot_MOD_TRUEvsTRIAL( TRUEmodel, model1 );
@@ -345,21 +323,17 @@ try
         if newK, delete_mineos_files(ID,'L'); end
     end
     
-    % restart-chain if immediate failure
+    %% restart-chain if immediate failure
     if isinf(log_likelihood), fail_chain=100; break; end 
     
-    %% SAVE every saveperN
     if mod(ii,par.inv.saveperN)==0 || ii==1
-	
-        [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
-        if isfield(trudata,'SW_Ray')
-            preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
-        end
+		[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predata0,savedat);
+%         preSW(:,1) = predata
     end
     
     
 %% =========  redo kernel at end of burn in or if chain is too long =======
-    if (newK == false) && (nchain > par.inv.maxnkchain);
+    if (newK == false) && (nchain > par.inv.maxnkchain)
         if par.inv.verbose, fprintf('\n RECALCULATING KERNEL - too long chain\n'); end
         Kbase.modelk = model;
         for id = 1:length(par.inv.datatypes)
@@ -391,14 +365,10 @@ end % oniterations
 %% -------------------------- End iteration  ------------------------------
 end % on the fail_chain while...
 % ----------
-fprintf('\n =========== ENDING ITERATIONS %s ===========\n',char(64+iii))
 
 model0_perchain{iii} = model0;
 misfits_perchain{iii} = misfits;
 allmodels_perchain{iii} = allmodels;
-if isfield(trudata,'SW_Ray')
-    SWs_perchain{iii} = preSW;	
-end
 
 
 end % parfor loop
@@ -411,6 +381,8 @@ save([resdir,'/matlab'])
 fprintf('Duration of entire run: %.0f s\n',(now-t)*86400)
 
 %% Process results
+fprintf('  > Saving misfits\n')
+save([resdir,'/misfits_perchain'],'misfits_perchain');
 fprintf('  > Processing results\n')
 [misfits_perchain,allmodels_perchain,goodchains] = c1_PROCESS_RESULTS( misfits_perchain,allmodels_perchain,par,1,[resdir,'/modMisfits']);
 misfits_perchain_original = misfits_perchain;
@@ -424,6 +396,9 @@ allmodels_perchain = allmodels_perchain(goodchains);
 plot_KNOT_TRENDS( allmodels_perchain,par,[resdir,'/knottrends']  )
 
 posterior = c2_BUILD_POSTERIOR(allmodels_collated,par);
+fprintf('  > Saving posterior\n')
+save([resdir,'/posterior'],'posterior');
+save([resdir,'/allmods_collated'],'allmodels_collated');
 
 fprintf('  > Plotting posterior\n')
 plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
@@ -431,39 +406,20 @@ plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
 fprintf('  > Plotting prior vs. posterior\n')
 plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
 
-fprintf('  > Plotting model suite\n')
 [ suite_of_models ] = c3_BUILD_MODEL_SUITE(allmodels_collated,par );
-plot_SUITE_of_MODELS( suite_of_models,posterior,1,[resdir,'/suite_of_models.pdf'],[stadeets(1).Latitude,stadeets(1).Longitude]);
-plot_HEATMAP_ALLMODELS(suite_of_models,par,1,[resdir,'/heatmap_of_models.pdf']);
-
-%% Save some things
-fprintf('  > Saving misfits, allmods, posterior, model suite\n')
-save([resdir,'/misfits_perchain'],'misfits_perchain');
-save([resdir,'/allmodels_perchain'],'allmodels_perchain');
-save([resdir,'/posterior'],'posterior');
-% save([resdir,'/allmods_collated'],'allmodels_collated');
+fprintf('  > Saving model suite\n')
 save([resdir,'/mod_suite'],'suite_of_models');
-save([resdir,'/goodchains'],'goodchains');
-save([resdir,'/SWs_pred'],'SWs_perchain');
+fprintf('  > Plotting model suite\n')
+plot_SUITE_of_MODELS( suite_of_models,posterior,1,[resdir,'/suite_of_models.pdf']);
+plot_HEATMAP_ALLMODELS(suite_of_models,par,0,[resdir,'/heatmap_of_models.pdf']);
 
 %% Final interpolated model with errors
 final_model = c4_FINAL_MODEL(posterior,allmodels_collated,par,1,[resdir,'/final_model']);
-plot_FINAL_MODEL( final_model,posterior,1,[resdir,'/final_model.pdf'],true,[stadeets(1).Latitude,stadeets(1).Longitude]);
+plot_FINAL_MODEL( final_model,posterior,1,[resdir,'/final_model.pdf']);
 
 %% predict data with the final model, and calculate the error!
 [ final_predata ] = c5_FINAL_FORWARD_MODEL( final_model,par,trudata );
 
-% distribute data for different processing (e.g. _lo, _cms)
-for idt = 1:length(par.inv.datatypes)
-    dtype = par.inv.datatypes{idt}; 
-    pdt = parse_dtype( dtype ); 
-    if strcmp(pdt{1},'BW') && (~strcmp(pdt{3},'def') || ~strcmp(pdt{4},'def'))
-        if any(strcmp(par.inv.datatypes,['BW_',pdt{2}])) % only if there IS a standard!
-            disp(['replacing ',dtype,' with ',[pdt{1},'_',pdt{2}]])
-            final_predata.(dtype) = final_predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
-        end
-    end
-end
 % window, filter data 
 for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt};
@@ -475,11 +431,20 @@ end
 plot_TRUvsPRE( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data.pdf']);
 plot_TRUvsPRE_WAVEFORMS( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data_wavs.pdf']);
 
-%addpath([resdir]); 
+%% save some things
+save([resdir,'/trudata_processed'],'trudata');
+save([resdir,'/final_data'],'final_predata');
 
-plot_FIG2_FIT_MODEL( final_model,posterior,prior,par,1,[resdir,'/fig2_FIT_MODEL.pdf']);
+% did we save the data?
+if ifsavedat
+%     savedat.gdmods = find([allmodels.bestmods]');
+%     savedat.gdmods(savedat.gdmods==0) = [];
+%     save([resdir,'/savedat'],'savedat');
+% plot_DATAFITS(trudata,savedat,par,1)
+%     plot_FIG1_FIT_DATA( trudata,savedat,par,1,[resdir,'/fig1_FIT_DATA.pdf'])
+end
 
-%rmpath([resdir]);
+plot_FIG2_FIT_MODEL( final_model,posterior,prior,par,1,[resdir,'/fig2_FIT_MODEL.pdf'])
 
 % clear('TRUEmodel')
 profile viewer

@@ -451,7 +451,7 @@ for idt = 1:length(par.inv.datatypes)
 end
    
 [ final_misfit ] = b4_CALC_MISFIT( trudata,final_predata,par,0 );
-[ final_log_likelihood,final_misfit ] = b5_CALC_LIKELIHOOD( final_misfit,trudata,model1.datahparm,par );
+[ final_log_likelihood,final_misfit ] = b5_CALC_LIKELIHOOD( final_misfit,trudata,final_model.hyperparms,par );
 plot_TRUvsPRE( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data.pdf']);
 plot_TRUvsPRE_WAVEFORMS( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data_wavs.pdf']);
 

@@ -101,7 +101,25 @@ if any(strcmp(pdtyps(:,2),'Sp'))
         rayp = unique_rayps_S(ir);
         samprate = unique([final_predata.(Spdat)(irayps_S==ir).samprate]);
         S_inc = rayp2inc(rayp,laymodel.Vs(end),6371-laymodel.zlayb(end));
-        [predat_sp,tt_sp] = run_propmat(laymodel,ID,'Sp',samprate, S_inc-0.1, par.forc.synthperiod,par.forc.nsamps);
+        
+        P_inc = rayp2inc(rayp,laymodel.Vp(end),6371-laymodel.zlayb(end));
+        % find layers where S to P conversion will not go inhomogeneous
+        Play_incs = asind(laymodel.Vp*sind(P_inc)./laymodel.Vp(end));
+        if any(~isreal(Play_incs))
+            nimagplay = [1:find(imag(Play_incs),1,'first')-1];
+            fns = fieldnames(laymodel);
+            laymodel_Suse = laymodel; 
+            laymodel_Suse.nlay = length(nimagplay);
+            for jj = 1:length(fns)
+                if length(laymodel.(fns{jj}))==1, continue; end
+                laymodel_Suse.(fns{jj}) = laymodel_Suse.(fns{jj})(nimagplay);
+            end
+            S_inc = rayp2inc(rayp,laymodel_Suse.Vs(end),6371-laymodel_Suse.zlayb(end));
+        else
+            laymodel_Suse = laymodel;
+        end
+        
+        [predat_sp,tt_sp] = run_propmat(laymodel_Suse,ID,'Sp',samprate, S_inc, par.forc.synthperiod,par.forc.nsamps);
         predat_sp_ZRT = predat_sp(:,[3,1,2]); % in Z,R,T
         if strcmp(par.forc.PSVorZR,'PSV')
             clear predat_sp_PSV;
@@ -109,7 +127,7 @@ if any(strcmp(pdtyps(:,2),'Sp'))
             [predat_sp_PSV(:,1),predat_sp_PSV(:,2)] = ...
                 Rotate_XZ_to_PSV(predat_sp_ZRT(:,2),-predat_sp_ZRT(:,1),...
                 mean([final_predata.(Spdat).Vp_surf]),mean([final_predata.(Spdat).Vs_surf]),...
-                rayp_sdeg2skm(rayp,laymodel.zlayb(end)));
+                rayp_sdeg2skm(rayp,laymodel_Suse.zlayb(end)));
         elseif strcmp(par.forc.PSVorZR,'ZR')
             % keep as ZR (but kill T; Z positive UP)
             predat_sp_PSV = predat_sp_ZRT(:,[1,2]);         

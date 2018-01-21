@@ -10,15 +10,17 @@ function [ periods, phVs ] = Rph_dispcurve_latlon(ilat,ilon,transT)
 if nargin<3 || isempty(transT)
     transT = 33;
 end
-
 %% EQ data:
 
 % try Dave & Li phV
 ddir = '~/Work/data/models_seismic/WYOMING_RAYLEIGH_phV_DaveLi2016/';
-[ ~, Eperiods ] = get_freqs(ddir);
+if ~exist(ddir), ddir = regexprep(ddir,'~','/Volumes/zeilon'); end 
+[ ~, Eperiods ] = get_freqs([ddir,'2D_phase_velocities/']);
 EphV_period = disp_curve_EQ_latlon(Eperiods,ilat,ilon,ddir);
+
 if all(isnan(EphV_period))    % no Dave/Li phV here, use Colleen's
     ddir = '~/Work/data/models_seismic/US_RAYLEIGH_EQ_phV_DALTON/';
+    if ~exist(ddir), ddir = regexprep(ddir,'~','/Volumes/zeilon'); end 
     Eperiods = [25,40,50,60,80,100,120,140,180]';
     EphV_period = disp_curve_EQ_latlon(Eperiods,ilat,ilon,ddir);
 end
@@ -28,6 +30,7 @@ EphV_period = EphV_period(iE);
 %% AN data:
 % try Shen and Ritzwoller, 2016
 datadir = '~/Work/data/models_seismic/US_RAYLEIGH_ANT_phV_SHEN/';
+if ~exist(datadir), datadir = regexprep(datadir,'~','/Volumes/zeilon'); end 
 ANperiods = [8:2:32,36,40]';
 ANphV_period = disp_curve_AN_latlon(ANperiods,ilat,ilon,datadir);
 
