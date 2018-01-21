@@ -102,10 +102,10 @@ end
 
 % save
 np = np+1;
-PsRF(np,1) = struct('PSV',trudat_ps_PSV,'tt',tt_ps,'rayp',raypp,'inc',P_inc,'samprate',samprate,'nsamp',length(tt_ps),'sigma',par.mod.data.prior_sigma.BW.Ps.def,'Vp_surf',Vp_surf,'Vs_surf',Vs_surf);
+PsRF(np,1) = struct('PSV',trudat_ps_PSV,'tt',tt_ps,'gcarc',gcarc,'rayp',raypp,'inc',P_inc,'samprate',samprate,'nsamp',length(tt_ps),'sigma',par.mod.data.prior_sigma.BW.Ps.def,'Vp_surf',Vp_surf,'Vs_surf',Vs_surf);
 if gcarc>65 % don't do if too close - inhomogeneous
 ns = ns+1;
-SpRF(ns,1) = struct('PSV',trudat_sp_PSV,'tt',tt_sp,'rayp',rayps,'inc',S_inc,'samprate',samprate,'nsamp',length(tt_sp),'sigma',par.mod.data.prior_sigma.BW.Sp.def,'Vp_surf',Vp_surf,'Vs_surf',Vs_surf);
+SpRF(ns,1) = struct('PSV',trudat_sp_PSV,'tt',tt_sp,'gcarc',gcarc,'rayp',rayps,'inc',S_inc,'samprate',samprate,'nsamp',length(tt_sp),'sigma',par.mod.data.prior_sigma.BW.Sp.def,'Vp_surf',Vp_surf,'Vs_surf',Vs_surf);
 end
 clear trudat_ps_PSV trudat_ps_ZRT 
 clear trudat_sp_PSV trudat_ps_ZRT
@@ -124,7 +124,7 @@ for id = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{id};
     pdtyp = parse_dtype(dtype);
     if ~strcmp(pdtyp{1},'SW'), continue, end
-
+    addpath('~/Documents/MATLAB/matlab_to_mineos/')
     [truSWdat.phV,truSWdat.grV] = run_mineos(TRUEmodel,SWperiods,pdtyp{2},'initmod');
 
     % add noise
