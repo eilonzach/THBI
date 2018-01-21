@@ -66,6 +66,7 @@ xlim(ax4,[0,max(xmx)])
 if nargin > 4 && ~isempty(lalo)
 % read 1D profile from Shen and Ritzwoller model
     ncfile = '~/Work/data/models_seismic/SR16_3d_Vs/US.2016.nc';
+    if ~exist(ncfile), ncfile = regexprep(ncfile,'~','/Volumes/zeilon'); end
     [ model ] = read_seismodel_nc( ncfile );
 
     vs = squeeze(model.Vsv(mindex(model.lon,mod(lalo(2),360)),mindex(model.lat,lalo(1)),:));

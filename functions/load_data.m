@@ -19,7 +19,7 @@ cd(avardir);
 %% Sesismogram data
 datfiles = {};
 for gcmid = gc(:)'
-for gcwind = -4:4;
+for gcwind = -4:4
     df = dir(sprintf('avar_dat_%s_%s_%.0f_*%s.mat',sta,nwk,gcmid+gcwind,cheatstr));
     datfiles = [datfiles;{df.name}']; %#ok<AGROW>
 end
@@ -95,6 +95,7 @@ cd(wd);
 
 %% Phase velocity data
 seismoddir = '~/Work/data/models_seismic/';
+if ~exist(seismoddir), seismoddir = regexprep(seismoddir,'~','/Volumes/zeilon'); end 
 addpath(seismoddir);
 
 % -------- Rayleigh waves
