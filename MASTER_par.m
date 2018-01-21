@@ -3,9 +3,9 @@ close all
 
 
 projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'EYMN';
-nwk = 'US';
-gc = [73,69,66,59,44,38,32]; % will search for gcarcs +/-3 of this value;
+sta = 'RSSD';
+nwk = 'IU';
+gc = [69,59,40,38]; % will search for gcarcs +/-3 of this value;
 datN = 20;
 % baz = 315;
 
@@ -58,7 +58,7 @@ fprintf('LOADING data\n')
 if strcmp(projname,'WYOMING')
 	stadeets = irisFetch.Stations('station',nwk,sta,'*','*');
 
-    addpath('matguts')
+%     addpath('matguts')
 %     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
     [trudata,cheatstr] = load_data(avardir,sta,nwk,gc);
     sta = [sta,cheatstr];
@@ -91,6 +91,15 @@ end
 % save data
 save([resdir,'/trudata_ORIG'],'trudata');
 
+% get rid of data that wont be used in inversion - NB NEED EXACT DATA MATCH
+trudtypes = fieldnames(trudata);
+for idt = 1:length(trudtypes)
+    if all(~strcmp(trudtypes{idt},par.inv.datatypes)) % no match
+        fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
+        trudata = rmfield(trudata,trudtypes{idt});
+    end
+end
+
 % window, filter data 
 for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt};
@@ -101,11 +110,11 @@ plot_TRU_WAVEFORMS(trudata);
 plot_TRUvsPRE(trudata,trudata);
 
 %% PRIOR
-fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-zatdep = [5:5:par.mod.maxz]';
-prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
-plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-save([resdir,'/prior'],'prior');
+% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+% zatdep = [5:5:par.mod.maxz]';
+% prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
+% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+% save([resdir,'/prior'],'prior');
 
 %% ---------------------------- INITIATE ----------------------------
 profile clear
@@ -128,8 +137,8 @@ t = now;
 parfor iii = 1:par.inv.nchains 
 
 %% Fail-safe to restart chain if there's a succession of failures
-fail_chain=10;
-while fail_chain>=10
+fail_chain=50;
+while fail_chain>=50
 
 
 %% Prep posterior structure
@@ -171,7 +180,7 @@ ptb = cell({});
 nchain = 0;
 fail_chain = 0;
 ifaccept=true;
-% preSW = zeros(length(trudata.SW_Ray_phV.periods),ceil(par.inv.niter./par.inv.saveperN));
+preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
 % reset_likelihood;
 log_likelihood = -Inf;
 predata=[];
@@ -179,12 +188,12 @@ predata=[];
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',char(64+iii))
 for ii = 1:par.inv.niter
 try
-    if rem(ii,20)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
+    if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
     newK = false;
-    if fail_chain>9
+    if fail_chain>49
         % if not enough saved in this chain, abort and restart
         if (ii - par.inv.burnin)/par.inv.saveperN < 200
             break
@@ -238,7 +247,7 @@ try
         if ifforwardfail(predata,par), fail_chain=fail_chain+1; break, end
         
         predata0=predata;
-        
+            
         for idt = 1:length(par.inv.datatypes)
             [ predata ] = predat_process( predata,par.inv.datatypes{idt},par);
         end
@@ -332,12 +341,15 @@ try
         if newK, delete_mineos_files(ID,'L'); end
     end
     
-    %% restart-chain if immediate failure
+    % restart-chain if immediate failure
     if isinf(log_likelihood), fail_chain=100; break; end 
     
+    %% SAVE every saveperN
     if mod(ii,par.inv.saveperN)==0 || ii==1
-	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
-%         preSW(:,1) = predata
+	
+        [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
+        preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
+    
     end
     
     
@@ -425,6 +437,7 @@ save([resdir,'/posterior'],'posterior');
 % save([resdir,'/allmods_collated'],'allmodels_collated');
 save([resdir,'/mod_suite'],'suite_of_models');
 save([resdir,'/goodchains'],'goodchains');
+save([resdir,'/SWs_pred'],'SWs_perchain');
 
 %% Final interpolated model with errors
 final_model = c4_FINAL_MODEL(posterior,allmodels_collated,par,1,[resdir,'/final_model']);
@@ -435,9 +448,13 @@ plot_FINAL_MODEL( final_model,posterior,1,[resdir,'/final_model.pdf'],true,[stad
 
 % distribute data for different processing (e.g. _lo, _cms)
 for idt = 1:length(par.inv.datatypes)
-    dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
-    if ~isfield(final_predata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
-        final_predata.(dtype) = final_predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+    dtype = par.inv.datatypes{idt}; 
+    pdt = parse_dtype( dtype ); 
+    if strcmp(pdt{1},'BW') && (~strcmp(pdt{3},'def') || ~strcmp(pdt{4},'def'))
+        if any(strcmp(par.inv.datatypes,['BW_',pdt{2}])) % only if there IS a standard!
+            disp(['replacing ',dtype,' with ',[pdt{1},'_',pdt{2}]])
+            final_predata.(dtype) = final_predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+        end
     end
 end
 % window, filter data 
