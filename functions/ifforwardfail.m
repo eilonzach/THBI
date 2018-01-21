@@ -12,9 +12,11 @@ if isfield(predata,'BW_Ps') &&~isempty(predata.BW_Ps)
         iffail = true;
     end
     
-    if any(any(isnan([predata.BW_Ps.PSV]))) 
+    for ia = 1:length(predata.BW_Ps)
+        if any(any(isnan(predata.BW_Ps(ia).PSV))) 
         fprintf('NaN P DATA!\n')
         iffail = true;
+        end
     end
 end
 
@@ -24,9 +26,11 @@ if isfield(predata,'BW_Sp') && ~isempty(predata.BW_Sp)
         iffail = true;
     end
 
-    if any(any(isnan([predata.BW_Sp.PSV])))
-        fprintf('inhomogeneous!\n'); 
-        iffail = true;
+    for ia = 1:length(predata.BW_Sp)
+        if any(any(isnan(predata.BW_Sp(ia).PSV)))
+            fprintf('inhomogeneous!\n'); 
+            iffail = true;
+        end
     end
 end        
 

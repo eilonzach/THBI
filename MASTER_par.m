@@ -3,9 +3,9 @@ close all
 
 
 projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'ECSD';
+sta = 'WVOR';
 nwk = 'US';
-gc = [69,59,40,38]; % will search for gcarcs +/-3 of this value;
+gc = [69,59,40,38,32,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
 % baz = 315;
 
@@ -180,7 +180,9 @@ ptb = cell({});
 nchain = 0;
 fail_chain = 0;
 ifaccept=true;
+if isfield(trudata,'SW_Ray')
 preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
+end
 % reset_likelihood;
 log_likelihood = -Inf;
 predata=[];
@@ -348,8 +350,9 @@ try
     if mod(ii,par.inv.saveperN)==0 || ii==1
 	
         [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
-        preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
-    
+        if isfield(trudata,'SW_Ray')
+            preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
+        end
     end
     
     
@@ -391,7 +394,9 @@ fprintf('\n =========== ENDING ITERATIONS %s ===========\n',char(64+iii))
 model0_perchain{iii} = model0;
 misfits_perchain{iii} = misfits;
 allmodels_perchain{iii} = allmodels;
-SWs_perchain{iii} = preSW;	
+if isfield(trudata,'SW_Ray')
+    SWs_perchain{iii} = preSW;	
+end
 
 
 end % parfor loop
