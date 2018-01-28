@@ -3,9 +3,9 @@ close all
 
 
 projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'WVOR';
+sta = 'ECSD';
 nwk = 'US';
-gc = [69,59,40,38]; % will search for gcarcs +/-3 of this value;
+gc = [69,59,40,38,32,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
 % baz = 315;
 
@@ -170,7 +170,9 @@ ptb = cell({});
 nchain = 0;
 fail_chain = 0;
 ifaccept=true;
+if isfield(trudata,'SW_Ray')
 preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
+end
 % reset_likelihood;
 log_likelihood = -Inf;
 predata=[];
@@ -241,7 +243,9 @@ for ii = 1:par.inv.niter
         end
         
         % continue if any Sp or PS inhomogeneous or nan or weird output
-        if ifforwardfail(predata,par), fail_chain=fail_chain+1; break, end
+        if ifforwardfail(predata,par)
+            fail_chain=fail_chain+1; break
+        end
         
         predata0=predata;
         
@@ -279,7 +283,11 @@ for ii = 1:par.inv.niter
 %      plot_TRUvsPRE_old(trudata,predata)]
 
     % continue if any Sp or PS inhomogeneous or nan or weird output
-    if ifforwardfail(predata,par), fail_chain=fail_chain+1; ifpass=0; break, else fail_chain = 0; end
+    if ifforwardfail(predata,par)
+        fail_chain=fail_chain+1; ifpass=0; break
+    else
+        fail_chain = 0; 
+    end
 
 %% =========================  CALCULATE MISFIT  ===========================
     
@@ -343,10 +351,11 @@ for ii = 1:par.inv.niter
     
     %% SAVE every saveperN
     if mod(ii,par.inv.saveperN)==0 || ii==1
-        
-	[misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
-    preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
-    
+	
+        [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
+        if isfield(trudata,'SW_Ray')
+            preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
+        end
     end
     
     

@@ -40,7 +40,7 @@ end
 %%  =========================  PROCESS SAVEDATA  =========================  
 
 dtypes = par.inv.datatypes;
-    axord = [1,2];
+    axord = [1,0,2,0];
 
 % if iflodata
 %     dtypes = {'BW_Ps','BW_Sp','BW_Ps_lo','BW_Sp_lo'};
