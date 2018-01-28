@@ -5,16 +5,17 @@ close all
 projname = 'LAB_tests'; 
 zsed = 0;
 zmoh = 45;
-zlab = 100;
-wlab = 0;
-flab = 0.05;
-dtps = {'BW_Ps','SW_Ray_phV'};     
+zlab = 120;
+wlab = 00;
+flab = 0.07;
+dtps = {'BW_Ps','BW_Sp','BW_Sp_lo','SW_Ray_phV'};     
 
 % noise details, if "real"
-% noisesta = 'RSSD';
-% noisenwk = 'IU';
-% noisegcarcs = [73,38];
-% noiseup = 1; % factor to increase real noise
+noisesta = 'RSSD';
+noisenwk = 'IU';
+noisegcarcs = [73,38];
+noiseshape = 'white'; % 'white' or 'real'
+noiseup = 0.6; % factor to increase real noise
 
 % naming convention
 dtpstr='_';
@@ -76,15 +77,17 @@ save([resdir,'/trumodel'],'TRUEmodel');
 % make synth data
 [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
 trudata_noiseless = trudata;
+
+trudata = trudata_noiseless;
 if strcmp(par.synth.noisetype,'real')
     noise_sta_deets = struct('datadir',[THBIpath,'/WYOMING/STA_inversions/',noisesta,'_dat20/'],...
-                             'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup);
+                             'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup,'noiseshape',noiseshape);
     par.synth.noise_sta_deets = noise_sta_deets;
-    [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par,noise_sta_deets );
+    [ trudata,par ] = z2_NOISIFY_SYNTH_makestack( trudata, par,noise_sta_deets );
 end
 
 % save data
-save([resdir,'/trudata_ORIG'],'trudata');
+% save([resdir,'/trudata_ORIG'],'trudata');
 
 % distribute data for different processing (e.g. _lo, _cms)
 for idt = 1:length(par.inv.datatypes)
@@ -103,7 +106,6 @@ end
 plot_TRU_WAVEFORMS(trudata);
 % plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG);
 plot_TRUvsPRE(trudata,trudata);
-
 
 %% ---------------------------- INITIATE ----------------------------
 profile clear
