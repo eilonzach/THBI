@@ -47,7 +47,7 @@ for iii = 1:nchains
     % kill misfits beyond N
     fns = fieldnames(mf);
     for ifn = 1:length(fns)
-        if length(mf.(fns{ifn})) > N;
+        if length(mf.(fns{ifn})) > N
             mf.(fns{ifn})(N+1:end) = [];
         end
     end
@@ -185,28 +185,23 @@ pause(0.05)
 rms_alldata = nan(nchains,length(par.inv.datatypes));
 
 % gather average rms errors of each chain
-for iii=1:nchains;
+for iii=1:nchains
     if goodchains(iii)==false, rms_alldata(iii,:) = nan; continue; end % already know it's bad
     for id = 1:length(par.inv.datatypes)
+        % assign structures
         if nchains>1, mf = misfits{iii}; else mf = misfits; end
         if isempty(mf), goodchains(iii)=false; continue; end
         ind = mf.iter > par.inv.burnin;
         dtype = par.inv.datatypes{id};
+        % work out rms for this dtype (average across all data streams for this dtype)
         rms = [mf.rms.(dtype)]';
         rms_alldata(iii,id) = mean(sum(rms(ind,:),2)); 
-
-%         switch char(par.inv.datatypes(id))
-%             case 'SpRF'
-%                 rms_alldata(iii,id) = mean(sum(mf.rms_sp(ind,:),2)); 
-%             case 'PsRF'
-%                 rms_alldata(iii,id) = mean(sum(mf.rms_ps(ind,:),2)); 
-%             case 'SW'
-%                 rms_alldata(iii,id) = mean(mf.rms_SW(ind)); 
-%             case 'SpRF_lo'
-%                 rms_alldata(iii,id) = mean(sum(mf.rms_sp_lo(ind,:),2)); 
-%             case 'PsRF_lo'
-%                 rms_alldata(iii,id) = mean(sum(mf.rms_ps_lo(ind,:),2)); 
-%         end
+        % work out if the chain got stuck - if there is no change to the
+        % data over many iterations - must be stuck for 500 iterations to
+        % signify
+        if any(any(diff(rms(ind,:),ceil(1000./par.inv.saveperN),1)==0))
+            rms_alldata(iii,id) = nan; continue;
+        end
     end
 end
 

@@ -79,7 +79,7 @@ TRUEmodel.vp = TRUEmodel.VP;
 
 %% MAKE LAYERISED TARGET MODEL
 % layerise
-[zlayt,zlayb,Vs_lay] = layerise(Z,Vs,par.forc.mindV,0);
+[zlayt,zlayb,Vs_lay] = layerise(Z,Vs,par.forc.mindV/3,0);
 
 nlay = length(Vs_lay);
 

@@ -4,17 +4,18 @@ close all
 
 projname = 'LAB_tests'; 
 zsed = 0;
-zmoh = 30;
-zlab = 100;
-wlab = 10;
+zmoh = 45;
+zlab = 120;
+wlab = 00;
 flab = 0.07;
-dtps = {'BW_Ps','BW_Sp','SW_Ray_phV'};     
+dtps = {'BW_Ps','BW_Sp','BW_Sp_lo','SW_Ray_phV'};     
 
 % noise details, if "real"
 noisesta = 'RSSD';
 noisenwk = 'IU';
 noisegcarcs = [73,38];
-noiseup = 1; % factor to increase real noise
+noiseshape = 'white'; % 'white' or 'real'
+noiseup = 0.6; % factor to increase real noise
 
 % naming convention
 dtpstr='_';
@@ -76,15 +77,17 @@ save([resdir,'/trumodel'],'TRUEmodel');
 % make synth data
 [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
 trudata_noiseless = trudata;
+
+trudata = trudata_noiseless;
 if strcmp(par.synth.noisetype,'real')
     noise_sta_deets = struct('datadir',[THBIpath,'/WYOMING/STA_inversions/',noisesta,'_dat20/'],...
-                             'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup);
+                             'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup,'noiseshape',noiseshape);
     par.synth.noise_sta_deets = noise_sta_deets;
-    [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par,noise_sta_deets );
+    [ trudata,par ] = z2_NOISIFY_SYNTH_makestack( trudata, par,noise_sta_deets );
 end
 
 % save data
-save([resdir,'/trudata_ORIG'],'trudata');
+% save([resdir,'/trudata_ORIG'],'trudata');
 
 % distribute data for different processing (e.g. _lo, _cms)
 for idt = 1:length(par.inv.datatypes)
@@ -103,7 +106,6 @@ end
 plot_TRU_WAVEFORMS(trudata);
 % plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG);
 plot_TRUvsPRE(trudata,trudata);
-
 
 %% ---------------------------- INITIATE ----------------------------
 profile clear
@@ -175,7 +177,7 @@ predata=[];
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',char(64+iii))
 for ii = 1:par.inv.niter
 try
-    if rem(ii,10)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
+    if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
@@ -403,8 +405,8 @@ save([resdir,'/allmods_collated'],'allmodels_collated');
 fprintf('  > Plotting posterior\n')
 plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
 
-fprintf('  > Plotting prior vs. posterior\n')
-plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
+% fprintf('  > Plotting prior vs. posterior\n')
+% plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
 
 [ suite_of_models ] = c3_BUILD_MODEL_SUITE(allmodels_collated,par );
 fprintf('  > Saving model suite\n')

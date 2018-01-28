@@ -17,6 +17,8 @@ addpath([basedir,'matlab_to_mineos']);
 addpath('~/Documents/MATLAB/seizmo/models/')
 % path to Rayleigh wave dispersion curve dir
 addpath('/Users/zeilon/Dropbox/MATLAB/seis_tools/surface_waves'); 
+% path to gaussfit dir
+addpath('/Users/zeilon/Documents/MATLAB/lib/gaussfit'); 
 
 % turn warning back on
 warning('on','MATLAB:dispatcher:nameConflict');
