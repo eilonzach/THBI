@@ -4,17 +4,17 @@ close all
 
 projname = 'LAB_tests'; 
 zsed = 0;
-zmoh = 30;
+zmoh = 45;
 zlab = 100;
-wlab = 10;
-flab = 0.07;
-dtps = {'BW_Ps','BW_Sp','SW_Ray_phV'};     
+wlab = 0;
+flab = 0.05;
+dtps = {'BW_Ps','SW_Ray_phV'};     
 
 % noise details, if "real"
-noisesta = 'RSSD';
-noisenwk = 'IU';
-noisegcarcs = [73,38];
-noiseup = 1; % factor to increase real noise
+% noisesta = 'RSSD';
+% noisenwk = 'IU';
+% noisegcarcs = [73,38];
+% noiseup = 1; % factor to increase real noise
 
 % naming convention
 dtpstr='_';
@@ -126,8 +126,8 @@ t = now;
 parfor iii = 1:par.inv.nchains 
 
 %% Fail-safe to restart chain if there's a succession of failures
-fail_chain=10;
-while fail_chain>=10
+fail_chain=20;
+while fail_chain>=20
 
 
 %% Prep posterior structure
@@ -175,12 +175,12 @@ predata=[];
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',char(64+iii))
 for ii = 1:par.inv.niter
 try
-    if rem(ii,10)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
+    if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
     newK = false;
-    if fail_chain>9
+    if fail_chain>19
         % if not enough saved in this chain, abort and restart
         if (ii - par.inv.burnin)/par.inv.saveperN < 200
             break
@@ -229,7 +229,8 @@ try
         
         % continue if any Sp or PS inhomogeneous or nan or weird output
         if ifforwardfail(predata,par)
-            fail_chain=fail_chain+1; break
+            fail_chain=fail_chain+1; 
+            fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
         end
         
         for idt = 1:length(par.inv.datatypes)
@@ -266,7 +267,12 @@ try
 %      plot_TRUvsPRE_old(trudata,predata)]
 
     % continue if any Sp or PS inhomogeneous or nan or weird output
-    if ifforwardfail(predata,par), fail_chain=fail_chain+1; ifpass=0; break, else fail_chain = 0; end
+    if ifforwardfail(predata,par)
+        fail_chain=fail_chain+1; ifpass=0; 
+        fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
+    else
+        fail_chain = 0; 
+    end
 
 %% =========================  CALCULATE MISFIT  ===========================
     
@@ -403,8 +409,8 @@ save([resdir,'/allmods_collated'],'allmodels_collated');
 fprintf('  > Plotting posterior\n')
 plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
 
-fprintf('  > Plotting prior vs. posterior\n')
-plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
+% fprintf('  > Plotting prior vs. posterior\n')
+% plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
 
 [ suite_of_models ] = c3_BUILD_MODEL_SUITE(allmodels_collated,par );
 fprintf('  > Saving model suite\n')

@@ -20,7 +20,9 @@ nclust = length(unique(iclust));
 
 
 for icl = 1:nclust
+try
     hp = polarscatter(ax,d2r(seazs(iclust==icl)),(gcarcs(iclust==icl)-minarc),30,colour_get(icl,nclust,1,parula)','filled','markeredgecolor','k');
+end
     hold on
 end
 plot(ax,0,0,'^k','linewidth',2,'markersize',13,'markerfacecolor',[0.6 0.6 0.6])

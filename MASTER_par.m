@@ -3,7 +3,7 @@ close all
 
 
 projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'WVOR';
+sta = 'EYMN';
 nwk = 'US';
 gc = [69,59,40,38,32,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
@@ -15,6 +15,7 @@ notes = [...
     'Using all data types: Ps,Pslo,Pscms,Sp,Splo,SW.\n',...
     'This run has a sediment layer DISallowed.\n',...
     'Max depth 300 km.\n',...
+    'New techniques of ignoring inhomog. P conversion layers\n',...
         ];
 
 %% ------------------------- START ------------------------- 
@@ -137,8 +138,8 @@ t = now;
 parfor iii = 1:par.inv.nchains 
 
 %% Fail-safe to restart chain if there's a succession of failures
-fail_chain=50;
-while fail_chain>=50
+fail_chain=20;
+while fail_chain>=20
 
 
 %% Prep posterior structure
@@ -195,7 +196,7 @@ try
     ifaccept=false;
     ifpass = false;
     newK = false;
-    if fail_chain>49
+    if fail_chain>19
         % if not enough saved in this chain, abort and restart
         if (ii - par.inv.burnin)/par.inv.saveperN < 200
             break

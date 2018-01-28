@@ -237,7 +237,7 @@ end
 end
 
 % 
-% %% PLOT PROGRESS OF MODEL
+%% PLOT PROGRESS OF MODEL
 % figure(99); clf; set(gcf,'pos',[120 151 920 947])
 % Nacc = allmodels.Nstored;
 % for ii = 1:3:Nacc 
