@@ -103,7 +103,7 @@ for id = 1:length(dtypes)
             nw=4;
             freq=[1:floor(nsamps/2)+1]'./(nsamps*idt);%in mHz - to get in Hz, divide by 1000
             [Pxx,~] = pmtm(ndat_use,nw,freq,1./ndt);
-            Pxx = moving_average(Pxx,round(length(Pxx)/10)); % smooth power series!
+%             Pxx = moving_average(Pxx,round(length(Pxx)/10)); % smooth power series!
             if strcmp(noise_sta_deets.noiseshape,'white')
                 Pxx = mean(Pxx)*ones(size(Pxx));
             end
@@ -117,7 +117,7 @@ for id = 1:length(dtypes)
         %% average the noise spectrum
         psde = [];
         psde(:,1) = psde_all(:,1,1);
-        for iff = 1:length(psde)
+        for iff = 10:length(psde)
             psde(iff,2) = mean_wtd(squeeze(psde_all(iff,2,:)),ampfac_all(:));
         end
 

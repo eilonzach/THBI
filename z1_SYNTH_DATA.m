@@ -26,7 +26,7 @@ P_inc = rayp2inc(raypp,TLM.Vp(end),6371-TLM.zlayb(end));
 S_inc = rayp2inc(rayps,TLM.Vs(end),6371-TLM.zlayb(end));
 
 [trudat_ps,tt_ps]  = run_propmat(TLM,'TegPs','Ps',samprate, P_inc, par.synth.synthperiod); % in R,T,Z
-[trudat_sp,tt_sp] = run_propmat(TLM,'TegSp','Sp',samprate, S_inc, par.synth.synthperiod); % in R,T,Z
+[trudat_sp,tt_sp] = run_propmat(TLM,'TegSp','Sp',samprate, S_inc, par.synth.synthperiod*2); % in R,T,Z
 % channel order
 trudat_ps_ZRT = trudat_ps(:,[3,1,2]); % in Z,R,T
 trudat_sp_ZRT = trudat_sp(:,[3,1,2]); % in Z,R,T

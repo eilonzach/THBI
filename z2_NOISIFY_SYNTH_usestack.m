@@ -42,9 +42,7 @@ for id = 1:length(dtypes)
     if strcmp(pdtyp{1},'SW'), continue; end
     % make different data w/ different random noise - stops it being
     % dominated by single noisy peaks - simulates stack, effectively
-%     if strcmp(pdtyp{2},'Ps')
-        trudata.(dtype)(2,1) = trudata.(dtype)(1);
-%     end
+%     trudata.(dtype)(2,1) = trudata.(dtype)(1);
 %     trudata.(dtype)(3,1) = trudata.(dtype)(1);
 %     trudata.(dtype)(4,1) = trudata.(dtype)(1);
 %     trudata.(dtype)(5,1) = trudata.(dtype)(1);
@@ -86,7 +84,7 @@ for id = 1:length(dtypes)
         nw=4;
         freq=[1:floor(nsamps/2)+1]'./(nsamps*idt);%in mHz - to get in Hz, divide by 1000
         [Pxx,~] = pmtm(ndat_use,nw,freq,1./ndt);
-%         Pxx = moving_average(Pxx,round(length(Pxx/10))); % smooth power series!
+        Pxx = moving_average(Pxx,round(length(Pxx/10))); % smooth power series!
         H = dspdata.psd(Pxx,'Fs',1./ndt);
         psde = [H.Frequencies,H.Data];
 
@@ -101,7 +99,7 @@ for id = 1:length(dtypes)
         %ifft to get noise data:
         rndat(:,ic)=ifft(FA);
         % get amplification factor to down-weight the noise  
-        ampfac(ic) = max(abs(avar.dataPSVSH(:,ic,iparent)))./rms(ndat_tru)./max(abs(idat)); % N.B. rms of rndat=1
+        ampfac(ic) = max(abs(avar.dataPSVSH(:,ic,ip)))./rms(ndat_tru)./max(abs(idat)); % N.B. rms of rndat=1
 %         ampfac = 2*avar.SNR_stk(ic,ip)/maxab(trudata.(dtype)(ia).PSV(:,ic));
        
         % assemble final data
@@ -113,9 +111,9 @@ for id = 1:length(dtypes)
 
         
     end % loop on components
-%          figure(4)
-%          subplot(2,1,1),plot(trudata.(dtype)(ia).tt,trudata.(dtype)(ia).PSV), ylim(max(max(abs(odat)))*[-0.1 0.1])
-%          subplot(2,1,2),plot(trudata.(dtype)(ia).tt,odat), ylim(max(max(abs(odat)))*[-0.1 0.1])
+         figure(4)
+         subplot(2,1,1),plot(trudata.(dtype)(ia).tt,trudata.(dtype)(ia).PSV), ylim(max(max(abs(odat)))*[-0.1 0.1])
+         subplot(2,1,2),plot(trudata.(dtype)(ia).tt,odat), ylim(max(max(abs(odat)))*[-0.1 0.1])
 %         
     trudata.(dtype)(ia).PSV = odat;
         
