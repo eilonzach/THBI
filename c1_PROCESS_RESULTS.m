@@ -199,7 +199,7 @@ for iii=1:nchains
         % work out if the chain got stuck - if there is no change to the
         % data over many iterations - must be stuck for 500 iterations to
         % signify
-        if any(any(diff(rms(ind,:),ceil(1000./par.inv.saveperN),1)==0))
+        if any(any(diff(rms(ind,:),ceil(500./par.inv.saveperN),1)==0))
             rms_alldata(iii,id) = nan; continue;
         end
     end
