@@ -3,62 +3,65 @@
 %  for the true inversion with the real data
 
 %% Inversion parms
-inv = struct(    'verbose',true                 ,... % option to spit out more information+plots
-                 'niter',12000                   ,... % Number of iterations
-                 'burnin',3000                   ,... % don't record results before burnin iterations
-                 'cooloff',1500                  ,... % # of iterations over which temperature declines as erf
-                 'tempmax',4                     ,... % maximum multiple of all standard deviations
-                 'bestNmod2keep',2000             ,... % keep only the best N models in each chain, defined here       
-                 'kerneltolmax',1.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
-                 'kerneltolmed',1.0              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'kerneltolmin',0.5              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'maxnkchain',200                ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'nchains',20                     ,... % number of chains to start in parallel
-                 'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
-                 'datatypes',{{'BW_Sp','BW_Ps_lo','SW_Ray','SW_Lov'}});  % any of {{'SW','BW_x_y' with x='Sp/Ps' and y=' /lo/fl;}}}
+inv = struct(    'verbose',false                ,... % option to spit out more information+plots
+                 'niter',2e6                    ,... % Number of iterations
+                 'burnin',0000                  ,... % don't record results before burnin iterations
+                 'cooloff',1                    ,... % # of iterations over which temperature declines as erf
+                 'tempmax',1                    ,... % maximum multiple of all standard deviations
+                 'saveperN',100                  ,... % save only every saveperN iterations       
+                 'bestNmod2keep',1              ,... % keep only the best N models in each chain, defined here       
+                 'kerneltolmax',1.5             ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
+                 'kerneltolmed',1.0             ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'kerneltolmin',0.5             ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'maxnkchain',200               ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'nchains',10                    ,... % number of chains to start in parallel
+                 'Kweight',1                    ,... % option to weight SW misfit by fraction of kernel in model space
+                 'datatypes',{{'BW_Sp','BW_Ps_lo','SW_Ray','SW_Lov'}});  
+                                % any of {{'SW_x_y' with x='Ray/Lov' and y='phV/grV'; 
+                                %          'BW_x_y' with x='Sp/Ps' and y=' /lo/fl';}}
 
 %% Model parms
-mod = struct([]);
+modl = struct([]);
 
-mod(1).nstas = 1;
-mod.maxz = 300;                                      % maximum depth in model from ref ellipsoid, km
-mod.maxkz = 250;                                     % maximum depth of deepest non-basal knot, km
-mod.dz = 2.5;                                        % depth spacing of model, km
+modl(1).nstas = 1;
+modl.maxz = 300;                                      % maximum depth in model from ref ellipsoid, km
+modl.maxkz = 250;                                     % maximum depth of deepest non-basal knot, km
+modl.dz = 1.5;                                        % depth spacing of model, km
 
-mod.sed = struct(    'hmax',0.0                  ,... %5 max sed layer thickness, km
+modl.sed = struct(   'hmax',0.0                  ,... %5 max sed layer thickness, km
                      'hmin',0.0                  ,... %0 min sed layer thickness, km
                      'hstd',0.0                  ,... % std of sed layer thickness for perturbation, km
                      'vsmax',3.3                 ,... % max sed velocity, km/s
-                     'vsmin',2.5                 ,... % min sed velocity, km/s
+                     'vsmin',2.0                 ,... % min sed velocity, km/s
                      'vsstd',0.00                 );  % std of sed velocity for perturbation, km/s
 
-mod.crust = struct(  'hmax',60                   ,... %60 max xtal crust thickness, km
+modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickness, km
                      'hmin',25                   ,... %10 min xtal crust thickness, km
-                     'hstd',3                    ,... % std of xtal crust thickness, for perturbation, km
-                     'vsmax',4.1                 ,...4.5 % max crust spline velocity, km/s
-                     'vsmin',2.7                 ,...3.3 % min crust spline velocity, km/s
-                     'vsstd',0.08                ,... % std of crust spline velocity for perturbation, km/s
+                     'hstd',2.5                  ,... % std of xtal crust thickness, for perturbation, km
+                     'vsmax',4.3                 ,...4.5 % max crust spline velocity, km/s
+                     'vsmin',2.5                 ,...3.3 % min crust spline velocity, km/s
+                     'vsstd',0.1                ,... % std of crust spline velocity for perturbation, km/s
                      'vpvsmax',1.9               ,...1.9 % min crust vpvs ratio
                      'vpvsmin',1.6               ,...1.65 % max crust vpvs ratio
-                     'vpvsstd',0.01              ,... % std of crust vpvs ratio for perturbation, km/s
+                     'vpvsstd',0.03              ,... % std of crust vpvs ratio for perturbation, km/s
                      'ximax',1.05                ,...1.05 % min crust Vs radial anis value
                      'ximin',1.0                ,...1.00 % min crust Vs radial anis value
                      'xistd',0.005              ,... % std of crust Vs radial anis value
                      'kdstd',2                   ,... % std of knot movement, for perturbation, km
-                     'kmax',6                    ,... % max number of spline knots in crust (inc ends)
-                     'kmin',6                    );  % min number of spline knots in crust (inc ends)
+                     'kmax',7                    ,... % max number of spline knots in crust (inc ends)
+                     'kmin',2                    );  % min number of spline knots in crust (inc ends)
 
-mod.mantle = struct( 'vsmax',4.9                 ,...4.9 % max mantle spline velocity, km/s
+modl.mantle = struct('vsmax',5.1                 ,...4.9 % max mantle spline velocity, km/s
                      'vsmin',3.7                 ,...3.7 % min mantle spline velocity, km/s
                      'vsstd',0.08                ,... % std of mantle spline velocity for perturbation, km/s
                      'ximax',1.06                ,...1.05 % min mantle Vs radial anis value
                      'ximin',1.0                 ,...1.00 % min mantle Vs radial anis value
                      'xistd',0.005               ,... % std of mantle Vs radial anis value
                      'kdstd',4                   ,... % std of knot movement, for perturbation, km
-                     'kmax',6                   ,... % max number of spline knots in mantle (inc ends)
-                     'kmin',6                    );  % max number of spline knots in mantle (inc ends)
+                     'kmax',15                   ,... % max number of spline knots in mantle (inc ends)
+                     'kmin',5                    );  % max number of spline knots in mantle (inc ends)
 
-mod.data = struct('prior_sigma',struct(                 ... % PRIOR
+modl.data = struct('prior_sigma',struct(                 ... % PRIOR
                   	 'BW',struct(                 ... %  Body waves
                     	'Ps',struct(              ... %   P-s data
                            'def',0.2             ,... %    default
@@ -126,10 +129,17 @@ datprocess=struct( 'normdata',true               ,... % normalise data in proces
 cond = struct(  'pos_moho',         true         ,... % No negative moho jumps
                 'pos_sed2basement', true         ,... % No negative sed bottom jumps
                 'nobigdVmoh',       true         ,... % No Vs moho jumps exceeding 30%
-                'pos_crustdV',      true        ,... % Monotonic increase of V(p/s) in crust
+                'pos_crustdV',      false        ,... % Monotonic increase of V(p/s) in crust
                 'pos_seddV',        true         ,... % Monotonic increase of V(p/s) in sediments
-                'noVSgt49',         true         );  % No VS exceeding 4.9 km/s
+                'noVSgt49',         false         );  % No VS exceeding 4.9 km/s
+            
+%% Perturbation parms
+% pert = struct('ptb_Vmod',
+%               'ptb_disc',
+%               'ptb_Mmod',
+%               'ptb_sigdat'
+            
             
 
 %% Bundle together
-par = struct('inv',inv,'mod',mod,'conditions',cond,'forc',forc,'datprocess',datprocess);
+par = struct('inv',inv,'mod',modl,'conditions',cond,'forc',forc,'datprocess',datprocess);
