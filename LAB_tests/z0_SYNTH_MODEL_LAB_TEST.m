@@ -10,7 +10,7 @@ global TRUEmodel TLM
 
 dvdz_cr = 0.008; % Vs increase with depth in the crust, (km/s)/km
 dvdz_lab = 0.003; % Vs increase with depth in the mantle, (km/s)/km
-dvdz_asth = 0.0012; % Vs increase with depth in the mantle, (km/s)/km
+dvdz_asth = 0.001; % Vs increase with depth in the mantle, (km/s)/km
 
 % parms
 % zsed = 0;

@@ -5,21 +5,22 @@ close all
 projname = 'LAB_tests'; 
 zsed = 0;
 zmoh = 45;
-zlab = 120;
-wlab = 00;
-flab = 0.07;
-dtps = {'BW_Ps','BW_Sp','BW_Ps_lo','BW_Sp_lo','SW_Ray_phV'};     
+zlab = 100;
+wlab = 0;
+flab = 0.05;
+dtps = {'BW_Ps_cms','SW_Ray_phV'};     
 
 % noise details, if "real"
 noisesta = 'RSSD';
 noisenwk = 'IU';
 noisegcarcs = [73,38];
-noiseshape = 'real'; % 'white' or 'real'
+noiseshape = 'white'; % 'white' or 'real'
 noiseup = 1; % factor to increase real noise
 
 % naming convention
 dtpstr='_';
 if any(strcmp(dtps,'BW_Ps')), dtpstr=[dtpstr,'Ps']; end
+if any(strcmp(dtps,'BW_Ps_cms')), dtpstr=[dtpstr,'Pscms']; end
 if any(strcmp(dtps,'BW_Sp')), dtpstr=[dtpstr,'Sp']; end
 if any(strcmp(dtps,'SW_Ray_phV')), dtpstr=[dtpstr,'SW']; end
 
