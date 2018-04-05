@@ -81,6 +81,10 @@ if any(strcmp(pdtyps(:,2),'Ps'))
         samprate = unique([predata.(Psdat)(irayps_P==ir).samprate]);
         P_inc = rayp2inc(rayp,laymodel.Vp(end),6371-laymodel.zlayb(end));
         [predat_ps,tt_ps] = run_propmat(laymodel,ID,'Ps',samprate, P_inc, par.forc.synthperiod,par.forc.nsamps);
+        % pad with zeros
+        tt_ps = [tt_ps(1) + [-1000:-1]'./samprate; tt_ps ;tt_ps(end) + [1:1000]'./samprate];
+        predat_ps = [zeros(1000,3);predat_ps;zeros(1000,3)];
+        %correct corrdinate order
         predat_ps_ZRT = predat_ps(:,[3,1,2]); % in Z,R,T
         if strcmp(par.forc.PSVorZR,'PSV')
             clear predat_ps_PSV;
@@ -146,11 +150,16 @@ if any(strcmp(pdtyps(:,2),'Sp'))
                     if length(laymodel.(fns{jj}))==1, continue; end
                     laymodel_Suse.(fns{jj}) = laymodel_Suse.(fns{jj})(nimagplay);
                 end
+                % set appropriate S_inc for the actual base
                 S_inc = rayp2inc(rayp,laymodel_Suse.Vs(end),6371-laymodel_Suse.zlayb(end));
             else
                 laymodel_Suse = laymodel;
             end
             [predat_sp,tt_sp] = run_propmat(laymodel_Suse,ID,'Sp',samprate, S_inc, par.forc.synthperiod,par.forc.nsamps);
+            % pad with zeros
+            tt_sp = [tt_sp(1) + [-1000:-1]'./samprate; tt_sp ;tt_sp(end) + [1:1000]'./samprate];
+            predat_sp = [zeros(1000,3);predat_sp;zeros(1000,3)];
+            %correct corrdinate order
             predat_sp_ZRT = predat_sp(:,[3,1,2]); % in Z,R,T
             if strcmp(par.forc.PSVorZR,'PSV')
                 clear predat_sp_PSV;
@@ -164,7 +173,7 @@ if any(strcmp(pdtyps(:,2),'Sp'))
                 predat_sp_PSV = predat_sp_ZRT(:,[1,2]);         
             end
             predat_sp_PSV = predat_sp_PSV./maxab(predat_sp_PSV(:,2)); % normalise on parental max, make positive
-            tt_sp_Sar = mean(tt_sp(predat_sp_PSV(:,2)==max(predat_sp_PSV(:,2)))); % estimate main S-wave arrival time from first big uoswing
+            tt_sp_Sar = mean(tt_sp(predat_sp_PSV(:,2)==max(predat_sp_PSV(:,2)))); % estimate main S-wave arrival time from first big upswing
             tt_sp = tt_sp - tt_sp_Sar;
             tt_sp = round_level(tt_sp,0.001);
 

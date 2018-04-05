@@ -60,12 +60,12 @@ for id = 1:length(par.inv.datatypes)
 end
 
 %% PRIOR
-% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-% zatdep = [5:5:par.mod.maxz]';
-% prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
-% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-% save([resdir,'/prior'],'prior');
-    
+fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+zatdep = [5:5:par.mod.maxz]';
+prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
+    return
+plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+save([resdir,'/prior'],'prior');
 
 %% Load & prep data
 fprintf(' > Creating custom model and synthetic data\n')

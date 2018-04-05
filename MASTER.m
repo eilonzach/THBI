@@ -303,7 +303,7 @@ for ii = 1:par.inv.niter
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
     
     fail_chain = 0;
-    predat_save = predata0;
+    predat_save1 = predata0;
 
     end % while ifpass
     
@@ -328,6 +328,7 @@ for ii = 1:par.inv.niter
         model = model1;
         log_likelihood = log_likelihood1;
         misfit = misfit1;
+        predat_save = predat_save1;
         
     %% UPDATE KERNEL if needed 
         if newK==true

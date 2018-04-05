@@ -9,7 +9,7 @@ gcreq = [30,75]; %
 
 phases = {'Ps','Sp'}; % {'Ps','Sp'}
 
-ifsave = false;
+ifsave = true;
 ifcalcsurfV = false; % option to re-calculate surface 
 ifPSV = true;
 verbose = true;

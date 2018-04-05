@@ -3,7 +3,7 @@ close all
 
 
 projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'EYMN';
+sta = 'WVOR';
 nwk = 'US';
 gc = [69,59,40,38,32,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
@@ -50,7 +50,7 @@ par_ORIG = par;
 save([resdir,'/par'],'par');
 copyfile('parms/bayes_inv_parms.m',resdir);
 
-for id = 1:length(par.inv.datatypes);
+for id = 1:length(par.inv.datatypes)
     allpdytp(id,:)=parse_dtype(par.inv.datatypes{id});
 end
 
@@ -235,12 +235,12 @@ try
     
 %% ===========================  FORWARD MODEL  ===========================
 	% don't re-calc if the only thing perturbed is the error
-    if ~strcmp('sig',ptb{ii}(1:3)) || isempty(predata)
+    if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
         % make random run ID (to avoid overwrites in parfor)
 		ID = [char(64+iii),num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
 
 		try
-            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); 
+            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0);
         catch
             fail_chain=fail_chain+1;
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
@@ -248,7 +248,8 @@ try
         
         % continue if any Sp or PS inhomogeneous or nan or weird output
         if ifforwardfail(predata,par)
-            fail_chain=fail_chain+1; break
+            fail_chain=fail_chain+1; 
+            fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
         end
         
         predata0=predata;
@@ -287,7 +288,12 @@ try
 %      plot_TRUvsPRE_old(trudata,predata)]
 
     % continue if any Sp or PS inhomogeneous or nan or weird output
-    if ifforwardfail(predata,par), fail_chain=fail_chain+1; ifpass=0; break, else fail_chain = 0; end
+    if ifforwardfail(predata,par)
+        fail_chain=fail_chain+1; ifpass=0; 
+        fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
+    else
+        fail_chain = 0; 
+    end
 
 %% =========================  CALCULATE MISFIT  ===========================
     
@@ -360,7 +366,7 @@ try
     
     
 %% =========  redo kernel at end of burn in or if chain is too long =======
-    if (newK == false) && (nchain > par.inv.maxnkchain);
+    if (newK == false) && (nchain > par.inv.maxnkchain)
         if par.inv.verbose, fprintf('\n RECALCULATING KERNEL - too long chain\n'); end
         Kbase.modelk = model;
         for id = 1:length(par.inv.datatypes)
@@ -429,8 +435,8 @@ posterior = c2_BUILD_POSTERIOR(allmodels_collated,par);
 fprintf('  > Plotting posterior\n')
 plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
 
-fprintf('  > Plotting prior vs. posterior\n')
-plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
+% fprintf('  > Plotting prior vs. posterior\n')
+% plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
 
 fprintf('  > Plotting model suite\n')
 [ suite_of_models ] = c3_BUILD_MODEL_SUITE(allmodels_collated,par );
