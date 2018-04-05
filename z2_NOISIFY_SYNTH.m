@@ -63,6 +63,7 @@ for id = 1:length(dtypes)
         cd(wd);
 
         ip = find(strcmp(pdtyp{2},avar.phases));
+        if isempty(ip), continue; end
         if strcmp(pdtyp{2},'Ps'), iparent = 1; elseif strcmp(pdtyp{2},'Sp'), iparent = 2; end
 
         nind = avar.tt(:,ip)>=nwin(1) & avar.tt(:,ip)<nwin(2);
@@ -109,7 +110,7 @@ for id = 1:length(dtypes)
         
         % posterior guess at SNR
 %         inoise = trudata.(dtype)(ia).tt>=-10 & trudata.(dtype)(ia).tt<-3;
-%         iSNR(ic) = max(odat(:,ic))./2./rms(odat(inoise,ic));
+        iSNR(ic) = abs(maxab(odat(:,ic))./2./rms(noise_sta_deets.noiseup*rndat(:,ic)/ampfac(ic)));
 
         
     end % loop on components
@@ -118,6 +119,7 @@ for id = 1:length(dtypes)
 %          subplot(2,1,2),plot(trudata.(dtype)(ia).tt,odat), ylim(max(max(abs(odat)))*[-0.1 0.1])
 %         
     trudata.(dtype)(ia).PSV = odat;
+    iSNR
         
     end % loop on arrivals
 end % loop on data types

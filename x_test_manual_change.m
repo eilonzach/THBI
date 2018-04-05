@@ -1,6 +1,7 @@
 %% take current model, perturb it manually, see if fits improve
 % profile clear
 % profile on
+% close
 
 %% current model data and misfit
 % [ model ] = make_mod_from_parms( model,par );
@@ -28,7 +29,10 @@ model2 = model;
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Mmod','mantle','remove'},11); 
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Mmod','mantle','remove'},11);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Mmod','mantle','remove'},11);
-% [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','crust','V',1},-0.05);
+[model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','mantle','V',8},-0.1);
+[model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','mantle','V',9},-0.1);
+[model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','mantle','V',10},-0.1);
+[model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','mantle','V',12},+0.2);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','crust','V',2},-0.05);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','crust','V',3},-0.15);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','mantle','V',1},-0.4);
@@ -44,7 +48,7 @@ model2 = model;
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','mantle','V',10},+0.05);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','mantle','V',2},-0.01);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','sed',1},+0.12);
-[model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','crust','vpvs'},+0.11);
+% [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_Vmod','crust','vpvs'},+0.11);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_disc','moh','dV'},-0.5);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_disc','moh','h'},-4);
 % [model2,ptb] = x_CUSTOM_PERTURB_MODEL( model2,par, {'ptb_disc','sed','h'},-0.1);

@@ -4,22 +4,23 @@ close all
 
 projname = 'LAB_tests'; 
 zsed = 0;
-zmoh = 45;
-zlab = 120;
-wlab = 00;
-flab = 0.07;
-dtps = {'BW_Ps','BW_Sp','BW_Ps_lo','BW_Sp_lo','SW_Ray_phV'};     
+zmoh = 30;
+zlab = 100;
+wlab = 10;
+flab = 0.05;
+dtps = {'SW_Ray_phV'};     
 
 % noise details, if "real"
 noisesta = 'RSSD';
 noisenwk = 'IU';
-noisegcarcs = [73,38];
-noiseshape = 'real'; % 'white' or 'real'
+noisegcarcs = [68,38];
+noiseshape = 'white'; % 'white' or 'real'
 noiseup = 1; % factor to increase real noise
 
 % naming convention
 dtpstr='_';
 if any(strcmp(dtps,'BW_Ps')), dtpstr=[dtpstr,'Ps']; end
+if any(strcmp(dtps,'BW_Ps_cms')), dtpstr=[dtpstr,'Pscms']; end
 if any(strcmp(dtps,'BW_Sp')), dtpstr=[dtpstr,'Sp']; end
 if any(strcmp(dtps,'SW_Ray_phV')), dtpstr=[dtpstr,'SW']; end
 
@@ -59,12 +60,12 @@ for id = 1:length(par.inv.datatypes)
 end
 
 %% PRIOR
-% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-% zatdep = [5:5:par.mod.maxz]';
-% prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
-% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-% save([resdir,'/prior'],'prior');
-    
+fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+zatdep = [5:5:par.mod.maxz]';
+prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
+    return
+plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+save([resdir,'/prior'],'prior');
 
 %% Load & prep data
 fprintf(' > Creating custom model and synthetic data\n')

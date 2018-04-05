@@ -56,6 +56,10 @@ if any(strcmp(pdtyps(:,2),'Ps'))
         samprate = unique([final_predata.(Psdat)(irayps_P==ir).samprate]);
         P_inc = rayp2inc(rayp,laymodel.Vp(end),6371-laymodel.zlayb(end));
         [predat_ps,tt_ps] = run_propmat(laymodel,ID,'Ps',samprate, P_inc, par.forc.synthperiod,par.forc.nsamps);
+        % pad with zeros
+        tt_ps = [tt_ps(1) + [-1000:-1]'./samprate; tt_ps ;tt_ps(end) + [1:1000]'./samprate];
+        predat_ps = [zeros(1000,3);predat_ps;zeros(1000,3)];
+        %correct corrdinate order
         predat_ps_ZRT = predat_ps(:,[3,1,2]); % in Z,R,T
         if strcmp(par.forc.PSVorZR,'PSV')
             clear predat_ps_PSV;
@@ -120,6 +124,10 @@ if any(strcmp(pdtyps(:,2),'Sp'))
         end
         
         [predat_sp,tt_sp] = run_propmat(laymodel_Suse,ID,'Sp',samprate, S_inc, par.forc.synthperiod,par.forc.nsamps);
+        % pad with zeros
+        tt_sp = [tt_sp(1) + [-1000:-1]'./samprate; tt_sp ;tt_sp(end) + [1:1000]'./samprate];
+        predat_sp = [zeros(1000,3);predat_sp;zeros(1000,3)];
+        %correct corrdinate order
         predat_sp_ZRT = predat_sp(:,[3,1,2]); % in Z,R,T
         if strcmp(par.forc.PSVorZR,'PSV')
             clear predat_sp_PSV;
