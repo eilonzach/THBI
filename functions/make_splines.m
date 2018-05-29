@@ -6,6 +6,16 @@ function [ spbasis,spwts,spzz ] = make_splines( zknots,par,zi,vi )
 % between the top and bottom splines. We will find weights for these
 % splines by interpolating the basis onto vectors zi and vi.
 % 
+% INPUTS:
+%   zknots   - vector of depths of spline knots (km)
+%   par.mod.zi  - increment of depth grid (km)
+%   zi   - vector of depths for input velocity profile (km)
+%   vi   - vector of velocities for input velocity profile [optional] (km/s)
+% OUTPUTS:
+%   spbasis  - matrix with spline basis (Nz x Nsp)
+%   spwts    - (Nsp x 1) vector of spline weights to fit [zi,vi] profile 
+%   spzz     - (Nz x 1) vector of depths for splines (km)
+% 
 % N.B.  to move spline knots but not change velocities, just ignore the new
 % weightings, use new spbasis and knots positions. 
 

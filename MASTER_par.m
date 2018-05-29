@@ -3,9 +3,9 @@ close all
 
 
 projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'WVOR';
+sta = 'LKWY';
 nwk = 'US';
-gc = [69,59,40,38,32,66]; % will search for gcarcs +/-3 of this value;
+gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
 % baz = 315;
 
@@ -57,7 +57,8 @@ end
 %% Load & prep data
 fprintf('LOADING data\n')
 if strcmp(projname,'WYOMING')
-	stadeets = irisFetch.Stations('station',nwk,sta,'*','*');
+	try stadeets = irisFetch.Stations('station',nwk,sta,'*','*'); 
+    catch, load('STA_inversions/stainfo_master.mat'); stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},sta)).Latitude,'Longitude',stainfo(strcmp({stainfo.StationCode},sta)).Longitude);end
 
 %     addpath('matguts')
 %     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);

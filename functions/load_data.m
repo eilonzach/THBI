@@ -45,8 +45,11 @@ for ii = 1:length(datfiles)
         Pdat_tdw = interp1(tt_d,Pdat_td,tt_w);
         np = np+1;
         BW_Ps(np,1) = struct('PSV',Pdat_tdw(:,1:2),'tt',tt_w,'rayp',avar.rayp(Pind),'samprate',samprate,'nsamp',size(Pdat_tdw,1),'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
+    else 
+        BW_Ps = struct([]);
     end
 
+    
     %% BW_Sp ==> flip Z to 'up', taper, downsample, window
     if any(Sind)
         Sdat = avar.dataPSVSH(:,:,Sind); 
@@ -57,6 +60,8 @@ for ii = 1:length(datfiles)
         Sdat_tdw = interp1(tt_d,Sdat_td,tt_w);
         ns = ns+1;
         BW_Sp(ns,1) = struct('PSV',Sdat_tdw(:,1:2),'tt',tt_w,'rayp',avar.rayp(Sind),'samprate',samprate,'nsamp',size(Sdat_tdw,1),'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
+    else 
+        BW_Sp = struct([]);
     end
 
 % ------------------------- OLD - BASED ON ZRT  ---------------------------
@@ -93,9 +98,9 @@ end % end loop on data files
 
 cd(wd);
 
-%% Phase velocity data
+%% Phase velocity datals /
 seismoddir = '~/Work/data/models_seismic/';
-if ~exist(seismoddir), seismoddir = regexprep(seismoddir,'~','/Volumes/zeilon'); end 
+if ~exist(seismoddir,'dir'), seismoddir = regexprep(seismoddir,'~','/Volumes/zeilon'); end 
 addpath(seismoddir);
 
 % -------- Rayleigh waves
