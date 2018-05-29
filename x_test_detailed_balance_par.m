@@ -9,6 +9,13 @@ notes = [...
     'Select new knot velocity from gaussian around current value.  \n'...
     'Defining k (N of knots) separately in each layer, rather than overall!  \n'...
         ];
+    
+% perturb_opt = 'PAPER';
+% perturb_opt = 'constant';
+% perturb_opt = 'uniformV';
+perturb_opt = 'BodinAcc';
+
+
 
 %% ------------------------- START ------------------------- 
 global projdir THBIpath TRUEmodel
@@ -20,11 +27,17 @@ cd(projdir);
 
 %% PARMS
 run('bayes_inv_parms')
+if strcmp(perturb_opt,'constant')
+    par.mod.mantle.kmax = 10;
+    par.mod.mantle.kmin = 10;
+    par.mod.crust.kmax = 4;
+    par.mod.crust.kmin = 4;
+end
 
 % par.inv.verbose=false;
 par.sta = 'detailed_balance'; par.nwk=[];
 
-STAMP=['DetBal',datestr(now,'_yyyymmddHHMM_pll')]; par.STAMP = STAMP;
+STAMP=['DetBa_',perturb_opt]; par.STAMP = STAMP;
 resdir = projdir;
 mkdir(resdir);
 fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
@@ -36,12 +49,28 @@ save([resdir,'/par_',STAMP],'par');
 
 zatdep = [5:5:par.mod.maxz]';
 
-%% PRIOR
-fprintf('  > Building prior distribution from %.0f runs\n',min([par.inv.niter,5e5]))
-prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
-plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-save([resdir,'/prior'],'prior');
-%     
+% PRIOR
+% parfor kkk = 1:par.inv.nchains
+% chainstr = mkchainstr(kkk);
+% fprintf('  > Building prior distribution %s from %.0f runs\n',chainstr,min([par.inv.niter,5e5]))
+% priors{kkk,1} = a2_BUILD_PRIOR(par,min([par.inv.niter,1e4]),zatdep);
+% end
+% prior = priors{1};
+% fns = fieldnames(prior);
+% for kkk = 2:par.inv.nchains 
+%     for jj = 1:length(fns)
+%         if isscalar(prior.(fns{jj}))
+%             prior.(fns{jj}) = prior.(fns{jj}) + priors{kkk}.(fns{jj});
+%         elseif strcmp(fns{jj},'zatdep')
+%             continue;
+%         else
+%             prior.(fns{jj}) = [prior.(fns{jj}) ; priors{kkk}.(fns{jj})];
+%         end
+%     end
+% end
+% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+% save([resdir,'/prior'],'prior');
+    
 %% ---------------------------- INITIATE ----------------------------
 profile clear
 profile on
@@ -59,8 +88,9 @@ fprintf('\n =========== STARTING PARALLEL CHAINS ===========\n')
 %% ========================================================================
 %% ========================================================================
 t = now;
-posteriors = {};ptbs = {};
 parfor iii = 1:par.inv.nchains 
+% end
+chainstr = mkchainstr(iii);
 
 %% Prep posterior structure
 [ misfits,allmodels,savedat ] = b0_RESULTS_SETUP(par);
@@ -100,9 +130,9 @@ ifaccept=false;
 misfits.lastlogL = -Inf; 
 predata=[];
 % not parfor
-fprintf('\n =========== STARTING ITERATIONS %s ===========\n',char(64+iii))
+fprintf('\n =========== STARTING ITERATIONS %s ===========\n',chainstr)
 for ii = 1:par.inv.niter
-    if rem(ii,100)==0, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
+    if rem(ii,100)==0, fprintf('Iteration %s%.0f\n',chainstr,ii); end
     temp = 1;
     
 %% ===========================  PERTURB  ===========================  
@@ -111,8 +141,17 @@ for ii = 1:par.inv.niter
         p_bd = 1;
         ptb{ii,1} = 'start';
     else
-%             [model1,ptb{ii,1},p_bd] = b2ii_PERTURB_MODEL_constVbirthp(model,par,temp);
-        [model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
+        switch perturb_opt
+            case 'constant'
+                [model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
+            case 'PAPER'
+                [model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
+            case 'BodinAcc'
+                [model1,ptb{ii,1},p_bd]  = b2iii_PERTURB_MODEL_BodinAccept(model,par,temp);
+            case 'uniformV'
+                [model1,ptb{ii,1},p_bd] = b2ii_PERTURB_MODEL_constVbirthp(model,par,temp);
+        end  
+        
     
 %         if strcmp(ptb{ii,1},'Moho_h') && p_bd == 0, [model.crustmparm.knots(end),model1.crustmparm.knots(end)], 
 %         end
@@ -137,7 +176,7 @@ for ii = 1:par.inv.niter
 
 
 %% =====================    ===  ACCEPTANCE CRITERION  ========================
-    [ ifaccept ] = b6_IFACCEPT( 0,misfits,temp,p_bd*ifpass );
+    [ ifaccept ] = b6_IFACCEPT( 0,misfits.lastlogL,temp,p_bd*ifpass );
 %     [model.mantmparm.Nkn,model1.mantmparm.Nkn,round(model1.mantmparm.Nkn-model.mantmparm.Nkn),p_bd,ifaccept]
 %     if strcmp(ptb{ii,1}(1:end-2),'crust_VS') && ifaccept == 0, [model.crustmparm.VS_sp model1.crustmparm.VS_sp], 
 %     end
@@ -240,6 +279,10 @@ for iii = 2:par.inv.nchains
 end
     
     
+plot_db_output
+save2pdf(61,['detailed_balance_',perturb_opt]);
+
+return
 
 %% Plot results
 
@@ -379,7 +422,7 @@ end
 %% Save some things
 fprintf('  > Saving posterior\n')
 save([resdir,'/posterior'],'posterior');
-save2pdf(91,'prior2posterior');
+save2pdf(91,['prior2posterior_',perturb_opt]);
 
 
 return

@@ -5,7 +5,9 @@ function [ q ] = q_v_given_V( vp,V,theta )
 % 
 %  See Bodin et al., 2016, equation D4 (appendix D)
 
-q = gaussian(vp-V,0,theta)./gaussian(0,0,theta); % compare to prob of staying put
+% q = gaussian(vp-V,0,theta)./gaussian(0,0,theta); % compare to prob of staying put
+
+q = exp(((vp-V)/theta)^2/2)/theta/(sqrt(2*pi));
 
 end
 

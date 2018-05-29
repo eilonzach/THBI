@@ -7,6 +7,9 @@ function [ wts ] = spline_weight( splines,spzz,zkni )
 
 w_z = interp1(spzz,splines,zkni);
 wts = find(w_z>.4);
+if isempty(wts)
+    wts = mindex(-w_z);
+end
 
 
 end

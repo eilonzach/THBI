@@ -33,6 +33,13 @@ cond = par.conditions;
 
 ifpass = true; %default is to pass
 
+%% NaN model!
+if any(isnan(model.VS))
+    ifpass = false;
+    if ifverbose,fprintf('Failed: NaN model!\n'); end
+    return
+end
+
 %% No negative moho jumps
 if any(strcmp(fieldnames(cond),'pos_moho')) && cond.pos_moho==true
     if diff(model.VS(model.z==model.zmoh))<0
@@ -153,6 +160,9 @@ if any(model.mantmparm.knots(model.mantmparm.knots~=par.mod.maxz)>par.mod.maxkz)
     if ifverbose,fprintf('Failed: Non-basal knot below cutoff\n'); end
     return
 end
+
+
+
 
 end
 

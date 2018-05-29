@@ -64,6 +64,7 @@ zc = unique([cminz:mod.dz:cmaxz,cmaxz])';
 % cknots = cminz + (cmaxz-cminz)*fcknots; % linearly spaced knots
 fcknots = sort(rand(k_crust-2,1));  % randomly spaced knots
 cknots = [cminz ; cminz+(cmaxz-cminz)*fcknots ; cmaxz];
+fcknots = (cknots - cminz)./(cmaxz-cminz);  % randomly spaced knots
 
 [spbasis]=make_splines(cknots,par,zc,zc);
 
@@ -78,8 +79,8 @@ zm = unique([mminz:mod.dz:mmaxz,mmaxz])';
 % set up splines
 % fmknots_ = linspace(0,1,k_mantle-1)';  % linearly spaced knots
 % mknots = [mminz + (mod.maxkz-mminz)*fmknots_  ; mmaxz];
-fmknots_ = sort(rand(k_mantle-3,1));  % randomly spaced knots
-mknots = [mminz ; mminz+(mod.maxkz-mminz)*fmknots_ ; mod.maxkz ; mmaxz];
+fmknots_ = sort(rand(k_mantle-2,1));  % randomly spaced knots
+mknots = [mminz ; mminz+(mod.maxkz-mminz)*fmknots_ ; mmaxz];
 fmknots = (mknots - mminz)./(mmaxz-mminz);
 
 [spbasis] = make_splines(mknots,par,zm,zm);

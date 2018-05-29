@@ -4,7 +4,7 @@
 
 %% Inversion parms
 inv = struct(    'verbose',false                ,... % option to spit out more information+plots
-                 'niter',2e6                    ,... % Number of iterations
+                 'niter',3e5                    ,... % Number of iterations
                  'burnin',0000                  ,... % don't record results before burnin iterations
                  'cooloff',1                    ,... % # of iterations over which temperature declines as erf
                  'tempmax',1                    ,... % maximum multiple of all standard deviations
@@ -14,7 +14,7 @@ inv = struct(    'verbose',false                ,... % option to spit out more i
                  'kerneltolmed',1.0             ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'kerneltolmin',0.5             ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'maxnkchain',200               ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'nchains',10                    ,... % number of chains to start in parallel
+                 'nchains',14                    ,... % number of chains to start in parallel
                  'Kweight',1                    ,... % option to weight SW misfit by fraction of kernel in model space
                  'datatypes',{{'BW_Sp','BW_Ps_lo','SW_Ray','SW_Lov'}});  
                                 % any of {{'SW_x_y' with x='Ray/Lov' and y='phV/grV'; 
@@ -48,7 +48,7 @@ modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickne
                      'ximin',1.0                ,...1.00 % min crust Vs radial anis value
                      'xistd',0.005              ,... % std of crust Vs radial anis value
                      'kdstd',2                   ,... % std of knot movement, for perturbation, km
-                     'kmax',7                    ,... % max number of spline knots in crust (inc ends)
+                     'kmax',6                    ,... % max number of spline knots in crust (inc ends)
                      'kmin',2                    );  % min number of spline knots in crust (inc ends)
 
 modl.mantle = struct('vsmax',5.1                 ,...4.9 % max mantle spline velocity, km/s
@@ -59,7 +59,7 @@ modl.mantle = struct('vsmax',5.1                 ,...4.9 % max mantle spline vel
                      'xistd',0.005               ,... % std of mantle Vs radial anis value
                      'kdstd',4                   ,... % std of knot movement, for perturbation, km
                      'kmax',15                   ,... % max number of spline knots in mantle (inc ends)
-                     'kmin',5                    );  % max number of spline knots in mantle (inc ends)
+                     'kmin',7                    );  % max number of spline knots in mantle (inc ends)
 
 modl.data = struct('prior_sigma',struct(                 ... % PRIOR
                   	 'BW',struct(                 ... %  Body waves

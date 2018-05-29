@@ -46,7 +46,7 @@ switch ptbopts{optflag} % decide what to modify
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        lay_rel_P = [0,3,5]; % relative probabilities of altering each one
+        lay_rel_P = [1,3,5]; % relative probabilities of altering each one
         
         if par.mod.sed.vsstd==0, lay_rel_P(1)=0; end % if not perturbing seds...
         
@@ -247,7 +247,7 @@ switch ptbopts{optflag} % decide what to modify
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        disc_rel_P = [0,2]; % relative probabilities of altering each one
+        disc_rel_P = [1,2]; % relative probabilities of altering each one
         % if not perturbing seds...
         if par.mod.sed.vsstd==0, disc_rel_P(1)=0; end
         
@@ -314,13 +314,13 @@ switch ptbopts{optflag} % decide what to modify
                 
                         % modify the sed depth
                         std = temp.*par.mod.sed.hstd; % get std of perturbation
+                        hma = par.mod.sed.hmax; 
+                        hmi = par.mod.sed.hmin;
                         if std==0, continue; end % don't perturb if no perturbation
                         if hma==hmi, continue; end % don't perturb sed if no perturbation
                         ptb = 'sed2crust_h';
 
                         h0 = model.sedmparm.h;
-                        hma = par.mod.sed.hmax; 
-                        hmi = par.mod.sed.hmin;
                         
                         h1 = h0 + random('norm',0,std,1); % calc. random perturbation
                         dh = h1-h0;
