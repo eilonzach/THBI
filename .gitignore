@@ -1,0 +1,12 @@
+*.mat
+*.pdf
+matlab_to_mineos/*
+*_pll/
+*.out0
+*.out1
+*.out2
+*.in
+*.cmd
+*.mod
+*.rtz
+test_detailed_balance*

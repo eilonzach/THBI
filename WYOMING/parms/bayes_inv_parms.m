@@ -1,104 +1,139 @@
 %% Description
-% in this script all the parameters which define the model and inversion
-% are set
+%  This script sets all parameters that define the model and inversion
+%  for the true inversion with the real data
 
 %% Inversion parms
-inv = struct(    'verbose',true                  ,... % option to spit out more information+plots
-                 'niter',10000                    ,... % Number of iterations
-                 'burnin',2000                   ,... % don't record results before burnin iterations
-                 'cooloff',1000                   ,... % # of iterations over which temperature declines as erf
+inv = struct(    'verbose',true                 ,... % option to spit out more information+plots
+                 'niter',20000                   ,... % Number of iterations
+                 'burnin',4000                   ,... % don't record results before burnin iterations
+                 'cooloff',1500                  ,... % # of iterations over which temperature declines as erf
                  'tempmax',4                     ,... % maximum multiple of all standard deviations
-                 'bestNmod2keep',2000             ,... % keep only the best N models in each chain, defined here
-                 'kerneltolmax',2.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
-                 'kerneltolmin',0.6              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'nchains',8                     ,... % number of chains to start in parallel
+                 'saveperN',25                  ,... % save only every saveperN iterations       
+                 'bestNmod2keep',-2000             ,... % keep only the best N models in each chain, defined here
+                 'kerneltolmax',1.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
+                 'kerneltolmed',1.0              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'kerneltolmin',0.5              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'maxnkchain',200                ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'nchains',4                     ,... % number of chains to start in parallel
                  'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
-                 'datatypes',{{'SpRF','SW','SpRF_lo'}});  % any of {{'SpRF','PsRF','SW','SpRF_lo','PsRF_lo'}}
+                 'datatypes',{{'BW_Ps','BW_Ps_lo','SW_Ray'}});   
+                                % any of {{'SW_x_y' with x='Ray/Lov' and y='phV/grV'; 
+                                %          'BW_x_y' with x='Sp/Ps' and y=' /lo/fl';}}
 
 %% Model parms
-mod = struct([]);
+modl = struct([]);
 
-mod(1).nstas = 1;
-mod.maxz = 300;                                      % maximum depth from ref ellipsoid, km
-mod.dz = 3;                                          % depth spacing of model, km
+modl(1).nstas = 1;
+modl.maxz = 300;                                      % maximum depth in model from ref ellipsoid, km
+modl.maxkz = 250;                                     % maximum depth of deepest non-basal knot, km
+modl.dz = 1.5;                                        % depth spacing of model, km
 
-mod.sed = struct(    'hmax',0.0000               ,... %5 max sed layer thickness, km
-                     'hmin',0.0000               ,... %0 min sed layer thickness, km
-                     'hstd',0                    ,... % std of sed layer thickness for perturbation, km
-                     'vsmax',3.43                ,... % max sed velocity, km/s
-                     'vsmin',3.42                ,... % min sed velocity, km/s
-                     'vsstd',0.0                 );  % std of sed velocity for perturbation, km/s
+modl.sed = struct(   'hmax',0.0                  ,... %5 max sed layer thickness, km
+                     'hmin',0.0                  ,... %0 min sed layer thickness, km
+                     'hstd',0.0                  ,... % std of sed layer thickness for perturbation, km
+                     'vsmax',3.3                 ,... % max sed velocity, km/s
+                     'vsmin',2.5                 ,... % min sed velocity, km/s
+                     'vsstd',0.0                  );  % std of sed velocity for perturbation, km/s
 
-mod.crust = struct(  'hmax',65                   ,... %60 max xtal crust thickness, km
-                     'hmin',30                   ,... %10 min xtal crust thickness, km
-                     'hstd',3                    ,... % std of xtal crust thickness, for perturbation, km
-                     'vsmax',4.1                 ,...4.5 % max crust spline velocity, km/s
-                     'vsmin',3.3                 ,...3.3 % min crust spline velocity, km/s
-                     'vsstd',0.1                 ,... % std of crust spline velocity for perturbation, km/s
-                     'vpvsmax',1.85              ,...1.9 % min crust vpvs ratio
+modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickness, km
+                     'hmin',20                   ,... %10 min xtal crust thickness, km
+                     'hstd',2.5                    ,... % std of xtal crust thickness, for perturbation, km
+                     'vsmax',4.3                 ,...4.5 % max crust spline velocity, km/s
+                     'vsmin',2.5                 ,...3.3 % min crust spline velocity, km/s
+                     'vsstd',0.08                ,... % std of crust spline velocity for perturbation, km/s
+                     'vpvsmax',1.9               ,...1.9 % min crust vpvs ratio
                      'vpvsmin',1.6               ,...1.65 % max crust vpvs ratio
-                     'vpvsstd',0.15              ,... % std of crust vpvs ratio for perturbation, km/s
+                     'vpvsstd',0.01              ,... % std of crust vpvs ratio for perturbation, km/s
+                     'ximax',1.0                 ,...1.05 % min crust Vs radial anis value
+                     'ximin',1.0                ,...1.00 % min crust Vs radial anis value
+                     'xistd',0.0                ,... % std of crust Vs radial anis value
                      'kdstd',2                   ,... % std of knot movement, for perturbation, km
-                     'kmax',5                    ,... % max number of spline knots in crust (inc ends)
+                     'kmax',7                    ,... % max number of spline knots in crust (inc ends)
                      'kmin',2                    );  % min number of spline knots in crust (inc ends)
 
-mod.mantle = struct( 'vsmax',4.9                 ,...4.9 % max mantle spline velocity, km/s
+modl.mantle = struct('vsmax',5.1                 ,...4.9 % max mantle spline velocity, km/s
                      'vsmin',3.7                 ,...3.7 % min mantle spline velocity, km/s
-                     'vsstd',0.1                 ,... % std of mantle spline velocity for perturbation, km/s
+                     'vsstd',0.08                ,... % std of mantle spline velocity for perturbation, km/s
+                     'ximax',1.0                 ,...1.05 % min mantle Vs radial anis value
+                     'ximin',1.0                 ,...1.00 % min mantle Vs radial anis value
+                     'xistd',0.0                 ,... % std of mantle Vs radial anis value
                      'kdstd',4                   ,... % std of knot movement, for perturbation, km
-                     'kmax',20                    ,... % max number of spline knots in mantle (inc ends)
-                     'kmin',4                    );  % max number of spline knots in mantle (inc ends)
+                     'kmax',15                   ,... % max number of spline knots in mantle (inc ends)
+                     'kmin',5                    );  % max number of spline knots in mantle (inc ends)
 
-mod.data = struct(  'prior_sigmaPsRF',0.05       ,... % prior PsRF seismogram sigma
-                    'prior_sigmaSpRF',0.05       ,... % prior SpRF seismogram sigma
-                    'prior_sigmaSW',0.05         ,... % prior SW phvel sigma
-                    'prior_sigmaSpRF_lo',0.02    ,... % prior SpRF seismogram sigma for low f data
-                    'prior_sigmaPsRF_lo',0.05    ,... % prior PsRF seismogram sigma for low f data
-                    ...
-                    'min_sigmaPsRF',0.0002       ,... % minimum PsRF sigma
-                    'min_sigmaSpRF',0.0002       ,... % minimum SpRF sigma
-                    'min_sigmaSW',0.001          ,... % minimum SW phvel sigma
-                    'min_sigmaPsRF_lo',0.0002    ,... % minimum PsRF sigma for low f data
-                    'min_sigmaSpRF_lo',0.0002    ,... % minimum SpRF sigma for low f data
-                    'sigma_logstd',0.05          );   % std of the log_e of the perturbations to sigma
+modl.data = struct('prior_sigma',struct(                 ... % PRIOR
+                  	 'BW',struct(                 ... %  Body waves
+                    	'Ps',struct(              ... %   P-s data
+                           'def',0.2             ,... %    default
+                           'lo',0.1              ,... %    low-f
+                           'cms',0.3)            ,... %    crust multiples
+                    	'Sp',struct(              ... %   S-p data
+                           'def',0.2             ,... %    default
+                           'lo',0.1))            ,... %    low-f
+                  	 'SW',struct(                 ... %  Surface waves
+                    	'Ray',struct(             ... %   Rayleigh waves
+                           'phV',0.05            ,... %    phase velocities
+                           'grV',0.06)           ,... %    group velocities
+                    	'Lov',struct(             ... %   Love waves
+                           'phV',0.05            ,... %    phase velocities
+                           'grV',0.06)))         ,... %    group velocities
+                                                  ...  
+                  'min_sigma',struct(             ... % PRIOR
+                  	 'BW',struct(                 ... %  Body waves
+                    	'Ps',struct(              ... %   P-s data
+                           'def',2e-4            ,... %    default
+                           'lo',2e-4             ,... %    low-f
+                           'cms',2e-4)           ,... %    crust multiples
+                    	'Sp',struct(              ... %   S-p data
+                           'def',2e-4            ,... %    default
+                           'lo',2e-4))           ,... %    low-f
+                  	 'SW',struct(                 ... %  Surface waves
+                    	'Ray',struct(             ... %   Rayleigh waves
+                           'phV',1e-4            ,... %    phase velocities
+                           'grV',1e-4)           ,... %    group velocities
+                    	'Lov',struct(             ... %   Love waves
+                           'phV',1e-4            ,... %    phase velocities
+                           'grV',1e-4)))         ,... %    group velocities
+                                                  ...  
+                  'logstd_sigma',0.05            );   % LOGSTD
 
                  
 %% Forward calc. parms
 forc = struct(      'mindV',0.05                 ,... % min delta Vs for layerising
                     'nsamps',2^11                ,... % number of samples (more means longer run time)
-                    'synthperiod',2              );  % period for propmat synth
+                    'PSVorZR','PSV'             ,... % whether to rotate data into PSV or keep in ZR
+                    'synthperiod',2              );  % period for propmat response
                 
 %% Data processing parms
 datprocess=struct( 'normdata',true               ,... % normalise data in processing
-                   'decdata',false                ,... % decimate data in processing
-                   'Twin'                        ,... % time windows structure...
-                     struct('SpRF',[-30 5]       ,... % time window about main S arrival 
-                            'PsRF',[-5 25]       ,... % time window about main P arrival 
-                            'SpRF_lo',[-30 5]    ,... % time window about main S arrival for low f data
-                            'PsRF_lo',[-5 25])   ,... % time window about main P arrival for low f data
-                   'filtf'                       ,... % filter structure...
-                     struct('SpRF',1./[2 100]    ,... % SpRF filter [fhi flo]
-                            'PsRF',1./[1 100]    ,... % PsRF filter [fhi flo]
-                            'SpRF_lo',1./[5 100] ,... % SpRF_lo filter [fhi flo]
-                            'PsRF_lo',1./[3 100]));   % PsRF_lo filter [fhi flo]
+                   'decdata',false               ,... % decimate data in processing
+                   'clipmain',false              ,... % whether to clip the main phase with a taper
+                   'clipdaughter',true           ,... % whether to clip the daughter component at the timing of the main phase (to account for improper rotation) == CHEAT
+                   'PSV',true                    ,... % PSV (if tru) or ZR
+                   'Ps',struct(                   ... % P-s data
+                      'Twin'                     ,... %   time window    
+                      struct('def',[-2 10],       ... %     default	 
+                             'cms',[-2 25])      ,... %     crustal multiples 	  
+                      'filtf'                    ,... %   filter frequencies    
+                      struct('def',[1e3 1e-3]    ,... %     default	[fhi flo] 
+                             'lo',[1/3  1e-3]))  ,... %     low-f [fhi flo]
+                   'Sp',struct(                   ... % P-s data
+                      'Twin'                     ,... %   time window    
+                      struct('def',[-35 4])      ,... %     default 	  
+                      'filtf'                    ,... %   filter frequencies    
+                      struct('def',[1e3 1e-3]    ,... %     default	[fhi flo] 
+                             'lo',[1/5  1e-3]))  );   %     low-f [fhi flo]
                     
          
 %% Model Conditions
 cond = struct(  'pos_moho',         true         ,... % No negative moho jumps
                 'pos_sed2basement', true         ,... % No negative sed bottom jumps
                 'nobigdVmoh',       true         ,... % No Vs moho jumps exceeding 30%
-                'pos_crustdV',      false        ,... % Monotonic increase of V(p/s) in crust
+                'pos_crustdV',      true        ,... % Monotonic increase of V(p/s) in crust
                 'pos_seddV',        true         ,... % Monotonic increase of V(p/s) in sediments
                 'noVSgt49',         true         );  % No VS exceeding 4.9 km/s
             
-%% Synthetic data parms 
-synth = struct( 'inc',20                         ,... % incidence angle
-                'samprate',10                    ,... % sample rate.
-                'noise_sigmaSW',0.01             ,... %0.03 std for random added noise for SWs
-                'noise_sigmaSpRF',0.005           ,... %0.02 std for random added noise for SpRFs
-                'noise_sigmaPsRF',0.008           ,... %0.02 std for random added noise for PsRFs
-                'SWperiods',logspace(log10(6),log10(200),25)',...  % surface wave periods
-                'nsamps',[]                      );  % number of samples. 
+            
 
-            %% Bundle together
-par = struct('inv',inv,'mod',mod,'conditions',cond,'forc',forc,'synth',synth,'datprocess',datprocess);
+%% Bundle together
+par = struct('inv',inv,'mod',modl,'conditions',cond,'forc',forc,'datprocess',datprocess);
