@@ -10,3 +10,4 @@ matlab_to_mineos/*
 *.mod
 *.rtz
 test_detailed_balance*
+defunct*
