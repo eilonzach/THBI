@@ -71,6 +71,15 @@ hb = bar(X,N/Nmods,1,'facecolor','none','edgecolor','r');
 set(gca,'fontsize',14), title('Mantle Vp/Vs ratio','fontsize',16)
 end
 
+if isfield(model_summary,'ximant')
+subplot(339)
+[N,X] = hist(model_summary.ximant,0.9:0.01:1.1);
+hb = bar(X,N/Nmods,1,'facecolor','none','edgecolor','r');
+xlim([0.95 1.05]);
+set(gca,'fontsize',14), title('Mantle xi (radial anis.)','fontsize',16)
+end
+
+
 if ifsave
     save2pdf(90,ofile,'/');
 end

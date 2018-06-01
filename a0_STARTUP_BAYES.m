@@ -2,23 +2,27 @@
 
 % turn off warning about name conflict with matlab builtin isstring
 warning('off','MATLAB:dispatcher:nameConflict');
+% set time zone:
+setenv('TZ','America/Los_Angeles')
 
-basedir = '/Users/zeilon/Documents/MATLAB/BayesianJointInv/';
+basedir = '/Users/zeilon/Documents/MATLAB/';
+bayesdir = '/Users/zeilon/Documents/MATLAB/BayesianJointInv/';
+
 % path of all inversion main functions
-addpath(basedir)
+addpath(bayesdir)
 % path of all inversion sub functions
-addpath([basedir,'functions'])
+addpath([bayesdir,'functions'])
 % path to fast spline func.
 addpath('/Users/zeilon/Dropbox/MATLAB/lib/fastBSpline'); 
 % path to propagator matrix running dir.
-addpath([basedir,'matlab_to_propmat']); 
+addpath([bayesdir,'matlab_to_propmat']); 
 % path to mineos running dir.
 addpath([basedir,'matlab_to_mineos']); 
-addpath('~/Documents/MATLAB/seizmo/models/')
+addpath('~/Dropbox/MATLAB/lib/seizmo/models/')
 % path to Rayleigh wave dispersion curve dir
 addpath('/Users/zeilon/Dropbox/MATLAB/seis_tools/surface_waves'); 
 % path to gaussfit dir
-addpath('/Users/zeilon/Documents/MATLAB/lib/gaussfit'); 
+addpath('~/Dropbox/MATLAB/lib/gaussfit'); 
 
 % turn warning back on
 warning('on','MATLAB:dispatcher:nameConflict');

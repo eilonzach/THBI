@@ -51,7 +51,7 @@ par_ORIG = par;
 save([resdir,'/par'],'par');
 copyfile('parms/bayes_inv_parms.m',resdir);
 
-for id = 1:length(par.inv.datatypes);
+for id = 1:length(par.inv.datatypes)
     allpdytp(id,:)=parse_dtype(par.inv.datatypes{id});
 end
 
@@ -236,7 +236,7 @@ for ii = 1:par.inv.niter
 		ID = [num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
 
 		try
-            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0); 
+            predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0);
         catch
             fail_chain=fail_chain+1;
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
@@ -244,7 +244,8 @@ for ii = 1:par.inv.niter
         
         % continue if any Sp or PS inhomogeneous or nan or weird output
         if ifforwardfail(predata,par)
-            fail_chain=fail_chain+1; break
+            fail_chain=fail_chain+1; 
+            fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
         end
         
         predata0=predata;
@@ -284,7 +285,8 @@ for ii = 1:par.inv.niter
 
     % continue if any Sp or PS inhomogeneous or nan or weird output
     if ifforwardfail(predata,par)
-        fail_chain=fail_chain+1; ifpass=0; break
+        fail_chain=fail_chain+1; ifpass=0; 
+        fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
     else
         fail_chain = 0; 
     end
@@ -361,7 +363,7 @@ for ii = 1:par.inv.niter
     
     
 %% =========  redo kernel at end of burn in or if chain is too long =======
-    if (newK == false) && (nchain > par.inv.maxnkchain);
+    if (newK == false) && (nchain > par.inv.maxnkchain)
         if par.inv.verbose, fprintf('\n RECALCULATING KERNEL - too long chain\n'); end
         Kbase.modelk = model;
         for id = 1:length(par.inv.datatypes)

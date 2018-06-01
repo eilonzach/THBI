@@ -14,9 +14,9 @@ inv = struct(    'verbose',true                 ,... % option to spit out more i
                  'kerneltolmed',1.0              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'kerneltolmin',0.5              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'maxnkchain',200                ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'nchains',4                     ,... % number of chains to start in parallel
+                 'nchains',10                     ,... % number of chains to start in parallel
                  'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
-                 'datatypes',{{'BW_Ps','BW_Ps_lo','SW_Ray'}});   
+                 'datatypes',{{'BW_Ps','BW_Ps_lo','BW_Sp','BW_Sp_lo','SW_Ray','SW_Lov'}});   
                                 % any of {{'SW_x_y' with x='Ray/Lov' and y='phV/grV'; 
                                 %          'BW_x_y' with x='Sp/Ps' and y=' /lo/fl';}}
 
@@ -41,8 +41,8 @@ modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickne
                      'vsmax',4.3                 ,...4.5 % max crust spline velocity, km/s
                      'vsmin',2.5                 ,...3.3 % min crust spline velocity, km/s
                      'vsstd',0.08                ,... % std of crust spline velocity for perturbation, km/s
-                     'vpvsmax',1.9               ,...1.9 % min crust vpvs ratio
-                     'vpvsmin',1.6               ,...1.65 % max crust vpvs ratio
+                     'vpvsmax',1.8               ,...1.9 % min crust vpvs ratio
+                     'vpvsmin',1.7               ,...1.65 % max crust vpvs ratio
                      'vpvsstd',0.01              ,... % std of crust vpvs ratio for perturbation, km/s
                      'ximax',1.0                 ,...1.05 % min crust Vs radial anis value
                      'ximin',1.0                ,...1.00 % min crust Vs radial anis value
@@ -54,9 +54,9 @@ modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickne
 modl.mantle = struct('vsmax',5.1                 ,...4.9 % max mantle spline velocity, km/s
                      'vsmin',3.7                 ,...3.7 % min mantle spline velocity, km/s
                      'vsstd',0.08                ,... % std of mantle spline velocity for perturbation, km/s
-                     'ximax',1.0                 ,...1.05 % min mantle Vs radial anis value
-                     'ximin',1.0                 ,...1.00 % min mantle Vs radial anis value
-                     'xistd',0.0                 ,... % std of mantle Vs radial anis value
+                     'ximax',1.05                 ,...1.05 % min mantle Vs radial anis value
+                     'ximin',0.95                ,...1.00 % min mantle Vs radial anis value
+                     'xistd',0.01                 ,... % std of mantle Vs radial anis value
                      'kdstd',4                   ,... % std of knot movement, for perturbation, km
                      'kmax',15                   ,... % max number of spline knots in mantle (inc ends)
                      'kmin',5                    );  % max number of spline knots in mantle (inc ends)

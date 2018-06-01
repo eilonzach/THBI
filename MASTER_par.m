@@ -2,8 +2,8 @@ clear all
 close all
 
 
-projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
-sta = 'LKWY';
+projname = 'US'; % SYNTHETICS or WYOMING, for now
+sta = 'AAM';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
@@ -22,10 +22,11 @@ notes = [...
 global projdir THBIpath TRUEmodel
 THBIpath = '/Users/zeilon/Documents/MATLAB/BayesianJointInv';
 projdir = [THBIpath,'/',projname,'/'];
-avardir = sprintf('STA_inversions/%s_dat%.0f/',sta,datN);
+cd(projdir);
 
 run([THBIpath,'/a0_STARTUP_BAYES']);
-cd(projdir);
+run('project_details');
+
 
 %% PARMS
 run parms/bayes_inv_parms
@@ -40,8 +41,10 @@ else
 end
 par.inv.verbose=false;
 
+%% get saving things ready
 STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')]; par.STAMP = STAMP;
-resdir = [projdir,avardir,STAMP];
+avardir = sprintf('%s/%s_dat%.0f/',proj.STAinversions,sta,datN);
+resdir = [avardir,STAMP];
 mkdir(resdir);
 fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
 
@@ -56,23 +59,7 @@ end
 
 %% Load & prep data
 fprintf('LOADING data\n')
-if strcmp(projname,'WYOMING')
-	try stadeets = irisFetch.Stations('station',nwk,sta,'*','*'); 
-    catch, load('STA_inversions/stainfo_master.mat'); stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},sta)).Latitude,'Longitude',stainfo(strcmp({stainfo.StationCode},sta)).Longitude);end
-
-%     addpath('matguts')
-%     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
-    [trudata,cheatstr] = load_data(avardir,sta,nwk,gc);
-    sta = [sta,cheatstr];
-    % distribute data for different processing (e.g. _lo, _cms)
-    for idt = 1:length(par.inv.datatypes)
-        dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
-        if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
-            trudata.(dtype) = trudata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
-        end
-    end
-    
-elseif strcmp(projname,'SYNTHETICS')
+if strcmp(projname,'SYNTHETICS')
     
     fprintf(' > Creating custom model and synthetic data\n')
     
@@ -87,7 +74,28 @@ elseif strcmp(projname,'SYNTHETICS')
         noise_sta_deets = struct('datadir',[THBIpath,'/WYOMING/AVARS/'],'sta',sta,'nwk',nwk,'gc',par.synth.gcarcs);
         par.synth.noise_sta_deets = noise_sta_deets;
         [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par,noise_sta_deets );
-    end 
+    end
+
+else
+	try stadeets = irisFetch.Stations('station',nwk,sta,'*','*'); 
+    catch, load([proj.rawdatadir,'/stainfo_master.mat']); 
+        stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},sta)).Latitude,...
+                          'Longitude',stainfo(strcmp({stainfo.StationCode},sta)).Longitude);
+    end
+
+%     addpath('matguts')
+%     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
+    [trudata,zeroDstr] = load_data(avardir,sta,nwk,gc);
+    sta = [sta,zeroDstr];
+    % distribute data for different processing (e.g. _lo, _cms)
+    for idt = 1:length(par.inv.datatypes)
+        dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
+        if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
+            trudata.(dtype) = trudata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+        end
+    end
+    
+
 end
 
 % save data
@@ -121,6 +129,7 @@ plot_TRUvsPRE(trudata,trudata);
 %% ---------------------------- INITIATE ----------------------------
 profile clear
 profile on
+delete(gcp('nocreate'));
 
 %% START DIFFERENT MARKOV CHAINS IN PARALLEL
 % nchains = ;
@@ -232,6 +241,19 @@ try
 		ptbnorm = norm(modptb.dvsv) + norm(modptb.dvsh);
     end
 
+    if isempty(gcp('nocreate'))
+%         if exist('h','var'), delete(h); end
+        if par.inv.verbose 
+        figure(85);clf,set(gcf,'pos',[1294 4 622 529])
+        subplot(1,2,1), hold on, 
+        plot(model.VS,model.z,'r'); set(gca,'ydir','reverse')
+        plot(model1.VS,model1.z,'b--'); set(gca,'ydir','reverse')
+        subplot(1,2,2), hold on, 
+        plot(model.VP,model.z,'r'); set(gca,'ydir','reverse')
+        plot(model1.VP,model1.z,'b--'); set(gca,'ydir','reverse')
+        pause(0.01)
+        end
+    end    
     nchain  = kchain_addcount( nchain,ptbnorm,par );
     
 %% ===========================  FORWARD MODEL  ===========================
@@ -254,7 +276,7 @@ try
         end
         
         predata0=predata;
-            
+        
         for idt = 1:length(par.inv.datatypes)
             [ predata ] = predat_process( predata,par.inv.datatypes{idt},par);
         end
@@ -310,7 +332,7 @@ try
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
     
     fail_chain = 0;
-    predat_save = predata0;
+    predat_save1 = predata0;
 
     end % while ifpass
     
@@ -335,6 +357,7 @@ try
         model = model1;
         log_likelihood = log_likelihood1;
         misfit = misfit1;
+        predat_save = predat_save1;
         
     %% UPDATE KERNEL if needed 
         if newK==true
@@ -379,7 +402,7 @@ try
         nchain = 0;
     end
     if ii == par.inv.burnin
-%         fprintf('\n RECALCULATING KERNEL - end of burn in\n')
+        fprintf('\n RECALCULATING KERNEL - end of burn in\n')
         Kbase.modelk = model;
         for id = 1:length(par.inv.datatypes)
             dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
@@ -486,6 +509,16 @@ plot_TRUvsPRE_WAVEFORMS( trudata,final_predata,1,[resdir,'/final_true_vs_pred_da
 %addpath([resdir]); 
 
 plot_FIG2_FIT_MODEL( final_model,posterior,prior,par,1,[resdir,'/fig2_FIT_MODEL.pdf']);
+
+% did we save the data?
+if ifsavedat
+    savedat.gdmods = find([allmodels.bestmods]');
+    savedat.gdmods(savedat.gdmods==0) = [];
+    save([resdir,'/savedat'],'savedat');
+% plot_DATAFITS(trudata,savedat,par,1)
+    plot_FIG1_FIT_DATA( trudata,savedat,par,1,[resdir,'/fig1_FIT_DATA.pdf'])
+end
+
 
 %rmpath([resdir]);
 

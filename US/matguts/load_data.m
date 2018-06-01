@@ -1,4 +1,4 @@
-function [ trudata,cheatstr ] = load_data( avardir,sta,nwk,gc )
+function [ trudata,zeroDstr ] = load_data( avardir,sta,nwk,gc )
 %[ trudata,cheatstr ] = load_data( avardir,sta,nwk,gc )
 
 if nargin < 6
@@ -9,24 +9,26 @@ P_win = [-5 35];
 S_win = [-35 5] ;
 tapertime = 2;
 samprate = 10;
-cheatstr = [];
-% cheatstr = '_cheat';
+zeroDstr = []; % whether or not the daughter component is zeroed at the time of the parent
+% zeroDstr = '_zeroDstr';
 
 wd = pwd;
 
 %     addpath('matguts')
 cd(avardir);
-%% Sesismogram data
+%% Seismogram data
+% get data files
 datfiles = {};
-for gcmid = gc(:)'
-for gcwind = -4:4
-    df = dir(sprintf('avar_dat_%s_%s_%.0f_*%s.mat',sta,nwk,gcmid+gcwind,cheatstr));
-    datfiles = [datfiles;{df.name}']; %#ok<AGROW>
-end
-end
+% for gcmid = gc(:)'
+% for gcwind = -4:4
+%     df = dir(sprintf('avar_dat_%s_%s_%.0f_*%s.mat',sta,nwk,gcmid+gcwind,zeroDstr));
+%     datfiles = [datfiles;{df.name}']; %#ok<AGROW>
+% end
+% end
+datfiles = dir(sprintf('avar_dat_%s_%s_%.0f_*%s.mat',sta,nwk,gcmid+gcwind,zeroDstr));
 datfiles = unique(datfiles);
 
-
+return
 np = 0;
 ns = 0;
 for ii = 1:length(datfiles)
@@ -45,11 +47,8 @@ for ii = 1:length(datfiles)
         Pdat_tdw = interp1(tt_d,Pdat_td,tt_w);
         np = np+1;
         BW_Ps(np,1) = struct('PSV',Pdat_tdw(:,1:2),'tt',tt_w,'rayp',avar.rayp(Pind),'samprate',samprate,'nsamp',size(Pdat_tdw,1),'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
-    else 
-        BW_Ps = struct([]);
     end
 
-    
     %% BW_Sp ==> flip Z to 'up', taper, downsample, window
     if any(Sind)
         Sdat = avar.dataPSVSH(:,:,Sind); 
@@ -60,8 +59,6 @@ for ii = 1:length(datfiles)
         Sdat_tdw = interp1(tt_d,Sdat_td,tt_w);
         ns = ns+1;
         BW_Sp(ns,1) = struct('PSV',Sdat_tdw(:,1:2),'tt',tt_w,'rayp',avar.rayp(Sind),'samprate',samprate,'nsamp',size(Sdat_tdw,1),'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
-    else 
-        BW_Sp = struct([]);
     end
 
 % ------------------------- OLD - BASED ON ZRT  ---------------------------
@@ -96,9 +93,12 @@ for ii = 1:length(datfiles)
 % ------------------------- OLD - BASED ON ZRT  ---------------------------
 end % end loop on data files
 
+if ~exist('BW_Ps','var'), BW_Ps = struct([]); end
+if ~exist('BW_Sp','var'), BW_Sp = struct([]); end
+
 cd(wd);
 
-%% Phase velocity datals /
+%% Phase velocity data
 seismoddir = '~/Work/data/models_seismic/';
 if ~exist(seismoddir,'dir'), seismoddir = regexprep(seismoddir,'~','/Volumes/zeilon'); end 
 addpath(seismoddir);
