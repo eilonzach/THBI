@@ -172,7 +172,7 @@ switch ptbopts{optflag} % decide what to modify
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
 %%      %!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                val2mod_rel_P = [5,0,2]; % relative probabilities of altering each one
+                val2mod_rel_P = [5,1,2]; % relative probabilities of altering each one
 
                 val2mod_plim = cumsum(val2mod_rel_P)/sum(val2mod_rel_P);
                 valflag = find(val2mod_plim>=rand(1),1,'first'); % randomly select which value to perturb
@@ -689,6 +689,8 @@ switch ptbopts{optflag} % decide what to modify
         
     case 'ptb_sigdat' % change the sigma value for one of the data types
     
+        std = par.mod.data.logstd_sigma;
+        if std==0, continue; end % don't perturb if no perturbation allowed
     	datatypes = par.inv.datatypes;
     	dtp2mod = randi(length(datatypes)); % even probability of modifying any
         dtype = datatypes{dtp2mod}; % which data type to modify
@@ -698,7 +700,7 @@ switch ptbopts{optflag} % decide what to modify
 
         lgstd0 = log10(model.datahparm.(['sig_',dtype])(d2mod));
         
-        lgstd1 = lgstd0 + random('norm',0,temp.*par.mod.data.logstd_sigma,1); % calc. random perturbation
+        lgstd1 = lgstd0 + random('norm',0,temp.*std,1); % calc. random perturbation
         
         model.datahparm.(['sig_',dtype])(d2mod) = 10.^lgstd1; % modify that one data stream's error
             
