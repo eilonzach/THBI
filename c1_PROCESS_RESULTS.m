@@ -13,8 +13,13 @@ end
 
 
 figure(88);clf, set(gcf,'pos',[850 198 900 888])
-ax1 = subplot(2,1,1);
-ax2 = subplot(2,1,2); hold(ax2,'on');
+ax1 = subplot(2,1,1); ax1pos = get(ax1,'pos');
+ax3 = subplot(2,1,2); 
+ax2 = axes('pos',ax1pos); 
+
+set(ax1,'Color','none');
+set(ax2,'color','none','YAxisLocation','right'); 
+hold(ax1,'on');hold(ax2,'on');hold(ax3,'on');
 
 pdm_min = inf;
 pdm_max = -inf;
@@ -73,7 +78,7 @@ for iii = 1:nchains
     if par.inv.bestNmod2keep>0 % if specifying how many to keep based on low error
 
         score_overall = zeros(length(bestind),length(par.inv.datatypes));
-        for id = 1:length(par.inv.datatypes);
+        for id = 1:length(par.inv.datatypes)
             dtype = par.inv.datatypes{id};
             pdtyp = parse_dtype(dtype);
     %         if strcmp(pdtype{1},'BW') && (~strcmp(pdtype{3},'def') || ~strcmp(pdtype{4},'def')), continue; end
@@ -123,51 +128,54 @@ for iii = 1:nchains
     %% PLOT IMPROVEMENT IN MODEL FIT
     downsamp = (1:downsampfac:length(am));
 
-    [ax1,h1,h2] = plotyy(ax1,mf.iter(downsamp),mf.chi2sum(downsamp),mf.iter(downsamp),mf.logLike(downsamp),'semilogy');
+%     [~,h1,h2] = plotyy(ax1,mf.iter(downsamp),mf.chi2sum(downsamp),mf.iter(downsamp),mf.logLike(downsamp),'semilogy');
+    h1 = plot(ax1,mf.iter(downsamp),mf.chi2sum(downsamp));
+    h2 = plot(ax2,mf.iter(downsamp),mf.logLike(downsamp));
     
-    hold(ax1(1),'on'),hold(ax1(2),'on')
     pdm_min = min([pdm_min,min(mf.logLike)-1]);
     pdm_max = max([pdm_max,max(mf.logLike)+10]);
     ch2_min = min([ch2_min,min(mf.chi2sum)/2]);
     ch2_max = max([ch2_max,max(mf.chi2sum)*2]);
-%     set(ax1(1),'Yscale','log','ylim',[min(mf.chi2)/2 max(mf.chi2)*2],'ytick',round_level(linspace(min(mf.chi2)/2,max(mf.chi2)*2,5),5));
-%     ytk = unique(round_level(linspace(min(mf.logLike),max(mf.logLike),5),5));
-%     set(ax1(2),'Yscale','log','ylim',[min(mf.logLike)-1 max(mf.logLike)+10],...
-%         'ytick',ytk,'yticklabel',ytk);
-    set(ax1(1),'Yscale','log','ylim',[ch2_min ch2_max],'ytick',round_level(linspace(ch2_min,ch2_max,5),5));
-    ytk = unique(round_level(linspace(pdm_min+1,pdm_max-10,5),5));
-    set(ax1(2),'Yscale','log','ylim',[pdm_min pdm_max],...
-        'ytick',ytk,'yticklabel',ytk);
+
+    col1 = [0 0.447 0.741];
+    col2 = [0.85 0.325 0.098];
+
+    ytk1 = round_level(linspace(ch2_min,ch2_max,5),5);
+    set(ax1,'Yscale','log','ylim',[ch2_min ch2_max],'ytick',ytk1,'Fontsize',16,'ycolor',col1);
+    ytk2 = unique(round_level(linspace(pdm_min+1,pdm_max-10,5),5));
+    set(ax2,'Yscale','log','ylim',[pdm_min pdm_max],'ytick',ytk2,'yticklabel',ytk2,'xtick',[],'Fontsize',16,'ycolor',col2);
     
     set(h1,'marker','o','linestyle','none','markersize',5,...
-           'markerfacecolor',basecol,'markeredgecolor',[0 0.447 0.741]);
+           'markerfacecolor',basecol,'markeredgecolor',col1);
     set(h2,'marker','o','linestyle','none','markersize',5,...
-           'markerfacecolor',basecol,'markeredgecolor',[0.85 0.325 0.098]);
-    set(get(ax1(1),'ylabel'),'String','$\chi^2$ misfit','Fontsize',20,'interpreter','latex')
-    set(get(ax1(2),'ylabel'),'String','$\log_{10}{\,p(m|d)}$','Fontsize',20,'interpreter','latex')
-    set(ax1,'Fontsize',16)
+           'markerfacecolor',basecol,'markeredgecolor',col2);
+    set(get(ax1,'ylabel'),'String','$\chi^2$ misfit','Fontsize',20,'interpreter','latex','color',col1)
+    set(get(ax2,'ylabel'),'String','$\log_{10}{\,p(m|d)}$','Fontsize',20,'interpreter','latex','color',col2)
     
     
-    cols = [[0 0.447 0.741];[0.85 0.325 0.098];[0.929 0.694 0.125];[0.494 0.184 0.556];[0.466 0.674 0.188];[0.1 0.76 0.288]];
+%     cols = [[0 0.447 0.741];[0.85 0.325 0.098];[0.929 0.694 0.125];[0.494 0.184 0.556];[0.466 0.674 0.188];[0.1 0.76 0.288]];
     
-    for idt = 1:length(par.inv.datatypes) 
+    Nd = length(par.inv.datatypes);
+    cols = colour_get([1:Nd],Nd,1,[parula;flipud(spring)]);
+    
+    for idt = 1: Nd
         dtype = par.inv.datatypes{idt};
         rms = [mf.rms.(dtype)]';
-        hrms(idt)=plot(ax2,mf.iter(downsamp),sum(rms(downsamp,:),2),'o'); hold on
+        hrms(idt)=plot(ax3,mf.iter(downsamp),sum(rms(downsamp,:),2),'o'); hold on
         set(hrms(idt),'marker','o','linestyle','none','markersize',5,...
            'markerfacecolor',basecol,'markeredgecolor',cols(idt,:));
     end
     hrms(idt+1) = hrms(1); set(hrms(idt+1),'markerfacecolor','none');
     set(hrms(2:idt+1),'linewidth',2)
-    set(ax2,'yscale','log','Fontsize',16 )
-    ylabel(ax2,'RMS misfit','Fontsize',20,'interpreter','latex')
-    xlabel(ax2,'Iteration','Fontsize',20)
+    set(ax3,'yscale','log','Fontsize',16 )
+    ylabel(ax3,'RMS misfit','Fontsize',20,'interpreter','latex')
+    xlabel(ax3,'Iteration','Fontsize',20)
     hl = legend(hrms(1:idt),strrep(par.inv.datatypes,'_','-'));
 
     
     % rate of acceptance past burnin
 
-end
+end % loop on chains
 
 %% title
 htit = title_custom([par.sta,' ',par.nwk],0.5,'fontweight','bold','fontsize',25);
