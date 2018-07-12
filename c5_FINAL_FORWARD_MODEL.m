@@ -187,16 +187,19 @@ if any(strcmp(pdtyps(:,1),'SW'))
                         'Sanis',zeros(size(final_model.Z)),...
                         'Panis',zeros(size(final_model.Z)));
     
-if any(strcmp(pdtyps(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'Ray'),1,'first'));
-    [SW.Ray.phV,SW.Ray.grV] = run_mineos(modminrun,data.(itp{1}).periods,'R','final',0,0,par.inv.verbose);
-end
-if any(strcmp(pdtyps(:,2),'Lov')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'Lov'),1,'first'));
-    [SW.Lov.phV,SW.Lov.grV] = run_mineos(modminrun,data.(itp{1}).periods,'L','final',0,0,par.inv.verbose);
-end
-for id = 1:length(par.inv.datatypes)
-    dtype = par.inv.datatypes{id}; pdtyp=parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'),continue; end
-    final_predata.(dtype).phV = SW.(pdtyp{2}).(pdtyp{3});
-end
+    if any(strcmp(pdtyps(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'Ray'),1,'first'));
+        [SW.Ray.phV,SW.Ray.grV] = run_mineos(modminrun,data.(itp{1}).periods,'R','final',0,0,par.inv.verbose);
+    end
+    if any(strcmp(pdtyps(:,2),'Lov')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'Lov'),1,'first'));
+        [SW.Lov.phV,SW.Lov.grV] = run_mineos(modminrun,data.(itp{1}).periods,'L','final',0,0,par.inv.verbose);
+    end
+    if any(strcmp(pdtyps(:,2),'HV')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'HV'),1,'first'));
+        SW.HV.HVr = run_HVkernel(modminrun,data.(itp{1}).periods,'final',1,0,par.inv.verbose);
+    end
+    for id = 1:length(par.inv.datatypes)
+        dtype = par.inv.datatypes{id}; pdtyp=parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'),continue; end
+        final_predata.(dtype).(pdtyp{3}) = SW.(pdtyp{2}).(pdtyp{3});
+    end
 
 end
 
