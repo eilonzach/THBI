@@ -3,7 +3,7 @@ close all
 
 
 projname = 'US'; % SYNTHETICS or WYOMING, for now
-sta = 'AAM';
+sta = 'JFWS';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
@@ -108,6 +108,10 @@ for idt = 1:length(trudtypes)
         fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
         trudata = rmfield(trudata,trudtypes{idt});
     end
+    if par.inv.BWclust~=0 && any(regexp(trudtypes{idt},'BW'))
+        fprintf('WARNING - removing %s data not in cluster %.0f\n',trudtypes{idt},par.inv.BWclust)
+        trudata.(trudtypes{idt}) = trudata.(trudtypes{idt})([trudata.(trudtypes{idt}).clust]==par.inv.BWclust);
+    end
 end
 
 % window, filter data 
@@ -118,6 +122,8 @@ end
 plot_TRU_WAVEFORMS(trudata);
 % plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG);
 plot_TRUvsPRE(trudata,trudata);
+save([resdir,'/trudata_USE'],'trudata');
+
 
 %% PRIOR
 % fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
@@ -146,14 +152,14 @@ fprintf('\n =========== STARTING PARALLEL CHAINS ===========\n')
 %% ========================================================================
 t = now;
 parfor iii = 1:par.inv.nchains 
+chainstr = mkchainstr(iii);
 
 %% Fail-safe to restart chain if there's a succession of failures
 fail_chain=20;
 while fail_chain>=20
 
-
 %% Prep posterior structure
-[ misfits,allmodels,savedat ] = b0_RESULTS_SETUP(par);
+[ misfits,allmodels,savedat ] = b0_RESULTS_SETUP(par); %#ok<PFTUS>
 
 %% Initiate model
 ifpass = 0;
@@ -167,18 +173,26 @@ while ifpass==0
     end
 
     %% starting model kernel
-    fprintf('\nCreating starting kernel %s\n',char(64+iii))
+    fprintf('\nCreating starting kernel %s\n',chainstr)
 
     Kbase = initiate_Kbase; Kbase.modelk = model;
     for id = 1:length(par.inv.datatypes)
         dtype = par.inv.datatypes{id};
         pdtyp = parse_dtype(dtype); 
         if ~strcmp(pdtyp{1},'SW'), continue; end
-        [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},['start',char(64+iii)],0,0,1);
-        K  = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},['start',char(64+iii)],1,0,1);
-        [ Kbase ] = populate_Kbase( Kbase,dtype,phV,grV,{K} );
-    
-        if any(isnan(phV)),ifpass = false; end
+        if strcmp(pdtyp{2},'HV')
+            try
+                [HVr0,HVK0] = run_HVkernel(model,trudata.(dtype).periods,['start',chainstr],1,0,1);
+            catch 
+                ifpass = false;continue;
+            end
+            [ Kbase ] = populate_Kbase( Kbase,dtype,HVr0,[],{HVK0} );    
+        else
+            [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},['start',chainstr],0,0,1);
+            K  = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},['start',chainstr],1,0,1);
+            [ Kbase ] = populate_Kbase( Kbase,dtype,phV,grV,{K} );    
+            if any(isnan(phV)),ifpass = false; end
+        end
     end % loop on datatypes
 
 end % now we have a starting model!
@@ -198,10 +212,10 @@ end
 log_likelihood = -Inf;
 predata=[];
 % not parfor
-fprintf('\n =========== STARTING ITERATIONS %s ===========\n',char(64+iii))
+fprintf('\n =========== STARTING ITERATIONS %s ===========\n',chainstr)
 for ii = 1:par.inv.niter
 try
-    if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',char(64+iii),ii); end
+    if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',chainstr,ii); end
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
@@ -260,7 +274,7 @@ try
 	% don't re-calc if the only thing perturbed is the error
     if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
         % make random run ID (to avoid overwrites in parfor)
-		ID = [char(64+iii),num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
+		ID = [chainstr,num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
 
 		try
             predata = b3_FORWARD_MODEL( model1,Kbase,par,trudata,ID,0);
@@ -281,25 +295,37 @@ try
             [ predata ] = predat_process( predata,par.inv.datatypes{idt},par);
         end
         
-		% Explicitly use mineos if ptb is too large
+		% Explicitly use mineos + Tanimoto scripts if ptb is too large
 		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
 		if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmed/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
-            SW = struct('Ray',struct('phV',[],'grV',[]),'Lov',struct('phV',[],'grV',[]));
+            SW = struct('Ray',struct('phV',[],'grV',[]),'Lov',struct('phV',[],'grV',[]),'HV',struct('HVr',[]));
             
-            if any(strcmp(allpdytp(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'Ray'),1,'first'));
+            if any(strcmp(allpdytp(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'Ray'),1,'first')); %#ok<PFBNS>
                 [SW.Ray.phV,SW.Ray.grV] = run_mineos(model1,trudata.(itp{1}).periods,'R',ID,0,0,par.inv.verbose);
             end
             if any(strcmp(allpdytp(:,2),'Lov')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'Lov'),1,'first'));
                 [SW.Lov.phV,SW.Lov.grV] = run_mineos(model1,trudata.(itp{1}).periods,'L',ID,0,0,par.inv.verbose);
             end
+            if any(strcmp(allpdytp(:,2),'HV')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'HV'),1,'first'));
+                [SW.HV.HVr,HVK_new] = run_HVkernel(model1,trudata.(itp{1}).periods,['HV_',ID],1,0,par.inv.verbose);
+            end
             for id = 1:length(par.inv.datatypes)
-                dtype = par.inv.datatypes{id}; pdtyp=parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'),continue; end
-                swk = predata.(dtype).phV; % record existing phV from kernels
-
-                predata.(dtype).phV = SW.(pdtyp{2}).(pdtyp{3});
-
+                
+                dtype = par.inv.datatypes{id}; pdtyp=parse_dtype(dtype); 
+                if ~strcmp(pdtyp{1},'SW'),continue; end
+                switch pdtyp{2}
+                    case {'Ray','Lov'}
+                        swk = predata.(dtype).phV; % record existing phV from kernels
+                        predata.(dtype).phV = SW.(pdtyp{2}).(pdtyp{3});
+                        swd = predata.(dtype).phV; % record new, precise phV from mineos
+                    case 'HV'
+                        swk = predata.(dtype).HVr; % record existing phV from kernels
+                        predata.(dtype).HVr = SW.(pdtyp{2}).(pdtyp{3});
+                        swd = predata.(dtype).HVr; % record new, precise phV from Tanimoto script
+                end
+                
                 if par.inv.verbose
-                    fprintf('    RMS diff is %.4f\n',rms(swk-predata.(dtype).phV)); % RMS difference
+                    fprintf('   %s RMS diff is %.4f\n',par.inv.datatypes{id},rms(swk-swd)); % RMS difference
                 end
             end
 			newK = true;
@@ -363,9 +389,14 @@ try
         if newK==true
             Kbase.modelk = model;
             for id = 1:length(par.inv.datatypes)
-                dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
-                K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
-                Kbase = populate_Kbase( Kbase,dtype,predata.(dtype).phV,[],{K} );
+                dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); 
+                if ~strcmp(pdtyp{1},'SW'), continue; end
+                if strcmp(pdtyp{2},'HV')
+                    K =  HVK_new;   
+                else
+                    K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+                end
+                Kbase = populate_Kbase( Kbase,dtype,predata.(dtype).(pdtyp{3}),[],{K} );
             end
             nchain = 0;
         end
@@ -380,7 +411,7 @@ try
     if isinf(log_likelihood), fail_chain=100; break; end 
     
     %% SAVE every saveperN
-    if mod(ii,par.inv.saveperN)==0 || ii==1
+    if mod(ii,par.inv.saveperN)==0 || ii==1 || misfits.lastL==0 
 	
         [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
         if isfield(trudata,'SW_Ray')
@@ -390,27 +421,28 @@ try
     
     
 %% =========  redo kernel at end of burn in or if chain is too long =======
-    if (newK == false) && (nchain > par.inv.maxnkchain)
-        if par.inv.verbose, fprintf('\n RECALCULATING KERNEL - too long chain\n'); end
-        Kbase.modelk = model;
-        for id = 1:length(par.inv.datatypes)
-            dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
-            [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-            K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
-            Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
+    if newK == false
+        if nchain > par.inv.maxnkchain
+            fprintf('\n RECALCULATING KERNEL - too long chain\n'), newK = true;
+        elseif ii == par.inv.burnin
+            fprintf('\n RECALCULATING KERNEL - end of burn in\n'), newK = true;
         end
-        nchain = 0;
-    end
-    if ii == par.inv.burnin
-        fprintf('\n RECALCULATING KERNEL - end of burn in\n')
-        Kbase.modelk = model;
-        for id = 1:length(par.inv.datatypes)
-            dtype = par.inv.datatypes{id};pdtyp = parse_dtype(dtype); if ~strcmp(pdtyp{1},'SW'), continue; end
-            [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-            K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
-            Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
+        if newK == true
+            Kbase.modelk = model;
+            for id = 1:length(par.inv.datatypes)
+                dtype = par.inv.datatypes{id}; pdtyp = parse_dtype(dtype); 
+                if ~strcmp(pdtyp{1},'SW'), continue; end
+                if strcmp(pdtyp{2},'HV')
+                [HVr_new,HVK_new] = run_HVkernel(model,trudata.(dtype).periods,ID,1,0,1);
+                Kbase = populate_Kbase( Kbase,dtype,HVr_new,[],{HVK_new} );    
+                else
+                [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
+                K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+                Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
+                end
+            end
+            nchain = 0;
         end
-        nchain = 0;
     end
     
 catch
@@ -418,11 +450,11 @@ catch
     fail_chain = fail_chain+1;
     continue % skip this model!
 end % on try-catch
-end % oniterations
+end % on iterations
 %% -------------------------- End iteration  ------------------------------
 end % on the fail_chain while...
 % ----------
-fprintf('\n =========== ENDING ITERATIONS %s ===========\n',char(64+iii))
+fprintf('\n =========== ENDING ITERATIONS %s ===========\n',chainstr)
 
 model0_perchain{iii} = model0;
 misfits_perchain{iii} = misfits;

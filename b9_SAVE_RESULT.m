@@ -39,7 +39,7 @@ for id = 1:length(dtypes)
     pdt = parse_dtype(dtype);
     if strcmp(pdt{1},'SW')
         inds = 1:length(predata.(dtype).periods);         
-        savedat.(dtype).phV(N,inds) = predata.(dtype).phV;
+        savedat.(dtype).(pdt{3})(N,inds) = predata.(dtype).(pdt{3});
         savedat.(dtype).periods(N,inds) = predata.(dtype).periods;
     elseif strcmp(pdt{1},'BW')
         for jj = 1:length(predata.(dtype))

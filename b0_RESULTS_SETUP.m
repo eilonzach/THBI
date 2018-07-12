@@ -34,8 +34,9 @@ allmodels(par.inv.niter)=allmodels;
 dtypes = par.inv.datatypes;
 savedat=cell2struct(cell(1,length(dtypes)),dtypes,2);
 for id = 1:length(dtypes)
+    dtype = dtypes{id}; pdtyp = parse_dtype(dtype); 
     if regexp(dtypes{id},'SW')
-        savedat.(dtypes{id})=struct('phV',oo,'periods',oo);
+        savedat.(dtypes{id})=struct(pdtyp{3},oo,'periods',oo);
     elseif regexp(dtypes{id},'RF')
 %         if regexp(dtypes{id},'_lo'), continue; end
         savedat.(dtypes{id})=struct('P',oo,'SV',oo,'tt',oo);

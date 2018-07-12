@@ -46,9 +46,9 @@ for id = 1:length(par.inv.datatypes)
 
     % SURFACE WAVE
     elseif strcmp(pdt{1},'SW')
-        e = (trudata.(dtype).phV - predata.(dtype).phV);
+        e = (trudata.(dtype).(pdt{3}) - predata.(dtype).(pdt{3}));
         misfit.E2.(dtype) = e'*(SWwt.(dtype).*e); % SUM OF SQUARED MISFITS, NORMALISED
-        
+
     end % end on data type
 end
 

@@ -10,8 +10,8 @@ try
 %     Vp = Vs.*(akmod.vp./akmod.vs);
     Vp = Vs.*ak135vpvs(Zkm);
 catch
-    Vp=1.81*Vs
-    error
+    Vp=1.81*Vs;
+%     error
 end
 
 end

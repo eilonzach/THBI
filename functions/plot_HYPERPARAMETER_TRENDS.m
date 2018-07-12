@@ -9,8 +9,9 @@ downsampfac = 15;
 
 figure(56), clf, set(gcf,'pos',[65 682 814 423]), hold on
 
-dtypcols = [[0 0.447 0.741];[0.85 0.325 0.098];[0.929 0.694 0.125];[0.494 0.184 0.556];[0.466 0.674 0.188];[0.1 0.76 0.288]];
-strmmark = {'o','v','^','s','p'};
+% dtypcols = [[0 0.447 0.741];[0.85 0.325 0.098];[0.929 0.694 0.125];[0.494 0.184 0.556];[0.466 0.674 0.188];[0.1 0.76 0.288]];
+    
+    strmmark = {'o','v','^','s','p'};
 
 %% loop through each chain
 if iscell(allmodels),nchains = length(allmodels); else nchains=1; end
@@ -29,6 +30,9 @@ for iii = 1:nchains
     downsamp = (1:downsampfac:length(am));
 
     dtypes = fieldnames(dp);
+    Nd = length(par.inv.datatypes);
+    dtypcols = colour_get([1:Nd],Nd,1,[parula;flipud(spring)]);
+
     clear('hypparm_trends');
     for id = 1:length(dtypes)
         Nt = length(dp(1).(dtypes{id}));    

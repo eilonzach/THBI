@@ -75,6 +75,9 @@ elseif strcmp(pdt{1},'SW')
         parsed_dtype{2} = 'Ray';
     elseif any(strcmp(pdt,'Lov'))
         parsed_dtype{2} = 'Lov'; 
+    elseif any(strcmp(pdt,'HV'))
+        parsed_dtype{2} = 'HV'; 
+        parsed_dtype{3} = 'HVr';
     end
     % VELTYPE
     if any(strcmp(pdt,'ph'))

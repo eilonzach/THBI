@@ -18,21 +18,20 @@ wd = pwd;
 cd(avardir);
 %% Seismogram data
 % get data files
-datfiles = {};
-% for gcmid = gc(:)'
-% for gcwind = -4:4
-%     df = dir(sprintf('avar_dat_%s_%s_%.0f_*%s.mat',sta,nwk,gcmid+gcwind,zeroDstr));
-%     datfiles = [datfiles;{df.name}']; %#ok<AGROW>
-% end
-% end
-datfiles = dir(sprintf('avar_dat_%s_%s_%.0f_*%s.mat',sta,nwk,gcmid+gcwind,zeroDstr));
-datfiles = unique(datfiles);
+datfiles = dir(sprintf('avar_dat_%s_%s_*%s.mat',sta,nwk,zeroDstr));
+for id = 1:length(datfiles)
+    load(datfiles(id).name);
+    allavars(id) = avar;
+    seazmean(id) = mean(avar.seaz);
+end
+% find clusters of backazimuths
+clusts = eqcluster(seazmean,90*ones(size(seazmean)),0.5,30,10,0);
 
-return
 np = 0;
 ns = 0;
-for ii = 1:length(datfiles)
-    load(datfiles{ii});
+for ii = 1:length(allavars)
+    avar = allavars(ii);
+    clust = clusts(ii);
     Pind = strcmp(avar.phases,'P') | strcmp(avar.phases,'Ps') ;
     Sind = strcmp(avar.phases,'S') | strcmp(avar.phases,'Sp') ;
 
@@ -46,7 +45,10 @@ for ii = 1:length(datfiles)
         tt_w = P_win(1) + [0:(diff(P_win)*samprate-1)]'./samprate;
         Pdat_tdw = interp1(tt_d,Pdat_td,tt_w);
         np = np+1;
-        BW_Ps(np,1) = struct('PSV',Pdat_tdw(:,1:2),'tt',tt_w,'rayp',avar.rayp(Pind),'samprate',samprate,'nsamp',size(Pdat_tdw,1),'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
+        BW_Ps(np,1) = struct('PSV',Pdat_tdw(:,1:2),'tt',tt_w,...
+                             'clust',clust,'rayp',avar.rayp(Pind),'seaz',avar.seaz(Pind),'gcarc',avar.gcarc(Pind),...
+                             'samprate',samprate,'nsamp',size(Pdat_tdw,1),...
+                             'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
     end
 
     %% BW_Sp ==> flip Z to 'up', taper, downsample, window
@@ -58,7 +60,10 @@ for ii = 1:length(datfiles)
         tt_w = S_win(1) + [0:(diff(S_win)*samprate-1)]'./samprate;
         Sdat_tdw = interp1(tt_d,Sdat_td,tt_w);
         ns = ns+1;
-        BW_Sp(ns,1) = struct('PSV',Sdat_tdw(:,1:2),'tt',tt_w,'rayp',avar.rayp(Sind),'samprate',samprate,'nsamp',size(Sdat_tdw,1),'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
+        BW_Sp(ns,1) = struct('PSV',Sdat_tdw(:,1:2),'tt',tt_w,...
+                             'clust',clust,'rayp',avar.rayp(Sind),'seaz',avar.seaz(Sind),'gcarc',avar.gcarc(Sind),...
+                             'samprate',samprate,'nsamp',size(Sdat_tdw,1),...
+                             'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
     end
 
 % ------------------------- OLD - BASED ON ZRT  ---------------------------
@@ -99,7 +104,7 @@ if ~exist('BW_Sp','var'), BW_Sp = struct([]); end
 cd(wd);
 
 %% Phase velocity data
-seismoddir = '~/Work/data/models_seismic/';
+seismoddir = '/Volumes/data/models_seismic/';
 if ~exist(seismoddir,'dir'), seismoddir = regexprep(seismoddir,'~','/Volumes/zeilon'); end 
 addpath(seismoddir);
 
@@ -120,10 +125,25 @@ LphV = LphV(iT);
 
 SW_Lov = struct('periods',Lperiods,'phV',LphV,'sigma',0.01);
 
+% -------- Rayleigh HV ratios
+[ HVratios,HVstds,HVperiods] = disp_curve_HV( [avar.slat,avar.slon]);
+
+[HVperiods,iT] = sort(HVperiods);
+HVratios = HVratios(iT);
+HVstds = HVstds(iT);
+
+gdT = ~isnan(HVratios);
+HVperiods = HVperiods(gdT);
+HVratios = HVratios(gdT);
+HVstds = HVstds(gdT);
+
+SW_HV = struct('periods',HVperiods,'HVr',HVratios,'sigma',HVstds);
+
+
 
 
 %% collate
-trudata = struct('BW_Ps',BW_Ps,'BW_Sp',BW_Sp,'SW_Ray',SW_Ray,'SW_Lov',SW_Lov);
+trudata = struct('BW_Ps',BW_Ps,'BW_Sp',BW_Sp,'SW_Ray',SW_Ray,'SW_Lov',SW_Lov,'SW_HV',SW_HV);
 
 
 cd(wd);

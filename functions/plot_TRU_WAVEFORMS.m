@@ -49,7 +49,7 @@ axs(2,3) = axes('position',[(0.05+2.3*px) axpos(axs(end,1),2) px sy]); hold on
 
 dtypes = fieldnames(trudata);
 axus = zeros(length(dtypes),2);
-for id = 1:length(dtypes);
+for id = 1:length(dtypes)
 %     allpdytp(id,:)=parse_dtype(dtypes{id});
     pdtyp = parse_dtype(dtypes{id});
     if strcmp(pdtyp{1},'BW')
@@ -68,9 +68,9 @@ for id = 1:length(dtypes);
         end
     elseif strcmp(pdtyp{1},'SW')
             ix = 3;
-        if strcmp(pdtyp{2},'Ray')
+        if strcmp(pdtyp{2},'Ray/Lov')
             iy = 1;
-        elseif strcmp(pdtyp{2},'Lov')
+        elseif strcmp(pdtyp{2},'HV')
             iy = 2;
         end
     end
@@ -80,7 +80,7 @@ end
 
 delete(setdiff(axs,axus));
 
-
+isw = 0; swstr = [];
 for id = 1:length(dtypes)
 dtype = dtypes{id};
 pdtyp = parse_dtype( dtype );
@@ -88,13 +88,29 @@ switch pdtyp{1}
 
 %% SW
     case 'SW'
+        
+        switch pdtyp{2}
+            
+            case {'Ray','Lov'}
+            isw = isw+1; swstr{isw} = [pdtyp{2},'-true'];
+            if strcmp(pdtyp{2},'Ray'), lst = 'k.-'; elseif strcmp(pdtyp{2},'Lov'), lst = 'b.:'; end
+            hps(isw) = plot(axus(id,1),trudata.(dtype).periods,trudata.(dtype).phV,lst,'linewidth',3,'markersize',40);
+            hl = legend(axus(id,1),hps,swstr,'Location','SouthEast'); set(hl,'fontsize',15);
+            set(axus(id,1),'fontsize',15)
+            xlabel(axus(id,1),'Period (s)','fontsize',18)
+            ylabel(axus(id,1),'Phase Velocity (km/s)','fontsize',18)
+            title(axus(id,1), 'SW','fontsize',22)
+            
+
+            case 'HV' 
     
-    hp(1) = plot(axus(id,1),trudata.(dtype).periods,trudata.(dtype).phV,'k.-','linewidth',3,'markersize',40);
-    hl = legend(axus(id,1),hp,'True','Location','SouthEast'); set(hl,'fontsize',15);
-    set(axus(id,1),'fontsize',15)
-    xlabel(axus(id,1),'Period (s)','fontsize',18)
-    ylabel(axus(id,1),'Phase Velocity (km/s)','fontsize',18)
-    title(axus(id,1), 'SW','fontsize',22)
+            hp(1) = plot(axus(id,1),trudata.(dtype).periods,trudata.(dtype).HVr,'k.-','linewidth',3,'markersize',40);
+            hl = legend(axus(id,1),hp,'True','Location','SouthEast'); set(hl,'fontsize',15);
+            set(axus(id,1),'fontsize',15)
+            xlabel(axus(id,1),'Period (s)','fontsize',18)
+            ylabel(axus(id,1),'HV ratio','fontsize',18)
+            title(axus(id,1), 'HV','fontsize',22)
+        end
 
 %% RFs
     case 'BW'

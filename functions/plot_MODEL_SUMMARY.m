@@ -68,7 +68,7 @@ subplot(338)
 [N,X] = hist(model_summary.vpvs,20);
 hb = bar(X,N/Nmods,1,'facecolor','none','edgecolor','r');
 % xlim([1.7 1.9]);
-set(gca,'fontsize',14), title('Mantle Vp/Vs ratio','fontsize',16)
+set(gca,'fontsize',14), title('Crust Vp/Vs ratio','fontsize',16)
 end
 
 if isfield(model_summary,'ximant')

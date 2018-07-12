@@ -12,14 +12,15 @@ if nargin < 4 || isempty(ofile)
     ofile='true_vs_predicted_data';
 end
 
-figure(57),clf,set(gcf,'pos',[015 576 1400 600])
-ax1 = axes('position',[0.03 0.53 0.30 0.4]); hold on
-ax2 = axes('position',[0.03 0.09 0.30 0.4]); hold on
-ax3 = axes('position',[0.365 0.53 0.30 0.4]); hold on
-ax4 = axes('position',[0.365 0.09 0.30 0.4]); hold on
-ax5 = axes('position',[0.71 0.09 0.27 0.83]); hold on
+figure(57),clf,set(gcf,'pos',[015 576 1750 600])
+ax1 = axes('position',[0.03 0.53 0.235 0.4]); hold on
+ax2 = axes('position',[0.03 0.09 0.235 0.4]); hold on
+ax3 = axes('position',[0.29 0.53 0.24 0.4]); hold on
+ax4 = axes('position',[0.29 0.09 0.24 0.4]); hold on
+ax5 = axes('position',[0.565 0.09 0.205 0.83]); hold on
+ax6 = axes('position',[0.795 0.09 0.19 0.83]); hold on
 
-axs=[ax1,ax2,ax3,ax4,ax5];
+axs=[ax1,ax2,ax3,ax4,ax5,ax6];
 
 dtypes = fieldnames(predata);
 
@@ -51,7 +52,7 @@ switch pdtyp{1}
         elseif strcmp(pdtyp{2}(1),'S')
             xlims = length(cc_t)./samprate - [1.5*trudata.(dtype)(1).nsamp./samprate 0];
         end
-        set(xa,'fontsize',13,'xlim',xlims,'ylim',1.1*cc_max*[-1 1])
+        set(xa,'fontsize',13,'xlim',xlims,'ylim',max([1.1*cc_max,axlim(xa,4)])*[-1 1])
         title(xa,regexprep(dtype,'_','-'),'fontsize',22,'pos',[mean(xlims),0.85*cc_max,0])
     else
         delete(xa) 
@@ -60,14 +61,33 @@ switch pdtyp{1}
 
 %% SW
     case 'SW'
-    axes(ax5), hold on
-    hp(1) = plot(1./trudata.(dtype).periods,trudata.(dtype).phV,'k.-','linewidth',3,'markersize',40);
-    hp(2) = plot(1./predata.(dtype).periods,predata.(dtype).phV,'r.-','linewidth',1.5,'markersize',30);
-    hl = legend(hp,'True','Pred','Location','NorthEast'); set(hl,'fontsize',15);
-    set(ax5,'fontsize',15,'xlim',[0 1.1/min(trudata.(dtype).periods)])
-    xlabel('Frequency (Hz)','fontsize',18)
-    ylabel('Phase Velocity (km/s)','fontsize',18)
-    title(ax5,'SW','fontsize',22)
+        switch pdtyp{2}
+            
+            case {'Ray','Lov'}
+
+            axes(ax5), hold on
+            hp(1) = plot(1./trudata.(dtype).periods,trudata.(dtype).phV,'k.-','linewidth',3,'markersize',40);
+            hp(2) = plot(1./predata.(dtype).periods,predata.(dtype).phV,'r.-','linewidth',1.5,'markersize',30);
+            hl = legend(hp,'True','Pred','Location','NorthEast'); set(hl,'fontsize',15);
+            set(ax5,'fontsize',15,'xlim',[0 1.1/min(trudata.(dtype).periods)])
+            xlabel('Frequency (Hz)','fontsize',18)
+            ylabel('Phase Velocity (km/s)','fontsize',18)
+            title(ax5,'SW','fontsize',22)
+            
+
+            case 'HV' 
+    
+            axes(ax6), hold on
+            hp(1) = plot(1./trudata.(dtype).periods,trudata.(dtype).HVr,'k.-','linewidth',3,'markersize',40);
+            hp(2) = plot(1./predata.(dtype).periods,predata.(dtype).HVr,'r.-','linewidth',1.5,'markersize',30);
+            hl = legend(hp,'True','Pred','Location','NorthEast'); set(hl,'fontsize',15);
+            set(ax6,'fontsize',15,'xlim',[0 1.1/min(trudata.(dtype).periods)])
+            xlabel('Frequency (Hz)','fontsize',18)
+%             ylabel('HV ratio)','fontsize',18)
+            title(ax6,'HV ratio','fontsize',22)
+        end
+        
+
 end
 
 

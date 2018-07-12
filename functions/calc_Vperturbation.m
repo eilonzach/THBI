@@ -57,6 +57,10 @@ end
 %find non-coincident points
 zdiffi0 = setdiff([1:N]',zbothi0);
 
+%% voigt average velocities
+[card0.vsvgt,card0.vpvgt] = voigtav(card0.vsh,card0.vsv,card0.vph,card0.vpv,card0.eta);
+[card1.vsvgt,card1.vpvgt] = voigtav(card1.vsh,card1.vsv,card1.vph,card1.vpv,card1.eta);
+
 
 %% calc dvals
 % initialise dvals
@@ -65,6 +69,8 @@ dvsh = nan(N,1);
 dvpv = nan(N,1);
 dvph = nan(N,1);
 drho = nan(N,1);
+dvsav = nan(N,1);
+dvpav = nan(N,1);
 
 % insert dvals for coincident points
 dvsv(zbothi0) = card1.vsv(zbothi1)./card0.vsv(zbothi0) - 1;
@@ -72,6 +78,8 @@ dvsh(zbothi0) = card1.vsh(zbothi1)./card0.vsh(zbothi0) - 1;
 dvpv(zbothi0) = card1.vpv(zbothi1)./card0.vpv(zbothi0) - 1;
 dvph(zbothi0) = card1.vph(zbothi1)./card0.vph(zbothi0) - 1;
 drho(zbothi0) = card1.rho(zbothi1)./card0.rho(zbothi0) - 1;
+dvsav(zbothi0) = card1.vsvgt(zbothi1)./card0.vsvgt(zbothi0) - 1;
+dvpav(zbothi0) = card1.vpvgt(zbothi1)./card0.vpvgt(zbothi0) - 1;
 
 % insert dvals for non-coincident points (resolve onto card0 basis)
 dvsv(zdiffi0) = linterp(zz1,card1.vsv,zz0(zdiffi0))./card0.vsv(zdiffi0) - 1;
@@ -79,6 +87,8 @@ dvsh(zdiffi0) = linterp(zz1,card1.vsh,zz0(zdiffi0))./card0.vsh(zdiffi0) - 1;
 dvpv(zdiffi0) = linterp(zz1,card1.vpv,zz0(zdiffi0))./card0.vpv(zdiffi0) - 1;
 dvph(zdiffi0) = linterp(zz1,card1.vph,zz0(zdiffi0))./card0.vph(zdiffi0) - 1;
 drho(zdiffi0) = linterp(zz1,card1.rho,zz0(zdiffi0))./card0.rho(zdiffi0) - 1;
+dvsav(zdiffi0) = linterp(zz1,card1.vsvgt,zz0(zdiffi0))./card0.vsvgt(zdiffi0) - 1;
+dvpav(zdiffi0) = linterp(zz1,card1.vpvgt,zz0(zdiffi0))./card0.vpvgt(zdiffi0) - 1;
 
 % fix nans
 dvsv(card0.vsv==0) = 0; if any(isnan(dvsv)), error('nans in dvsv'); end
@@ -86,10 +96,12 @@ dvsh(card0.vsh==0) = 0; if any(isnan(dvsh)), error('nans in dvsh'); end
 dvpv(card0.vpv==0) = 0; if any(isnan(dvpv)), error('nans in dvpv'); end
 dvph(card0.vph==0) = 0; if any(isnan(dvph)), error('nans in dvph'); end
 drho(card0.rho==0) = 0; if any(isnan(drho)), error('nans in drho'); end
+dvsav(card0.vsvgt==0) = 0; if any(isnan(dvsav)), error('nans in dvsvgt'); end
+dvpav(card0.vpvgt==0) = 0; if any(isnan(dvpav)), error('nans in dvpvgt'); end
 
 
 %% output
-modptb =struct('Z',zz0,'dvsv',dvsv,'dvsh',dvsh,'dvpv',dvpv,'dvph',dvph,'drho',drho);
+modptb =struct('Z',zz0,'dvsv',dvsv,'dvsh',dvsh,'dvpv',dvpv,'dvph',dvph,'drho',drho,'dvsav',dvsav,'dvpav',dvpav);
 
 %% plot
 if ifplot
