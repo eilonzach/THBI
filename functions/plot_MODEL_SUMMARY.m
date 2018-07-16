@@ -50,13 +50,13 @@ set(gca,'fontsize',14), title('Vs crust (km/s)','fontsize',16)
 subplot(337)
 [N,X] = hist(model_summary.VSmantle,20);
 hb = bar(X,N/Nmods,1,'facecolor','flat'); xlim([3.5 4.9]);
-legend(num2str(model_summary.zmantle(:)),'location','northwest')
+legend(num2str(model_summary.zatdep(:)),'location','northwest')
 set(gca,'fontsize',14), title('Vs at 50,100,150,...,300','fontsize',16)
 
-subplot(335)
-[N,X] = hist(model_summary.fdVSsed,20);
-hb = bar(X,N/Nmods,1,'facecolor','none','edgecolor','r');
-set(gca,'fontsize',14), title('fractional dVs at sed/crust (%)','fontsize',16)
+% subplot(335)
+% [N,X] = hist(model_summary.fdVSsed,20);
+% hb = bar(X,N/Nmods,1,'facecolor','none','edgecolor','r');
+% set(gca,'fontsize',14), title('fractional dVs at sed/crust (%)','fontsize',16)
 
 subplot(336)
 [N,X] = hist(model_summary.fdVSmoh,20);

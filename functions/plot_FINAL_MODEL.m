@@ -17,11 +17,14 @@ Z = final_model.Z;
 
 %% PLOT FINAL MODEL
 figure(95); clf; set(gcf,'pos',[120 308 1100 780])
-ax(1) = subplot(1,7,[1,2]); hold on
-ax(2) = subplot(1,7,[3,4]); hold on
-ax(3) = subplot(1,7,[5,6]); hold on
-ax4 = subplot(1,7,7); hold on
+ax(1) = axes('pos',[0.1300 0.1100 0.2018 0.8160]); hold on 
+ax(2) = axes('pos',[0.3593 0.1100 0.2018 0.8160]); hold on
+ax(3) = axes('pos',[0.5886 0.1100 0.2018 0.8160]); hold on
+ax2 = axes('pos',[0.8179 0.6540 0.1 0.2720]); hold on
+ax3(1) = axes('pos',[0.8179 0.382 0.15 0.210]); hold on
+ax3(2) = axes('pos',[0.8179 0.11 0.15 0.210]); hold on
 
+%% Vertical 1D profiles
 variable = {'VS','VP','rho'};
 xlims = [[3.2,4.9];[5.9 9.1];[2.6 3.7]];
 for iv = 1:length(variable)
@@ -51,21 +54,37 @@ end
 end
 
 %% histogram of discontinuities
-Zdh = midpts([0:0.5:max(Z)]); %Zdh = Zdh(1:3:end);
+Zdh = midpts([0:0.5:100]); %Zdh = Zdh(1:3:end);
 %moho
 nm = hist(posterior.zmoh,Zdh);
-plot(ax4,nm/sum(nm),Zdh,'k')
-fill(ax4,nm/sum(nm),Zdh,[0.5 0.5 0.5])
+plot(ax2,nm/sum(nm),Zdh,'k')
+fill(ax2,nm/sum(nm),Zdh,[0.5 0.5 0.5])
 % seds
 if ~all(posterior.zsed==0)
 ns = hist(posterior.zsed,Zdh);
-plot(ax4,ns/sum(ns),Zdh,'k')
-fill(ax4,[0,ns/sum(ns)],[0,Zdh],[0.5 0.5 0.5])
+plot(ax2,ns/sum(ns),Zdh,'k')
+fill(ax2,[0,ns/sum(ns)],[0,Zdh],[0.5 0.5 0.5])
 end
-set(ax4,'ydir','reverse','fontsize',14,'yticklabel','','ytick',[0:25:max(Z)],'ylim',[0 max(Z)],'color','none');
-title(ax4,'Disc.','fontsize',20)
-xlabel(ax4,'fraction','fontsize',16)
-xlim(ax4,[0 max(nm/sum(nm))])
+set(ax2,'ydir','reverse','fontsize',14,'yticklabel','',...
+    'ytick',[0:25:max(Zdh)],'ylim',[0 max(Zdh)],'xlim',[0 1.05*max(nm/sum(nm))],...
+    'color','none','box','on');
+title(ax2,'Disc.','fontsize',20)
+xlabel(ax2,'fraction','fontsize',16)
+
+%% model anisotropy histograms
+%crust
+X = midpts(linspace(0.95,1.05,60));
+No = hist(posterior.xicrust(:,end),X)/posterior.Nstored;
+bar(ax3(1),X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
+set(ax3(1),'fontsize',14,'xlim',[0.95,1.05],'ylim',[0 1.05*max(No)],'ytick',[])
+xlabel(ax3(1),'Crust anis (%)','fontsize',16)
+%mantle
+X = midpts(linspace(0.95,1.05,60));
+No = hist(posterior.ximant(:,end),X)/posterior.Nstored;
+bar(ax3(2),X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
+set(ax3(2),'fontsize',14,'xlim',[0.95,1.05],'ylim',[0 1.05*max(No)],'ytick',[])
+xlabel(ax3(2),'Mantle anis (%)','fontsize',16)
+
 
 %% GET TARGET MODEL for comparison
 if ifcomptru

@@ -50,21 +50,21 @@ ylabel(ax1,'\textbf{Depth (km)}','fontsize',18,'Interpreter','latex')
 %% Prior/posterior histograms/coveriances
 
 % 100 km Vs
-ind=mindex(posterior.zmantle,100);
+ind=mindex(posterior.zatdep,100);
 X = midpts(linspace(par.mod.mantle.vsmin,par.mod.mantle.vsmax,30));
 No = hist(posterior.VSmantle(:,ind),X)/posterior.Nstored;
-Ni = hist(prior.VSmantle(:,ind),X)/prior.Npass;
+Ni = hist(prior.VSmantle(:,ind),X)/prior.Nstored;
 bar(ax2,X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
 bar(ax2,X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',1.5);
 set(ax2,'fontsize',14), 
 xlim(ax2,[par.mod.mantle.vsmin,par.mod.mantle.vsmax])
 % title(ax2,'\textbf{ km}','fontsize',18,'interpreter','latex')
-xlabel(ax2,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zmantle(ind)),'fontsize',18,'Interpreter','latex')
+xlabel(ax2,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zatdep(ind)),'fontsize',18,'Interpreter','latex')
 
 % crustal VpVs
 X = midpts(linspace(par.mod.crust.vpvsmin,par.mod.crust.vpvsmax,30));
 No = hist(posterior.vpvs,X)/posterior.Nstored;
-Ni = hist(prior.vpvs,X)/prior.Npass;
+Ni = hist(prior.vpvs,X)/prior.Nstored;
 bar(ax2,X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
 bar(ax2,X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',1.5);
 set(ax2,'fontsize',14), 
@@ -79,7 +79,7 @@ title(ax2,['\textbf{',par.sta,' ',par.nwk,'}'],'fontsize',22,'interpreter','late
 cla(ax3)
 X = midpts(linspace(par.mod.crust.hmin+par.mod.sed.hmin,par.mod.crust.hmax+par.mod.sed.hmax,60));
 No = hist(posterior.zmoh(:,end),X)/posterior.Nstored;
-Ni = hist(prior.zmoh(:,end),X)/prior.Npass;
+Ni = hist(prior.zmoh(:,end),X)/prior.Nstored;
 bar(ax3,X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
 bar(ax3,X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',1.5);
 set(ax3,'fontsize',14), 
@@ -89,28 +89,28 @@ xlim(ax3,[par.mod.crust.hmin+par.mod.sed.hmin,par.mod.crust.hmax+par.mod.sed.hma
 xlabel(ax3,'\textbf{Moho depth (km)}','fontsize',18,'Interpreter','latex')
 
 % 125 km Vs
-ind=mindex(posterior.zmantle,125);
+ind=mindex(posterior.zatdep,125);
 cla(ax4)
 X = midpts(linspace(par.mod.mantle.vsmin,par.mod.mantle.vsmax,30));
 No = hist(posterior.VSmantle(:,ind),X)/posterior.Nstored;
-Ni = hist(prior.VSmantle(:,ind),X)/prior.Npass;
+Ni = hist(prior.VSmantle(:,ind),X)/prior.Nstored;
 bar(ax4,X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
 bar(ax4,X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',1.5);
 set(ax4,'fontsize',14), 
 xlim(ax4,[par.mod.mantle.vsmin,par.mod.mantle.vsmax])
 % title(ax2,'\textbf{ km}','fontsize',18,'interpreter','latex')
-xlabel(ax4,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zmantle(ind)),'fontsize',18,'Interpreter','latex')
+xlabel(ax4,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zatdep(ind)),'fontsize',18,'Interpreter','latex')
 
 % Mantle Vs covariance
-ind1 = mindex(posterior.zmantle,65);
-ind2 = mindex(posterior.zmantle,82);
+ind1 = mindex(posterior.zatdep,65);
+ind2 = mindex(posterior.zatdep,82);
 cla(ax5)
 % plot(ax5,prior.VSmantle(:,ind1),prior.VSmantle(:,ind2),'o','linewidth',0.3,'color',0.3*[1 1 1])
 plot(ax5,posterior.VSmantle(:,ind1),posterior.VSmantle(:,ind2),'or','markeredgecolor','none','markerfacecolor','r')
 plot(ax5,[par.mod.mantle.vsmin,par.mod.mantle.vsmax],[par.mod.mantle.vsmin,par.mod.mantle.vsmax],'b--','linewidth',1.5)%, axis equal
 set(ax5,'fontsize',14,'xlim',[3.9 4.65],'ylim',[3.9 4.65])%, axis equal
-xlabel(ax5,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zmantle(ind1)),'fontsize',18,'Interpreter','latex')
-ylabel(ax5,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zmantle(ind2)),'fontsize',18,'Interpreter','latex')
+xlabel(ax5,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zatdep(ind1)),'fontsize',18,'Interpreter','latex')
+ylabel(ax5,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zatdep(ind2)),'fontsize',18,'Interpreter','latex')
 % 
 % % VsCB-VsMT covariance
 % cla(ax5)

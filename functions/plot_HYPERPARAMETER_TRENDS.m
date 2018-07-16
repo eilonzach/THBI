@@ -18,7 +18,7 @@ if iscell(allmodels),nchains = length(allmodels); else nchains=1; end
 for iii = 1:nchains
     basecol = colour_get(iii,nchains+1,0,parula); basecol = basecol(:)';
     
-    if nchains>1, 
+    if nchains>1
         am = allmodels{iii};
         if isempty(am); continue; end
     else 
@@ -30,7 +30,7 @@ for iii = 1:nchains
     downsamp = (1:downsampfac:length(am));
 
     dtypes = fieldnames(dp);
-    Nd = length(par.inv.datatypes);
+    Nd = length(dtypes);
     dtypcols = colour_get([1:Nd],Nd,1,[parula;flipud(spring)]);
 
     clear('hypparm_trends');
