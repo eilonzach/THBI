@@ -1,4 +1,4 @@
-function posterior = c2_BUILD_POSTERIOR(allmodels,par,zmantle)
+function posterior = c2_BUILD_POSTERIOR(allmodels,par,zatdep)
 % profile clear
 % profile on
 
@@ -11,10 +11,10 @@ posterior = struct('Niter',par.inv.niter*par.inv.nchains,'Nstored',0,...
                'VSmantle',repmat(o,1,6),'zmantle',o,...
                'fdVSsed',o,'fdVSmoh',o,'vpvs',o,'xicrust',o,'ximant',o,...
                'datahparm',allmodels(1).datahparm);
-if nargin<3 || isempty(zmantle)
-    posterior.zmantle = linspace(par.mod.sed.hmax+par.mod.crust.hmin+0.1,par.mod.maxz,50)';
+if nargin<3 || isempty(zatdep)
+    posterior.zatdep = linspace(par.mod.sed.hmax+par.mod.crust.hmin+0.1,par.mod.maxz,50)';
 else
-    posterior.zmantle = zmantle;
+    posterior.zatdep = zatdep;
 end
 
 dtypes = fieldnames(allmodels(1).datahparm);
@@ -42,7 +42,7 @@ for iii = 1:nchains
     posterior.zmoh(inds,1) = [am.zmoh]';
     posterior.fdVSsed(inds,1) = [am.fdVSsed]';
     posterior.fdVSmoh(inds,1) = [am.fdVSmoh]';
-    posterior.zmantle = round(posterior.zmantle);
+    posterior.zatdep = round(posterior.zatdep);
     for ii = 1:length(am)
         posterior.kcrust(inds(ii),1) = am(ii).crustmparm.Nkn;
         posterior.kmantle(inds(ii),1) = am(ii).mantmparm.Nkn;
@@ -51,7 +51,7 @@ for iii = 1:nchains
         posterior.VScrusttop(inds(ii),1) = am(ii).crustmparm.VS_sp(1);
         posterior.VScrustbot(inds(ii),1) = am(ii).crustmparm.VS_sp(end);
         posterior.VSmanttop(inds(ii),1) = am(ii).mantmparm.VS_sp(1);
-        posterior.VSmantle(inds(ii),:) = linterp(am(ii).z,am(ii).VS,posterior.zmantle);
+        posterior.VSmantle(inds(ii),:) = linterp(am(ii).z,am(ii).VS,posterior.zatdep);
         posterior.vpvs(inds(ii),1) = am(ii).crustmparm.vpvs;
         posterior.xicrust(inds(ii),1) = am(ii).crustmparm.xi;
         posterior.ximant(inds(ii),1) = am(ii).mantmparm.xi;
