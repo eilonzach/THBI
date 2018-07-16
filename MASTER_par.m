@@ -3,7 +3,7 @@ close all
 
 
 projname = 'US'; % SYNTHETICS or WYOMING, for now
-sta = 'JFWS';
+sta = 'ECSD';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
@@ -126,11 +126,11 @@ save([resdir,'/trudata_USE'],'trudata');
 
 
 %% PRIOR
-% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-% zatdep = [5:5:par.mod.maxz]';
-% prior = a2_BUILD_PRIOR(par,max([par.inv.niter,1e5]),zatdep);
-% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-% save([resdir,'/prior'],'prior');
+fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+zatdep = [5:5:par.mod.maxz]';
+prior = a2_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
+plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+save([resdir,'/prior'],'prior');
 
 %% ---------------------------- INITIATE ----------------------------
 profile clear
@@ -433,7 +433,7 @@ try
                 dtype = par.inv.datatypes{id}; pdtyp = parse_dtype(dtype); 
                 if ~strcmp(pdtyp{1},'SW'), continue; end
                 if strcmp(pdtyp{2},'HV')
-                [HVr_new,HVK_new] = run_HVkernel(model,trudata.(dtype).periods,ID,1,0,1);
+                [HVr_new,HVK_new] = run_HVkernel(model,trudata.(dtype).periods,ID,1,0,par.inv.verbose);
                 Kbase = populate_Kbase( Kbase,dtype,HVr_new,[],{HVK_new} );    
                 else
                 [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
@@ -486,13 +486,13 @@ allmodels_perchain = allmodels_perchain(goodchains);
 [ hypparm_trends ] = plot_HYPERPARAMETER_TRENDS( allmodels_perchain,[resdir,'/hyperparmtrend.pdf'] );
 plot_KNOT_TRENDS( allmodels_perchain,par,[resdir,'/knottrends']  )
 
-posterior = c2_BUILD_POSTERIOR(allmodels_collated,par);
+posterior = c2_BUILD_POSTERIOR(allmodels_collated,par,zatdep);
 
 fprintf('  > Plotting posterior\n')
 plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
 
-% fprintf('  > Plotting prior vs. posterior\n')
-% plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
+fprintf('  > Plotting prior vs. posterior\n')
+plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
 
 fprintf('  > Plotting model suite\n')
 [ suite_of_models ] = c3_BUILD_MODEL_SUITE(allmodels_collated,par );

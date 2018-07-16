@@ -1,91 +1,147 @@
-function prior = a2_BUILD_PRIOR(par,Niter,zatdep)
-% prior = a2_BUILD_PRIOR(par,Niter,zatdep)
-% profile clear
-% profile on
+function empprior = a2_BUILD_EMPIRICAL_PRIOR(par,Niter,Nchains,zatdep)
+% empprior = a2_BUILD_EMPIRICAL_PRIOR(par,Niter,Nchains,zatdep)
 
 if nargin <2 || isempty(Niter) 
     Niter = 1e4;
 end
+if nargin <3 || isempty(Nchains) 
+    Nchains = 10;
+end
+if nargin<4 || isempty(zatdep)
+    zatdep = linspace(par.mod.sed.hmax+par.mod.crust.hmin+0.1,par.mod.maxz,50)';
+end
+           
+% zatdep = [5:5:par.mod.maxz]';
+Nsave = floor(par.inv.niter/par.inv.saveperN);
+o = nan(Nsave,1);
 
-o = [];
 
-prior = struct('Niter',Niter','Npass',0,...
+   
+%% START DIFFERENT MARKOV CHAINS IN PARALLEL
+%% ========================================================================
+%% ========================================================================
+fprintf('\n =========== STARTING PARALLEL CHAINS ===========\n')
+%% ========================================================================
+%% ========================================================================
+t = now;
+parfor iii = 1:Nchains 
+
+chainstr = mkchainstr(iii);
+
+%% Initiate model
+ifpass = 0;
+% only let starting model out of the loop if it passes conditions
+while ifpass==0 % first make sure the starting model satisfies conditions
+    model0 = b1_INITIATE_MODEL(par);
+    model = model0;
+    ifpass = a1_TEST_CONDITIONS( model, par );
+end % now we have a starting model!
+
+
+dtypes = fieldnames(model(1).datahparm);
+empprior = struct('Niter',Niter*Nchains,'Nstored',0,...
                'zsed',o,'zmoh',o,...
                'kcrust',o,'kmantle',o,...
-               'VSsedtop',o,'VSsedbot',o,'VScrusttop',o,'VScrustbot',o,...
-               'VSmantle',repmat(o,1,6),'zatdep',zeros(6,1),...
-               'Zkn_crust',nan(1,par.mod.crust.kmax),'Zkn_mantle',nan(1,par.mod.mantle.kmax),...
-               'fdVSsed',o,'fdVSmoh',o,'vpvs',o,'cxi',o,'mxi',o);
+               'VSsedtop',o,'VSsedbot',o,'VScrusttop',o,'VScrustbot',o,'VSmanttop',o,...
+               'VSmantle',nan(Nsave,length(zatdep)),'zatdep',zatdep,...
+               'Zkn_crust',nan(Nsave,par.mod.crust.kmax),'Zkn_mantle',nan(Nsave,par.mod.mantle.kmax),...
+               'fdVSmoh',o,'vpvs',o,'cxi',o,'mxi',o,...
+               'datahparm',nan(Nsave,length(dtypes)));
 
-if nargin<3 || isempty(zatdep)
-    prior.zatdep = linspace(par.mod.sed.hmax+par.mod.crust.hmin+0.1,par.mod.maxz,50)';
-else
-    prior.zatdep = zatdep;
-end
-
-% prep for par
-parprior = prior;           
-parprior(Niter) = prior(1); % set last val to give prior right dimension
-
-passed = zeros(Niter,1);
-           
-for kk = 1:Niter
-    model = b1_INITIATE_MODEL(par,0,0);
-    ifpass = a1_TEST_CONDITIONS( model, par );
+%% ========================================================================
+%% ------------------------- Start iterations -----------------------------
+%% ========================================================================
+ptb = cell({});
+acc = zeros(par.inv.niter,1);
+ifaccept=false; 
+% reset_likelihood;
+lastlogL = -Inf; 
+% not parfor
+fprintf('\n =========== STARTING ITERATIONS %s ===========\n',chainstr)
+for ii = 1:Niter
+    if rem(ii,100)==0, fprintf('Iteration %s%.0f\n',chainstr,ii); end
+    temp = 1;
     
-    if ~ifpass, continue; end
+%% ===========================  PERTURB  ===========================  
+    if ii==1
+        model1 = model; % don't perturb on first run
+        p_bd = 1;
+        ptb{ii,1} = 'start';
+    else
+        [model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
+        ifpass = a1_TEST_CONDITIONS( model1, par, par.inv.verbose );
+        if ifpass==0 && model1.mantmparm.knots(end-1)<par.mod.maxkz
+        end
+    end
+ 
+%% =====================    ===  ACCEPTANCE CRITERION  ========================
+    [ ifaccept ] = b6_IFACCEPT( 0,lastlogL,temp,p_bd*ifpass );
+
+        
+%% ========================  IF ACCEPT ==> STORE  =========================
+    if ifaccept 
+        model = model1;
+        lastlogL=0;
+        acc(ii)=1;
+    else
+        if par.inv.verbose, fprintf('    > fail\n'); end
+        acc(ii) = 0;
+    end
     
-    passed(kk) = 1;
     
-    parprior(kk).zsed = model.zsed; %#ok<PFOUS>
-    parprior(kk).zmoh = model.zmoh;
-    parprior(kk).kcrust = model.crustmparm.Nkn;
-    parprior(kk).kmantle = model.mantmparm.Nkn;
-    parprior(kk).VSsedtop = model.sedmparm.VS(1);
-    parprior(kk).VSsedbot = model.sedmparm.VS(2);
-    parprior(kk).VScrusttop = model.crustmparm.VS_sp(1);
-    parprior(kk).VScrustbot = model.crustmparm.VS_sp(end);
-    parprior(kk).VSmantle(1,:) = linterp(model.z,model.VS,prior.zatdep);
-    parprior(kk).fdVSsed = model.fdVSsed;
-    parprior(kk).fdVSmoh = model.fdVSmoh;
-    parprior(kk).Zkn_crust(1:model.crustmparm.Nkn-2) = model.crustmparm.knots(2:end-1);
-    parprior(kk).Zkn_mantle(1:model.mantmparm.Nkn-2) = model.mantmparm.knots(2:end-1);    
-    parprior(kk).vpvs = model.crustmparm.vpvs;    
-    parprior(kk).cxi = model.crustmparm.xi;    
-    parprior(kk).mxi = model.mantmparm.xi;    
+    % SAVE into 1-D empprior struct
+    if mod(ii,par.inv.saveperN)==0
+    istor = empprior.Nstored+1;
+    empprior.Nstored=istor;
+    empprior.ifaccept(istor,1) = ifaccept;
+    empprior.zmoh(istor,1) = model.zmoh;
+    empprior.fdVSmoh(istor,1) = model.fdVSmoh;
+    empprior.kcrust(istor,1) = model.crustmparm.Nkn;
+    empprior.kmantle(istor,1) = model.mantmparm.Nkn;
+    empprior.VScrusttop(istor,1) = model.crustmparm.VS_sp(1);
+    empprior.VScrustbot(istor,1) = model.crustmparm.VS_sp(end);
+    empprior.VSmanttop(istor,1) = model.mantmparm.VS_sp(1);
+    empprior.VSmantle(istor,:) = linterp(model.z,model.VS,empprior.zatdep);
+    empprior.Zkn_crust(istor,1:model.crustmparm.Nkn-2) = model.crustmparm.knots(2:end-1);
+    empprior.Zkn_mantle(istor,1:model.mantmparm.Nkn-2) = model.mantmparm.knots(2:end-1);
+    empprior.vpvs(istor,1) = model.crustmparm.vpvs;
+    empprior.cxi(istor,1) = model.crustmparm.xi;
+    empprior.mxi(istor,1) = model.mantmparm.xi;
+    for id = 1:length(dtypes)
+        empprior.datahparm(istor,id) = model.datahparm.(dtypes{id});
+    end
+    
+    
+    end
+
+end % on iterations
+%% -------------------------- End iteration  ------------------------------
+fprintf('\n =========== ENDING ITERATIONS %s ===========\n',char(64+iii))
+emppriors{iii} = empprior;
+ptbs{iii} = ptb;
+
+end % parfor loop
+%% ========================================================================
+%% ========================================================================
+%% ----------------------- End loop on chains  ----------------------------
+%% ========================================================================
+%% ========================================================================
+fprintf('Duration of entire run: %.0f s\n',(now-t)*86400)
+
+empprior = emppriors{1};
+ptb = ptbs{1};
+fns = fieldnames(empprior);
+for iii = 2:Nchains 
+    for jj = 1:length(fns)
+        if isscalar(empprior.(fns{jj}))
+            empprior.(fns{jj}) = empprior.(fns{jj}) + emppriors{iii}.(fns{jj});
+        elseif strcmp(fns{jj},'zatdep')
+            continue;
+        else
+            empprior.(fns{jj}) = [empprior.(fns{jj}) ; emppriors{iii}.(fns{jj})];
+        end
+    end
+    ptb = {ptb;ptbs{iii}};
 end
-Npass = sum(passed);
-
-parprior(~passed) = [];
-parprior = parprior';
-
-% put into 1-D prior struct
-prior.Npass = Npass;
-prior.zsed = [parprior.zsed]';
-prior.zmoh = [parprior.zmoh]';
-prior.kcrust = [parprior.kcrust]';
-prior.kmantle = [parprior.kmantle]';
-prior.VSsedtop = [parprior.VSsedtop]';
-prior.VSsedbot = [parprior.VSsedbot]';
-prior.VScrusttop = [parprior.VScrusttop]';
-prior.VScrustbot = [parprior.VScrustbot]';
-prior.VSmantle = reshape([parprior.VSmantle],length(prior.zatdep),Npass)';
-prior.fdVSsed = [parprior.fdVSsed]';
-prior.fdVSmoh = [parprior.fdVSmoh]';
-prior.vpvs = [parprior.vpvs]';
-prior.cxi = [parprior.cxi]';
-prior.mxi = [parprior.mxi]';
-prior.zatdep = round(prior.zatdep);
-prior.zmantle = prior.zatdep;
-
-for ii = 1:Npass
-prior.Zkn_crust(ii,:) = [parprior(ii).Zkn_crust,nan(1,par.mod.crust.kmax-length(parprior(ii).Zkn_crust))];
-prior.Zkn_mantle(ii,:) = [parprior(ii).Zkn_mantle,nan(1,par.mod.mantle.kmax-length(parprior(ii).Zkn_mantle))];
-end
-
-
-
-% profile off
-% profile viewer
 
 end
