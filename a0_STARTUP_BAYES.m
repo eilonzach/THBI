@@ -18,7 +18,10 @@ addpath('/Users/zeilon/Dropbox/MATLAB/lib/fastBSpline');
 addpath([bayesdir,'matlab_to_propmat']); 
 % path to mineos running dir.
 addpath([basedir,'matlab_to_mineos']); 
-addpath('~/Dropbox/MATLAB/lib/seizmo/models/')
+% path to seiz models
+addpath('~/Dropbox/MATLAB/lib/seizmo/models')
+% path to HV kernels functions
+addpath('~/Work/codes/HV_Tanimoto/matlab_to_HVkernel')
 % path to Rayleigh wave dispersion curve dir
 addpath('/Users/zeilon/Dropbox/MATLAB/seis_tools/surface_waves'); 
 % path to gaussfit dir
