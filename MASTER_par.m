@@ -3,7 +3,7 @@ close all
 
 
 projname = 'US'; % SYNTHETICS or WYOMING, for now
-sta = 'ECSD';
+sta = 'EYMN';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 datN = 20;
@@ -93,9 +93,11 @@ else
         if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
             trudata.(dtype) = trudata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
         end
+        % set prior sigma as geometric mean of data sigma
+        if isfield(trudata.(dtype),'sigma') && ~isnan(geomean(trudata.(dtype).sigma))
+            par.mod.data.prior_sigma.(pdt{1}).(pdt{2}).(pdt{3}) = geomean(trudata.(dtype).sigma);
+        end
     end
-    
-
 end
 
 % save data
@@ -126,11 +128,11 @@ save([resdir,'/trudata_USE'],'trudata');
 
 
 %% PRIOR
-fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
 zatdep = [5:5:par.mod.maxz]';
-prior = a2_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
-plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-save([resdir,'/prior'],'prior');
+% prior = a2_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
+% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+% save([resdir,'/prior'],'prior','par');
 
 %% ---------------------------- INITIATE ----------------------------
 profile clear
@@ -151,7 +153,8 @@ fprintf('\n =========== STARTING PARALLEL CHAINS ===========\n')
 %% ========================================================================
 %% ========================================================================
 t = now;
-parfor iii = 1:par.inv.nchains 
+% mkdir([resdir,'/chainout']);
+for iii = 1:par.inv.nchains 
 chainstr = mkchainstr(iii);
 
 %% Fail-safe to restart chain if there's a succession of failures
@@ -173,27 +176,30 @@ while ifpass==0
     end
 
     %% starting model kernel
-    fprintf('\nCreating starting kernel %s\n',chainstr)
-
-    Kbase = initiate_Kbase; Kbase.modelk = model;
-    for id = 1:length(par.inv.datatypes)
-        dtype = par.inv.datatypes{id};
-        pdtyp = parse_dtype(dtype); 
-        if ~strcmp(pdtyp{1},'SW'), continue; end
-        if strcmp(pdtyp{2},'HV')
-            try
-                [HVr0,HVK0] = run_HVkernel(model,trudata.(dtype).periods,['start',chainstr],1,0,1);
-            catch 
-                ifpass = false;continue;
-            end
-            [ Kbase ] = populate_Kbase( Kbase,dtype,HVr0,[],{HVK0} );    
-        else
-            [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},['start',chainstr],0,0,1);
-            K  = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},['start',chainstr],1,0,1);
-            [ Kbase ] = populate_Kbase( Kbase,dtype,phV,grV,{K} );    
-            if any(isnan(phV)),ifpass = false; end
-        end
-    end % loop on datatypes
+    fprintf('\nCreating starting kernels %s\n',chainstr)
+    try
+        [Kbase] = make_allkernels(model,[],trudata,['start',chainstr],par);
+    catch, ifpass = false;continue; end
+    
+%     Kbase = initiate_Kbase; Kbase.modelk = model;
+%     for id = 1:length(par.inv.datatypes)
+%         dtype = par.inv.datatypes{id};
+%         pdtyp = parse_dtype(dtype); 
+%         if ~strcmp(pdtyp{1},'SW'), continue; end
+%         if strcmp(pdtyp{2},'HV')
+%             try
+%                 [HVr0,HVK0] = run_HVkernel(model,trudata.(dtype).periods,['start',chainstr],1,0,1);
+%             catch 
+%                 ifpass = false;continue;
+%             end
+%             [ Kbase ] = populate_Kbase( Kbase,dtype,HVr0,[],{HVK0} );    
+%         else
+%             [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},['start',chainstr],0,0,1);
+%             K  = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},['start',chainstr],1,0,1);
+%             [ Kbase ] = populate_Kbase( Kbase,dtype,phV,grV,{K} );    
+%             if any(isnan(phV)),ifpass = false; end
+%         end
+%     end % loop on datatypes
 
 end % now we have a starting model!
 
@@ -214,6 +220,16 @@ predata=[];
 % not parfor
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',chainstr)
 for ii = 1:par.inv.niter
+    
+%% SAVE every saveperN
+if mod(ii,par.inv.saveperN)==0
+
+    [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
+    if isfield(trudata,'SW_Ray')
+        preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
+    end
+end
+    
 try
     if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',chainstr,ii); end
     if par.inv.verbose, pause(0.05); end
@@ -347,7 +363,7 @@ try
 %% =========================  CALCULATE MISFIT  ===========================
     
     % SW weights, if applicable 
-    [ SWwt ] = make_SW_weight( par,Kbase );
+    [ SWwt ] = make_SW_weight( par,Kbase,trudata );
     
     [ misfit1 ] = b4_CALC_MISFIT( trudata,predata,par,0,SWwt ); % misfit has structures of summed errors
 
@@ -377,7 +393,7 @@ try
     if ifaccept 
         if par.inv.verbose
             fprintf('  *********************\n  Accepting model! logL:  %.4e ==>  %.4e\n  *********************\n',...
-                misfits.lastlogL,log_likelihood)
+                log_likelihood,log_likelihood1)
         end
         % save new model!
         model = model1;
@@ -410,15 +426,6 @@ try
     % restart-chain if immediate failure
     if isinf(log_likelihood), fail_chain=100; break; end 
     
-    %% SAVE every saveperN
-    if mod(ii,par.inv.saveperN)==0 || ii==1 || misfits.lastL==0 
-	
-        [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
-        if isfield(trudata,'SW_Ray')
-            preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
-        end
-    end
-    
     
 %% =========  redo kernel at end of burn in or if chain is too long =======
     if newK == false
@@ -428,19 +435,20 @@ try
             fprintf('\n RECALCULATING KERNEL - end of burn in\n'), newK = true;
         end
         if newK == true
-            Kbase.modelk = model;
-            for id = 1:length(par.inv.datatypes)
-                dtype = par.inv.datatypes{id}; pdtyp = parse_dtype(dtype); 
-                if ~strcmp(pdtyp{1},'SW'), continue; end
-                if strcmp(pdtyp{2},'HV')
-                [HVr_new,HVK_new] = run_HVkernel(model,trudata.(dtype).periods,ID,1,0,par.inv.verbose);
-                Kbase = populate_Kbase( Kbase,dtype,HVr_new,[],{HVK_new} );    
-                else
-                [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-                K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
-                Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
-                end
-            end
+            [Kbase] = make_allkernels(model,Kbase,trudata,ID,par);
+%             Kbase.modelk = model;
+%             for id = 1:length(par.inv.datatypes)
+%                 dtype = par.inv.datatypes{id}; pdtyp = parse_dtype(dtype); 
+%                 if ~strcmp(pdtyp{1},'SW'), continue; end
+%                 if strcmp(pdtyp{2},'HV')
+%                 [HVr_new,HVK_new] = run_HVkernel(model,trudata.(dtype).periods,ID,1,0,par.inv.verbose);
+%                 Kbase = populate_Kbase( Kbase,dtype,HVr_new,[],{HVK_new} );    
+%                 else
+%                 [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
+%                 K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+%                 Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
+%                 end
+%             end
             nchain = 0;
         end
     end
@@ -455,6 +463,7 @@ end % on iterations
 end % on the fail_chain while...
 % ----------
 fprintf('\n =========== ENDING ITERATIONS %s ===========\n',chainstr)
+% save([resdir,'/chainout/',chainstr],'model0','misfits','allmodels')
 
 model0_perchain{iii} = model0;
 misfits_perchain{iii} = misfits;

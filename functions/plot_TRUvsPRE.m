@@ -78,6 +78,7 @@ switch pdtyp{1}
             case 'HV' 
     
             axes(ax6), hold on
+            errorbar(1./trudata.(dtype).periods,trudata.(dtype).HVr,2*trudata.(dtype).sigma,'k')
             hp(1) = plot(1./trudata.(dtype).periods,trudata.(dtype).HVr,'k.-','linewidth',3,'markersize',40);
             hp(2) = plot(1./predata.(dtype).periods,predata.(dtype).HVr,'r.-','linewidth',1.5,'markersize',30);
             hl = legend(hp,'True','Pred','Location','NorthEast'); set(hl,'fontsize',15);

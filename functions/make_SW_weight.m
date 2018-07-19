@@ -1,5 +1,5 @@
-function [ SWwt ] = make_SW_weight( par,Kbase )
-%[ SWwt ] = make_SW_weight( par,Kbase)
+function [ SWwt ] = make_SW_weight( par,Kbase,trudata )
+%[ SWwt ] = make_SW_weight( par,Kbase,trudata)
 %   
 % function to get surface wave weights if par says to do so, and otherwise
 % not weight
@@ -14,7 +14,7 @@ for id = 1:length(par.inv.datatypes)
             % what should the weight be?
             if all(par.inv.Kweight == true) % if using default weight by fraction of kernel in model
                     SWwt.(dtype) = calc_K_in_model( Kbase.(pdtyp{2}).(['K',pdtyp{3}(1:2)]),par );
-                    SWwt.(dtype) = SWwt.(dtype)/mean(SWwt.(dtype));    
+                    SWwt.(dtype) = SWwt.(dtype)/geomean(SWwt.(dtype));    
             elseif all(par.inv.Kweight == false) % if no weight
                 SWwt.(dtype) = 1;    
             else
@@ -25,7 +25,7 @@ for id = 1:length(par.inv.datatypes)
             % what should the weight be?
             if all(par.inv.Kweight == true) % if using default weight by fraction of kernel in model
                     SWwt.(dtype) = calc_K_in_model( Kbase.(pdtyp{2}).(['K',pdtyp{3}(1:2)]),par );
-                    SWwt.(dtype) = SWwt.(dtype)/mean(SWwt.(dtype));    
+                    SWwt.(dtype) = SWwt.(dtype)/geomean(SWwt.(dtype));    
             elseif all(par.inv.Kweight == false) % if no weight
                 SWwt.(dtype) = 1;    
             else
@@ -33,6 +33,12 @@ for id = 1:length(par.inv.datatypes)
             end
             
     end
+    % allow for different stds at different periods by scaling weights by
+    % indiv values (de-meaned using geometrical mean, so doesn't figure
+    % later in the expressions)
+    if isempty(trudata.(dtype).sigma),trudata.(dtype).sigma=1;end
+    dsig = trudata.(dtype).sigma./geomean(trudata.(dtype).sigma);
+    SWwt.(dtype) = SWwt.(dtype).*(dsig.^-2);
 
 
 end % loop on data types

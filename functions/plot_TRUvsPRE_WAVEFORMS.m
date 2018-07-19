@@ -48,7 +48,8 @@ switch pdtyp{1}
         switch pdtyp{2}
             case 'Ray', ax = ax9;  ylabstr = 'Phase Velocity (km/s)';
             case 'Lov', ax = ax10; ylabstr = 'Phase Velocity (km/s)';
-            case 'HV',  ax = ax11; ylabstr = 'H/V ratio';
+            case 'HV',  ax = ax11; ylabstr = 'H/V ratio'; errorbar(ax,trudata.(dtype).periods,trudata.(dtype).HVr,2*trudata.(dtype).sigma,'k')
+
         end
     hp(1) = plot(ax,trudata.(dtype).periods,trudata.(dtype).(pdtyp{3}),'k.-','linewidth',3,'markersize',40);
     hp(2) = plot(ax,predata.(dtype).periods,predata.(dtype).(pdtyp{3}),'r.-','linewidth',1.5,'markersize',30);
