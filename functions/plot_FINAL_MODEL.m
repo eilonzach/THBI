@@ -73,16 +73,16 @@ xlabel(ax2,'fraction','fontsize',16)
 
 %% model anisotropy histograms
 %crust
-X = midpts(linspace(0.95,1.05,60));
+X = midpts(linspace(0.90,1.1,40));
 No = hist(posterior.xicrust(:,end),X)/posterior.Nstored;
 bar(ax3(1),X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
-set(ax3(1),'fontsize',14,'xlim',[0.95,1.05],'ylim',[0 1.05*max(No)],'ytick',[])
+set(ax3(1),'fontsize',14,'xlim',[0.90,1.1],'ylim',[0 1.05*max(No)],'ytick',[])
 xlabel(ax3(1),'Crust anis (%)','fontsize',16)
 %mantle
-X = midpts(linspace(0.95,1.05,60));
+X = midpts(linspace(0.90,1.1,40));
 No = hist(posterior.ximant(:,end),X)/posterior.Nstored;
 bar(ax3(2),X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
-set(ax3(2),'fontsize',14,'xlim',[0.95,1.05],'ylim',[0 1.05*max(No)],'ytick',[])
+set(ax3(2),'fontsize',14,'xlim',[0.90,1.1],'ylim',[0 1.05*max(No)],'ytick',[])
 xlabel(ax3(2),'Mantle anis (%)','fontsize',16)
 
 
@@ -98,11 +98,18 @@ if nargin > 5 && ~isempty(lalo)
     vp = squeeze(model.Vpv(mindex(model.lon,mod(lalo(2),360)),mindex(model.lat,lalo(1)),:));
     Z = model.Z;
 
-else 
+else
+    global TRUEmodel
+    if ~isempty(TRUEmodel)
+        Z = TRUEmodel.Z;
+        vs = TRUEmodel.VS;
+        vp = TRUEmodel.VP;
+    else
     % read in prem
     PRmodel = prem('depths',Z);
     vs = PRmodel.vs;
     vp = PRmodel.vp;
+    end
 end
 plot(ax(1),vs,Z,'-b','Linewidth',1.5);
 plot(ax(2),vp,Z,'-b','Linewidth',1.5);
