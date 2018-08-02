@@ -2,11 +2,10 @@ clear all
 close all
 
 
-projname = 'US'; % SYNTHETICS or WYOMING, for now
+projname = 'SYNTHETICS'; % SYNTHETICS, LAB_tests, or WYOMING, for now
 sta = 'EYMN';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
-datN = 20;
 % baz = 315;
 
 notes = [...
@@ -16,7 +15,7 @@ notes = [...
     'This run has a sediment layer DISallowed.\n',...
     'Max depth 300 km.\n',...
     'New techniques of ignoring inhomog. P conversion layers\n',...
-        ];
+        ]; 
 
 %% ------------------------- START ------------------------- 
 global projdir THBIpath TRUEmodel
@@ -34,11 +33,49 @@ if strcmp(projname,'SYNTHETICS')
     if isfield(par.synth,'noisetype') && strcmp(par.synth.noisetype,'real'), sta=['SYNTH_',sta]; else sta = 'SYNTH'; end
     par.sta = sta; 
     par.nwk = '--';
+
+	% noise details, if "real"
+	noisesta = 'RSSD';
+	noisenwk = 'IU';
+	noisegcarcs = [73,38];
+	noiseshape = 'real'; % 'white' or 'real'
+	noiseup = 0.5; % factor to increase real noise
+
+    ifsavedat = false;
+
+elseif strcmp(projname,'LAB_tests')
+	zsed = 0;
+	zmoh = 45;
+	zlab = 130;
+	wlab = 10;
+	flab = 0.05;
+	dtps = {'BW_Ps_cms','SW_Ray_phV'};     
+
+	% noise details, if "real"
+	noisesta = 'RSSD';
+	noisenwk = 'IU';
+	noisegcarcs = [73,38];
+	noiseshape = 'real'; % 'white' or 'real'
+	noiseup = 0.5; % factor to increase real noise
+
+	% naming convention
+	dtpstr='_';
+	if any(strcmp(dtps,'BW_Ps')), dtpstr=[dtpstr,'Ps']; end
+	if any(strcmp(dtps,'BW_Ps_cms')), dtpstr=[dtpstr,'Pscms']; end
+	if any(strcmp(dtps,'BW_Sp')), dtpstr=[dtpstr,'Sp']; end
+	if any(strcmp(dtps,'SW_Ray_phV')), dtpstr=[dtpstr,'SW']; end
+
+	ifsavedat = true;
+
+	sta = ['LAB_s',num2str(zsed),'_m',num2str(zmoh),'_z',num2str(zlab),'_w',num2str(wlab),'_f',num2str(100*flab),dtpstr];
+    par.sta = sta; par.nwk = 'LAB_test';
 else
     par.sta = sta;
     par.nwk = nwk;
     par.gc = gc;
+    datN = 20;
 end
+
 par.inv.verbose=false;
 
 %% get saving things ready
@@ -64,17 +101,40 @@ if strcmp(projname,'SYNTHETICS')
     fprintf(' > Creating custom model and synthetic data\n')
     
     % make synth model
-    addpath('~/Documents/MATLAB/THBI_paper/Figure_3/')
     z0_SYNTH_MODEL_fig3_splinemod(par,0);  %close(95)
     save([resdir,'/trumodel'],'TRUEmodel');
 
     % make synth data
     [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
     if strcmp(par.synth.noisetype,'real')
-        noise_sta_deets = struct('datadir',[THBIpath,'/WYOMING/AVARS/'],'sta',sta,'nwk',nwk,'gc',par.synth.gcarcs);
+        noise_sta_deets = struct('datadir',['/Volumes/data/THBI/US/STAsinv/',noisesta,'_dat20/'],...
+								 'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup,'noiseshape',noiseshape);
         par.synth.noise_sta_deets = noise_sta_deets;
         [ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par,noise_sta_deets );
     end
+
+    % distribute data for different processing (e.g. _lo, _cms)
+    trudata = duplicate_data_distribute(trudata,par);
+
+elseif strcmp(projname,'LAB_tests')
+	z0_SYNTH_MODEL_LAB_TEST(par,zsed,zmoh,zlab,wlab,flab,1) ;
+	save([resdir,'/trumodel'],'TRUEmodel');
+
+	% make synth data
+	[ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
+	trudata_noiseless = trudata;
+
+	trudata = trudata_noiseless;
+	if strcmp(par.synth.noisetype,'real')
+		noise_sta_deets = struct('datadir',['/Volumes/data/THBI/US/STAsinv/',noisesta,'_dat20/'],...
+								 'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup,'noiseshape',noiseshape);
+		par.synth.noise_sta_deets = noise_sta_deets;
+	%     [ trudata,par ] = z2_NOISIFY_SYNTH_makestack( trudata, par,noise_sta_deets );
+		[ trudata,par ] = z2_NOISIFY_SYNTH( trudata, par,noise_sta_deets );
+    end
+    
+    trudata = duplicate_data_distribute(trudata,par);
+    stadeets = struct('Latitude',[],'Longitude',[]);
 
 else
 	try stadeets = irisFetch.Stations('station',nwk,sta,'*','*'); 
@@ -83,11 +143,12 @@ else
                           'Longitude',stainfo(strcmp({stainfo.StationCode},sta)).Longitude);
     end
 
-%     addpath('matguts')
 %     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
     [trudata,zeroDstr] = load_data(avardir,sta,nwk,gc);
     sta = [sta,zeroDstr];
     % distribute data for different processing (e.g. _lo, _cms)
+    trudata = duplicate_data_distribute(trudata,par);
+    
     for idt = 1:length(par.inv.datatypes)
         dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
         if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
@@ -98,41 +159,41 @@ else
             par.mod.data.prior_sigma.(pdt{1}).(pdt{2}).(pdt{3}) = geomean(trudata.(dtype).sigma);
         end
     end
+
+    % get rid of data that wont be used in inversion - NB NEED EXACT DATA MATCH
+    trudtypes = fieldnames(trudata);
+    for idt = 1:length(trudtypes)
+        if all(~strcmp(trudtypes{idt},par.inv.datatypes)) % no match
+            fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
+            trudata = rmfield(trudata,trudtypes{idt});
+        end
+        if par.inv.BWclust~=0 && any(regexp(trudtypes{idt},'BW'))
+            fprintf('WARNING - removing %s data not in cluster %.0f\n',trudtypes{idt},par.inv.BWclust)
+            trudata.(trudtypes{idt}) = trudata.(trudtypes{idt})([trudata.(trudtypes{idt}).clust]==par.inv.BWclust);
+        end
+    end
+
 end
 
 % save data
 save([resdir,'/trudata_ORIG'],'trudata');
-
-% get rid of data that wont be used in inversion - NB NEED EXACT DATA MATCH
-trudtypes = fieldnames(trudata);
-for idt = 1:length(trudtypes)
-    if all(~strcmp(trudtypes{idt},par.inv.datatypes)) % no match
-        fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
-        trudata = rmfield(trudata,trudtypes{idt});
-    end
-    if par.inv.BWclust~=0 && any(regexp(trudtypes{idt},'BW'))
-        fprintf('WARNING - removing %s data not in cluster %.0f\n',trudtypes{idt},par.inv.BWclust)
-        trudata.(trudtypes{idt}) = trudata.(trudtypes{idt})([trudata.(trudtypes{idt}).clust]==par.inv.BWclust);
-    end
-end
 
 % window, filter data 
 for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt};
     [ trudata ] = predat_process( trudata,dtype,par);
 end
-plot_TRU_WAVEFORMS(trudata);
-% plot_TRUvsPRE_WAVEFORMS(trudata,trudata_ORIG);
-plot_TRUvsPRE(trudata,trudata);
+% plot_TRU_WAVEFORMS(trudata);
+% plot_TRUvsPRE(trudata,trudata);
 save([resdir,'/trudata_USE'],'trudata');
 
 
 %% PRIOR
-% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
 zatdep = [5:5:par.mod.maxz]';
-% prior = a2_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
-% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-% save([resdir,'/prior'],'prior','par');
+prior = a2_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
+plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+save([resdir,'/prior'],'prior','par');
 
 %% ---------------------------- INITIATE ----------------------------
 profile clear
@@ -154,7 +215,7 @@ fprintf('\n =========== STARTING PARALLEL CHAINS ===========\n')
 %% ========================================================================
 t = now;
 % mkdir([resdir,'/chainout']);
-for iii = 1:par.inv.nchains 
+parfor iii = 1:par.inv.nchains 
 chainstr = mkchainstr(iii);
 
 %% Fail-safe to restart chain if there's a succession of failures
@@ -179,28 +240,10 @@ while ifpass==0
     fprintf('\nCreating starting kernels %s\n',chainstr)
     try
         [Kbase] = make_allkernels(model,[],trudata,['start',chainstr],par);
-    catch, ifpass = false;continue; end
+    catch
+        ifpass = false; continue; 
+    end
     
-%     Kbase = initiate_Kbase; Kbase.modelk = model;
-%     for id = 1:length(par.inv.datatypes)
-%         dtype = par.inv.datatypes{id};
-%         pdtyp = parse_dtype(dtype); 
-%         if ~strcmp(pdtyp{1},'SW'), continue; end
-%         if strcmp(pdtyp{2},'HV')
-%             try
-%                 [HVr0,HVK0] = run_HVkernel(model,trudata.(dtype).periods,['start',chainstr],1,0,1);
-%             catch 
-%                 ifpass = false;continue;
-%             end
-%             [ Kbase ] = populate_Kbase( Kbase,dtype,HVr0,[],{HVK0} );    
-%         else
-%             [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},['start',chainstr],0,0,1);
-%             K  = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},['start',chainstr],1,0,1);
-%             [ Kbase ] = populate_Kbase( Kbase,dtype,phV,grV,{K} );    
-%             if any(isnan(phV)),ifpass = false; end
-%         end
-%     end % loop on datatypes
-
 end % now we have a starting model!
 
 
@@ -212,18 +255,17 @@ nchain = 0;
 fail_chain = 0;
 ifaccept=true;
 if isfield(trudata,'SW_Ray')
-preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
+    preSW = zeros(length(trudata.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
 end
 % reset_likelihood;
 log_likelihood = -Inf;
-predata=[];
+predata=[]; predat_save = []; misfit = [];
 % not parfor
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',chainstr)
 for ii = 1:par.inv.niter
     
 %% SAVE every saveperN
-if mod(ii,par.inv.saveperN)==0
-
+if mod(ii,par.inv.saveperN)==0 && log_likelihood ~= -Inf
     [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
     if isfield(trudata,'SW_Ray')
         preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
@@ -276,11 +318,13 @@ try
         if par.inv.verbose 
         figure(85);clf,set(gcf,'pos',[1294 4 622 529])
         subplot(1,2,1), hold on, 
-        plot(model.VS,model.z,'r'); set(gca,'ydir','reverse')
-        plot(model1.VS,model1.z,'b--'); set(gca,'ydir','reverse')
+        plot(TRUEmodel.VS,TRUEmodel.z,'k','linewidth',1); set(gca,'ydir','reverse')
+        plot(model.VS,model.z,'r','linewidth',1.5); set(gca,'ydir','reverse')
+        plot(model1.VS,model1.z,'b--','linewidth',1.5); set(gca,'ydir','reverse')
         subplot(1,2,2), hold on, 
-        plot(model.VP,model.z,'r'); set(gca,'ydir','reverse')
-        plot(model1.VP,model1.z,'b--'); set(gca,'ydir','reverse')
+        plot(TRUEmodel.VP,TRUEmodel.z,'k','linewidth',1); set(gca,'ydir','reverse')
+        plot(model.VP,model.z,'r','linewidth',1.5); set(gca,'ydir','reverse')
+        plot(model1.VP,model1.z,'b--','linewidth',1.5); set(gca,'ydir','reverse')
         pause(0.01)
         end
     end    
@@ -436,19 +480,6 @@ try
         end
         if newK == true
             [Kbase] = make_allkernels(model,Kbase,trudata,ID,par);
-%             Kbase.modelk = model;
-%             for id = 1:length(par.inv.datatypes)
-%                 dtype = par.inv.datatypes{id}; pdtyp = parse_dtype(dtype); 
-%                 if ~strcmp(pdtyp{1},'SW'), continue; end
-%                 if strcmp(pdtyp{2},'HV')
-%                 [HVr_new,HVK_new] = run_HVkernel(model,trudata.(dtype).periods,ID,1,0,par.inv.verbose);
-%                 Kbase = populate_Kbase( Kbase,dtype,HVr_new,[],{HVK_new} );    
-%                 else
-%                 [phV,grV] = run_mineos(model,trudata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-%                 K = run_kernels(trudata.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
-%                 Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
-%                 end
-%             end
             nchain = 0;
         end
     end
@@ -485,8 +516,8 @@ fprintf('Duration of entire run: %.0f s\n',(now-t)*86400)
 %% Process results
 fprintf('  > Processing results\n')
 [misfits_perchain,allmodels_perchain,goodchains] = c1_PROCESS_RESULTS( misfits_perchain,allmodels_perchain,par,1,[resdir,'/modMisfits']);
-misfits_perchain_original = misfits_perchain;
-allmodels_perchain_original = allmodels_perchain;
+misfits_perchain_original = misfits_perchain;    % misfits_perchain = misfits_perchain_original;
+allmodels_perchain_original = allmodels_perchain;% allmodels_perchain = allmodels_perchain_original;
 misfits_perchain = misfits_perchain(goodchains);
 allmodels_perchain = allmodels_perchain(goodchains);
 
@@ -502,6 +533,7 @@ plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
 
 fprintf('  > Plotting prior vs. posterior\n')
 plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
+plot_P2P_recovery(prior,posterior,TRUEmodel,par,1,[resdir,'/mparm_recovery_p2p.pdf'])
 
 fprintf('  > Plotting model suite\n')
 [ suite_of_models ] = c3_BUILD_MODEL_SUITE(allmodels_collated,par );
