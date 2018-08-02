@@ -1,12 +1,19 @@
 function [ data ] = z1_SYNTH_DATA(par,ifplot)
 
-global TLM TRUEmodel 
-
 % synthetic data parameters
 samprate = par.synth.samprate;
-SWperiods = par.synth.SWperiods;
 
-if isempty(par.synth.surf_Vp_Vs), 
+for id = 1:length(par.inv.datatypes)
+    pdtyps(id,:) = parse_dtype(par.inv.datatypes{id}); 
+end
+
+% [predata.PsRF.Vp_surf] = deal(mean([predata.PsRF.Vp_surf]));
+% [predata.PsRF.Vs_surf] = deal(mean([predata.PsRF.Vs_surf]));
+
+
+global TRUEmodel TLM
+
+if isempty(par.synth.surf_Vp_Vs)
     Vp_surf = TLM.Vp(1);
     Vs_surf = TLM.Vs(1);
 else
@@ -124,19 +131,22 @@ for id = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{id};
     pdtyp = parse_dtype(dtype);
     if ~strcmp(pdtyp{1},'SW'), continue, end
-    addpath('~/Documents/MATLAB/matlab_to_mineos/')
-    [truSWdat.phV,truSWdat.grV] = run_mineos(TRUEmodel,SWperiods,pdtyp{2},'initmod');
+    nstr = ['noise_sigma_',pdtyp{1},'_',pdtyp{2}];
+    SWperiods = par.synth.([dtype,'_periods']);
+    if strcmp(pdtyp{2},'HV')
+        truSWdat.HVr = run_HVkernel(TRUEmodel,SWperiods,'initmod',1,0,par.inv.verbose);
+    else
+        [truSWdat.phV,truSWdat.grV] = run_mineos(TRUEmodel,SWperiods,pdtyp{2},'initmod',1,0,par.inv.verbose);
+    end
 
     % add noise
-    nstr = ['noise_sigma_',pdtyp{1},'_',pdtyp{2}];
-    truSWdat.phV = truSWdat.phV + random('norm',0,par.synth.(nstr),size(truSWdat.phV));
-    truSWdat.grV = truSWdat.grV + random('norm',0,par.synth.(nstr),size(truSWdat.grV));
+    truSWdat.(pdtyp{3}) = truSWdat.(pdtyp{3}) + random('norm',0,par.synth.(nstr),size(truSWdat.(pdtyp{3})));
 
     if ifplot
         figure(13);plot(SWperiods,trudat_phV,'o')
     end
 
-    data.(dtype) = struct('periods',SWperiods,'phV',truSWdat.(pdtyp{3}),'sigma',par.mod.data.prior_sigma.(pdtyp{1}).(pdtyp{2}).(pdtyp{3}));
+    data.(dtype) = struct('periods',SWperiods,pdtyp{3},truSWdat.(pdtyp{3}),'sigma',par.mod.data.prior_sigma.(pdtyp{1}).(pdtyp{2}).(pdtyp{3}));
 
 end
 
