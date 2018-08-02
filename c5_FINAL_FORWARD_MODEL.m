@@ -180,13 +180,18 @@ end
 
 %% ===================  CALCULATE SURPHASE WAVE VELOCITIES  ===================
 if any(strcmp(pdtyps(:,1),'SW'))
+    % Radial S anis
+    xi = zeros(size(final_model.Z));
+    xi((final_model.Z>final_model.Zd(1).mu) & (final_model.Z<=final_model.Zd(2).mu)) = final_model.xicrav;
+    xi(final_model.Z>final_model.Zd(2).mu) = final_model.ximaav;
+    
     modminrun = struct('z',final_model.Z,...
                        'VS',final_model.VSav,...
                         'VP',final_model.VPav,...
                         'rho',final_model.rhoav,...
-                        'Sanis',zeros(size(final_model.Z)),...
+                        'Sanis',100*(xi-1),...
                         'Panis',zeros(size(final_model.Z)));
-    
+                    
     if any(strcmp(pdtyps(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'Ray'),1,'first'));
         [SW.Ray.phV,SW.Ray.grV] = run_mineos(modminrun,data.(itp{1}).periods,'R','final',0,0,par.inv.verbose);
     end
