@@ -4,19 +4,19 @@
 
 %% Inversion parms
 inv = struct(    'verbose',true                 ,... % option to spit out more information+plots
-                 'niter',15000                   ,... % Number of iterations
-                 'burnin',4000                   ,... % don't record results before burnin iterations
-                 'cooloff',1500                  ,... % # of iterations over which temperature declines as erf
+                 'niter',20000                   ,... % Number of iterations
+                 'burnin',5000                   ,... % don't record results before burnin iterations
+                 'cooloff',2000                  ,... % # of iterations over which temperature declines as erf
                  'tempmax',4                     ,... % maximum multiple of all standard deviations
-                 'saveperN',20                  ,... % save only every saveperN iterations       
-                 'bestNmod2keep',-2000             ,... % keep only the best N models in each chain, defined here
+                 'saveperN',25                  ,... % save only every saveperN iterations       
+                 'bestNmod2keep',-5000             ,... % keep only the best N models in each chain, defined here
                  'kerneltolmax',1.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
                  'kerneltolmed',1.0              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'kerneltolmin',0.5              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'maxnkchain',200                ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'nchains',6                     ,... % number of chains to start in parallel
+                 'nchains',8                     ,... % number of chains to start in parallel
                  'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
-                 'datatypes',{{'BW_Ps','BW_Sp','BW_Sp_lo','SW_Ray_phV'}});  
+                 'datatypes',{{'BW_Ps','BW_Sp','BW_Sp_lo','BW_Ps_lo','SW_Ray_phV','SW_Lov_phV','SW_HV'}});  
                                 % any of {{'SW_x_y' with x='Ray/Lov' and y='phV/grV'; 
                                 %          'BW_x_y' with x='Sp/Ps' and y=' /lo/fl';}}
 
@@ -43,10 +43,10 @@ modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickne
                      'vsstd',0.08                ,... % std of crust spline velocity for perturbation, km/s
                      'vpvsmax',1.9               ,...1.9 % min crust vpvs ratio
                      'vpvsmin',1.6               ,...1.65 % max crust vpvs ratio
-                     'vpvsstd',0.03              ,... % std of crust vpvs ratio for perturbation, km/s
-                     'ximax',1.0                ,...1.05 % min crust Vs radial anis value
-                     'ximin',1.0                ,...1.00 % min crust Vs radial anis value
-                     'xistd',0.0                ,... % std of crust Vs radial anis value
+                     'vpvsstd',0.01              ,... % std of crust vpvs ratio for perturbation, km/s
+                     'ximax',1.1                ,...1.05 % min crust Vs radial anis value
+                     'ximin',0.9                ,...1.00 % min crust Vs radial anis value
+                     'xistd',0.01                ,... % std of crust Vs radial anis value
                      'kdstd',2                   ,... % std of knot movement, for perturbation, km
                      'kmax',7                    ,... % max number of spline knots in crust (inc ends)
                      'kmin',2                    );  % min number of spline knots in crust (inc ends)
@@ -54,9 +54,9 @@ modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickne
 modl.mantle = struct('vsmax',5.1                 ,...4.9 % max mantle spline velocity, km/s
                      'vsmin',3.7                 ,...3.7 % min mantle spline velocity, km/s
                      'vsstd',0.08                ,... % std of mantle spline velocity for perturbation, km/s
-                     'ximax',1.0                 ,...1.05 % min mantle Vs radial anis value
-                     'ximin',1.0                 ,...1.00 % min mantle Vs radial anis value
-                     'xistd',0.0                 ,... % std of mantle Vs radial anis value
+                     'ximax',1.1                 ,...1.05 % min mantle Vs radial anis value
+                     'ximin',0.9                  ,...1.00 % min mantle Vs radial anis value
+                     'xistd',0.01                 ,... % std of mantle Vs radial anis value
                      'kdstd',4                   ,... % std of knot movement, for perturbation, km
                      'kmax',15                   ,... % max number of spline knots in mantle (inc ends)
                      'kmin',5                    );  % max number of spline knots in mantle (inc ends)
@@ -74,6 +74,8 @@ modl.data = struct('prior_sigma',struct(                 ... % PRIOR
                     	'Ray',struct(             ... %   Rayleigh waves
                            'phV',0.05            ,... %    phase velocities
                            'grV',0.06)           ,... %    group velocities
+                    	'HV',struct(             ... %   Rayleigh wave ellipticity
+                           'HVr',0.06)           ,... %    HV ratio
                     	'Lov',struct(             ... %   Love waves
                            'phV',0.05            ,... %    phase velocities
                            'grV',0.06)))         ,... %    group velocities
@@ -91,6 +93,8 @@ modl.data = struct('prior_sigma',struct(                 ... % PRIOR
                     	'Ray',struct(             ... %   Rayleigh waves
                            'phV',1e-4            ,... %    phase velocities
                            'grV',1e-4)           ,... %    group velocities
+                    	'HV',struct(             ... %   Rayleigh wave ellipticity
+                           'HVr',1e-4)           ,... %    HV ratio
                     	'Lov',struct(             ... %   Love waves
                            'phV',1e-4            ,... %    phase velocities
                            'grV',1e-4)))         ,... %    group velocities
@@ -129,7 +133,7 @@ datprocess=struct( 'normdata',true               ,... % normalise data in proces
 cond = struct(  'pos_moho',         true         ,... % No negative moho jumps
                 'pos_sed2basement', true         ,... % No negative sed bottom jumps
                 'nobigdVmoh',       true         ,... % No Vs moho jumps exceeding 30%
-                'pos_crustdV',      true        ,... % Monotonic increase of V(p/s) in crust
+                'pos_crustdV',      false        ,... % Monotonic increase of V(p/s) in crust
                 'pos_seddV',        true         ,... % Monotonic increase of V(p/s) in sediments
                 'noVSgt49',         false         );  % No VS exceeding 4.9 km/s
             
@@ -139,10 +143,15 @@ synth = struct( 'gcarcs',[70]                 ,... % average gcarc
                 'samprate',10                    ,... % sample rate.
                 'noisetype','real'           ,... % noisetype - 'gaussian' or 'real' (in which case drawn from station speficied
                 'noise_sigma_SW_Ray',0.015        ,... %0.03 std for random added noise for SWs
+                'noise_sigma_SW_Lov',0.015        ,... %0.03 std for random added noise for SWs
+                'noise_sigma_SW_HV',0.005        ,... %0.03 std for random added noise for SWs
                 'noise_sigma_BW_Sp',0.009        ,... %0.02 std for random added noise for SpRFs
                 'noise_sigma_BW_Ps',0.012        ,... %0.02 std for random added noise for PsRFs
                 'surf_Vp_Vs',[6.1 3.55]          ,... % [VP, VS] surface velocity values - if empty, uses True vals
-                'SWperiods',logspace(log10(6),log10(167),24)',...  % surface wave periods
+                'SW_Ray_phV_periods',logspace(log10(6),log10(167),22)',...  % Rayleigh wave phV periods
+                'SW_Ray_grV_periods',logspace(log10(6),log10(40),10)',...  % Rayleigh wave phV periods
+                'SW_Lov_phV_periods',logspace(log10(6),log10(40),10)',...  % Love wave phV periods
+                'SW_HV_periods',logspace(log10(8),log10(90),11)',...  % Rayleigh wave HV periods
                 'synthperiod',2                  ,...  % period for propmat synth
                 'nsamps',[]                      );  % number of samples. 
 

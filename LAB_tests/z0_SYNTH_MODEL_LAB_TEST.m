@@ -16,6 +16,8 @@ dvdz_asth = 0.001; % Vs increase with depth in the mantle, (km/s)/km
 % zsed = 0;
 % zmoh = 50;
 vpvs = 1.8;
+mxi = 1.04;
+cxi = 0.95;
 zlabm = zlab;
 % wlab = 10;
 dz = par.mod.dz;
@@ -67,6 +69,8 @@ TRUEmodel.VS = Vs;
 TRUEmodel.VP = Vp;
 TRUEmodel.rho = rho;
 TRUEmodel.vpvs = vpvs;
+TRUEmodel.cxi = cxi;
+TRUEmodel.mxi = mxi;
 TRUEmodel.Nz = length(Z);
 TRUEmodel.zsed = zsed;
 TRUEmodel.zmoh = zmoh;
@@ -77,26 +81,30 @@ TRUEmodel.Z = TRUEmodel.z;
 TRUEmodel.vs = TRUEmodel.VS;
 TRUEmodel.vp = TRUEmodel.VP;
 
-%% MAKE LAYERISED TARGET MODEL
-% layerise
-[zlayt,zlayb,Vs_lay] = layerise(Z,Vs,par.forc.mindV/3,0);
-
-nlay = length(Vs_lay);
+%% ===================  LAYERISE PROFILE  ===================
+[zlayt,zlayb,Vslay] = ...
+    layerise(Z,Vs,par.forc.mindV/3,0); 
+nlay = length(Vslay);
 
 % S to P and rho structure
 xs = 1:find(zlayb==TRUEmodel.zsed); if TRUEmodel.zsed ==0, xs = []; end
 xc = find(zlayt==TRUEmodel.zsed):find(zlayb==TRUEmodel.zmoh);
 xm = find(zlayt==TRUEmodel.zmoh):nlay;
-Vp_lay = [sed_vs2vp(Vs_lay(xs));...
-          TRUEmodel.vpvs *Vs_lay(xc);...
-         mantle_vs2vp(Vs_lay(xm),mean([zlayt(xm),zlayb(xm)],2))];
-rho_lay = [sed_vs2rho(Vs_lay([xs,xc]));...
-          mantle_vs2rho(Vs_lay(xm),mean([zlayt(xm),zlayb(xm)],2))];
+Vplay = [sed_vs2vp(Vslay(xs));...
+         TRUEmodel.vpvs*Vslay(xc);...
+         mantle_vs2vp(Vslay(xm),mean([zlayt(xm),zlayb(xm)],2))];
+rholay = [sed_vs2rho(Vslay([xs,xc]));...
+          mantle_vs2rho(Vslay(xm),mean([zlayt(xm),zlayb(xm)],2))];
+xilay = [zeros(length(xs),1);...
+         TRUEmodel.cxi*ones(length(xc),1);...
+         TRUEmodel.mxi*ones(length(xm),1)]; % S radial anisotropy
+philay = ones(nlay,1); % P radial anisotropy
+etalay = ones(nlay,1); % eta anisotropy
 
-
-TLM = struct('nlay',length(Vs_lay),'zlayt',zlayt,'zlayb',zlayb,'Vp',Vp_lay,'Vs',Vs_lay,'rho',rho_lay,...
-    'xi',ones(size(Vs_lay)),'phi',ones(size(Vs_lay)),'eta',ones(size(Vs_lay)));
-           
+TLM = struct('zlayt',zlayt,'zlayb',zlayb,'Vs',Vslay,'Vp',Vplay,'rho',rholay,'nlay',nlay,'xi',xilay,'phi',philay,'eta',etalay);
+if any(isnan(TLM.rho))
+    error('NaN densities')
+end
 
 
 
