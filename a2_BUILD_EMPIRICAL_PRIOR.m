@@ -59,7 +59,7 @@ lastlogL = -Inf;
 % not parfor
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',chainstr)
 for ii = 1:Niter
-    if rem(ii,100)==0, fprintf('Iteration %s%.0f\n',chainstr,ii); end
+    if rem(ii,1000)==0, fprintf('Iteration %s%.0f\n',chainstr,ii); end
     temp = 1;
     
 %% ===========================  PERTURB  ===========================  
@@ -94,10 +94,13 @@ for ii = 1:Niter
     istor = empprior.Nstored+1;
     empprior.Nstored=istor;
     empprior.ifaccept(istor,1) = ifaccept;
+    empprior.zsed(istor,1) = model.zsed;
     empprior.zmoh(istor,1) = model.zmoh;
     empprior.fdVSmoh(istor,1) = model.fdVSmoh;
     empprior.kcrust(istor,1) = model.crustmparm.Nkn;
     empprior.kmantle(istor,1) = model.mantmparm.Nkn;
+    empprior.VSsedtop(istor,1) = model.sedmparm.VS(1);
+    empprior.VSsedbot(istor,1) = model.sedmparm.VS(2);
     empprior.VScrusttop(istor,1) = model.crustmparm.VS_sp(1);
     empprior.VScrustbot(istor,1) = model.crustmparm.VS_sp(end);
     empprior.VSmanttop(istor,1) = model.mantmparm.VS_sp(1);
