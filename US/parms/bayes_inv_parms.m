@@ -45,9 +45,9 @@ modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickne
                      'vpvsmax',1.9               ,...1.9 % min crust vpvs ratio
                      'vpvsmin',1.6               ,...1.65 % max crust vpvs ratio
                      'vpvsstd',0.01              ,... % std of crust vpvs ratio for perturbation, km/s
-                     'ximax',1.0                 ,...1.05 % min crust Vs radial anis value
-                     'ximin',1.0                ,...1.00 % min crust Vs radial anis value
-                     'xistd',0.0                ,... % std of crust Vs radial anis value
+                     'ximax',1.1                ,...1.05 % min crust Vs radial anis value
+                     'ximin',0.9                ,...1.00 % min crust Vs radial anis value
+                     'xistd',0.01                ,... % std of crust Vs radial anis value
                      'kdstd',2                   ,... % std of knot movement, for perturbation, km
                      'kmax',7                    ,... % max number of spline knots in crust (inc ends)
                      'kmin',2                    );  % min number of spline knots in crust (inc ends)
@@ -55,8 +55,8 @@ modl.crust = struct( 'hmax',60                   ,... %60 max xtal crust thickne
 modl.mantle = struct('vsmax',5.1                 ,...4.9 % max mantle spline velocity, km/s
                      'vsmin',3.7                 ,...3.7 % min mantle spline velocity, km/s
                      'vsstd',0.08                ,... % std of mantle spline velocity for perturbation, km/s
-                     'ximax',1.05                 ,...1.05 % min mantle Vs radial anis value
-                     'ximin',0.95                ,...1.00 % min mantle Vs radial anis value
+                     'ximax',1.1                 ,...1.05 % min mantle Vs radial anis value
+                     'ximin',0.9                  ,...1.00 % min mantle Vs radial anis value
                      'xistd',0.01                 ,... % std of mantle Vs radial anis value
                      'kdstd',4                   ,... % std of knot movement, for perturbation, km
                      'kmax',15                   ,... % max number of spline knots in mantle (inc ends)
