@@ -22,7 +22,8 @@ for iii = 1:nchains
         am = allmodels{iii};
         if isempty(am); continue; end
     else 
-        am = allmodels;
+        am = allmodels; 
+        if iscell(am), am = am{1}; end
     end
 
     dp = [am.datahparm]; 

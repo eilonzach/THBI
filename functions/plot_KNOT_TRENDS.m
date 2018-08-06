@@ -19,11 +19,12 @@ if iscell(allmodels),nchains = length(allmodels); else nchains=1; end
 for iii = 1:nchains
     basecol = colour_get(iii,nchains+1,0,parula); basecol = basecol(:)';
     
-    if nchains>1, 
+    if nchains>1 
         am = allmodels{iii};
         if isempty(am), continue; end
     else 
         am = allmodels;
+        if iscell(am), am = am{1}; end
     end
     
     downsamp = (1:downsampfac:length(am));
