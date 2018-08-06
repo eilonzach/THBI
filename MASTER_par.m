@@ -9,13 +9,12 @@ gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 % baz = 315;
 
 notes = [...
-    'Par inversion with data made using new clustering scheme \n',...
-    'bining by baz and gcarc.  \n'...
-    'Using all data types: Ps,Pslo,Pscms,Sp,Splo,SW.\n',...
-    'This run has a sediment layer DISallowed.\n',...
-    'Max depth 300 km.\n',...
-    'New techniques of ignoring inhomog. P conversion layers\n',...
-        ]; 
+    'Synthetic test using spline-based model. '...
+    'Using all data types. '...
+    'Changed the way the spline kernels are re-calculated after N iterations, so as to hopefully avoid big jumps in likelihood and therefore hanging chains. '...
+    'Several previous runs have shut down computer for reasons I do not understand. '...
+    'Execute for few iterations to try to see what breaks, but in a short run time... '...
+]; 
 
 %% ------------------------- START ------------------------- 
 global projdir THBIpath TRUEmodel
@@ -94,7 +93,7 @@ for id = 1:length(par.inv.datatypes)
     allpdytp(id,:)=parse_dtype(par.inv.datatypes{id});
 end
 
-%% Load & prep data
+%% ========================  LOAD + PREP DATA  ========================  
 fprintf('LOADING data\n')
 if strcmp(projname,'SYNTHETICS')
     
@@ -115,6 +114,7 @@ if strcmp(projname,'SYNTHETICS')
 
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
+    stadeets = struct('Latitude',[],'Longitude',[]);
 
 elseif strcmp(projname,'LAB_tests')
 	z0_SYNTH_MODEL_LAB_TEST(par,zsed,zmoh,zlab,wlab,flab,1) ;
@@ -187,14 +187,18 @@ end
 % plot_TRUvsPRE(trudata,trudata);
 save([resdir,'/trudata_USE'],'trudata');
 
+C = parallel.pool.Constant(trudata)
 
-%% PRIOR
-fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+
+%% ===========================  PRIOR  ===========================  
 zatdep = [5:5:par.mod.maxz]';
-prior = a2_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
-plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-save([resdir,'/prior'],'prior','par');
+% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+% prior = a2_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
+% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+% save([resdir,'/prior'],'prior','par');
 
+%% ---------------------------- INITIATE ----------------------------
+%% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
 profile clear
 profile on
@@ -217,6 +221,11 @@ t = now;
 % mkdir([resdir,'/chainout']);
 parfor iii = 1:par.inv.nchains 
 chainstr = mkchainstr(iii);
+
+%% >>> testing
+% n_since_acc = 0;
+% accdec = struct('iter',[],'logL_current',[],'logL_proposed',[],'ifacc',[],'temp',[],'preF',[],'newk',[]);
+%% <<< testing
 
 %% Fail-safe to restart chain if there's a succession of failures
 fail_chain=20;
@@ -273,7 +282,7 @@ if mod(ii,par.inv.saveperN)==0 && log_likelihood ~= -Inf
 end
     
 try
-    if rem(ii,par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',chainstr,ii); end
+    if rem(ii,4*par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',chainstr,ii); end
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
@@ -358,6 +367,15 @@ try
 		% Explicitly use mineos + Tanimoto scripts if ptb is too large
 		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
 		if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmed/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
+            newK = true;
+        end
+        % ALSO use MINEOS if chain too long
+        if nchain > par.inv.maxnkchain
+            newK = true;
+        end
+        
+            
+        if newK
             SW = struct('Ray',struct('phV',[],'grV',[]),'Lov',struct('phV',[],'grV',[]),'HV',struct('HVr',[]));
             
             if any(strcmp(allpdytp(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'Ray'),1,'first')); %#ok<PFBNS>
@@ -388,7 +406,6 @@ try
                     fprintf('   %s RMS diff is %.4f\n',par.inv.datatypes{id},rms(swk-swd)); % RMS difference
                 end
             end
-			newK = true;
 		else 
 			Ktry = [];
 		end
@@ -423,7 +440,7 @@ try
     end % while ifpass
     
 %% ========================  ACCEPTANCE CRITERION  ========================
-    [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass);
+    [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass);        
     
     % ======== PLOT ========  if accept
     if ifaccept && par.inv.verbose && fail_chain==0
@@ -444,6 +461,9 @@ try
         log_likelihood = log_likelihood1;
         misfit = misfit1;
         predat_save = predat_save1;
+        %% >>> testing
+%         n_since_acc = 0;
+        %% <<< testing
         
     %% UPDATE KERNEL if needed 
         if newK==true
@@ -465,24 +485,33 @@ try
         if par.inv.verbose, fprintf('  --FAIL--\n'); end
         if newK, delete_mineos_files(ID,'R'); end
         if newK, delete_mineos_files(ID,'L'); end
+        
+        %% >>> testing
+%         n_since_acc = n_since_acc+1;
+        %% <<< testing
     end
     
     % restart-chain if immediate failure
     if isinf(log_likelihood), fail_chain=100; break; end 
+
+    %% >>> testing
+%     if n_since_acc > 100
+%         1
+%     end
+    %% <<< testing
     
     
-%% =========  redo kernel at end of burn in or if chain is too long =======
-    if newK == false
-        if nchain > par.inv.maxnkchain
-            fprintf('\n RECALCULATING KERNEL - too long chain\n'), newK = true;
-        elseif ii == par.inv.burnin
-            fprintf('\n RECALCULATING KERNEL - end of burn in\n'), newK = true;
-        end
-        if newK == true
+%% =========  redo kernel at end of burn in  =======
+    if newK == false && ii == par.inv.burnin
+            fprintf('\n RECALCULATING KERNEL - end of burn in\n');
             [Kbase] = make_allkernels(model,Kbase,trudata,ID,par);
             nchain = 0;
-        end
     end
+
+        %% >>> testing
+%         accdec(ii) = struct('iter',ii,'logL_current',log_likelihood,'logL_proposed',log_likelihood1,'ifacc',ifaccept,'temp',temp,'preF',p_bd*ifpass,'newk',newK);
+        %% <<< testing
+    
     
 catch
     if par.inv.verbose, fprintf('  --SOME ERROR--\n'); end
