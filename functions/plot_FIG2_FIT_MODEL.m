@@ -111,6 +111,16 @@ plot(ax5,[par.mod.mantle.vsmin,par.mod.mantle.vsmax],[par.mod.mantle.vsmin,par.m
 set(ax5,'fontsize',14,'xlim',[3.9 4.65],'ylim',[3.9 4.65])%, axis equal
 xlabel(ax5,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zatdep(ind1)),'fontsize',18,'Interpreter','latex')
 ylabel(ax5,sprintf('\\textbf{%.0f km Vs (km/s)}',posterior.zatdep(ind2)),'fontsize',18,'Interpreter','latex')
+
+global TRUEmodel;
+if isstruct(TRUEmodel)
+    vs = TRUEmodel.VS;
+    vp = TRUEmodel.VP;
+    Z = TRUEmodel.z;
+end
+plot(ax1,vs,Z,':b','Linewidth',1.5);
+
+
 % 
 % % VsCB-VsMT covariance
 % cla(ax5)
