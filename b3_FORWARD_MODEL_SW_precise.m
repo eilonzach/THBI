@@ -58,5 +58,11 @@ for id = 1:length(par.inv.datatypes)
 	end
 end
 
+
+if ifforwardfail(predata,par)
+    error('Forward modeling failure thrown during precise SW calculation')
+end
+
+
 end
 
