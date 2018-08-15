@@ -16,8 +16,8 @@ dvdz_asth = 0.001; % Vs increase with depth in the mantle, (km/s)/km
 % zsed = 0;
 % zmoh = 50;
 vpvs = 1.8;
-mxi = 1.04;
 cxi = 0.95;
+mxi = 1.04;
 zlabm = zlab;
 % wlab = 10;
 dz = par.mod.dz;
@@ -61,6 +61,7 @@ Z  = [zs; zc; zl; zlab; za];
 Vs = [vss;vsc;vsl;vslab;vsa];
 Vp = [sed_vs2vp(vss); vpvs*vsc;mantle_vs2vp([vsl;vslab;vsa],[zl; zlab; za])];
 rho= [sed_vs2rho([vss;vsc]);mantle_vs2rho([vsl;vslab;vsa],[zl; zlab; za])];
+xi = [ones(size(zs));cxi*ones(size(zc));mxi*ones(size([zl;zlab;za]))];
 
 %% Put into TRUEMODEL struct
 TRUEmodel = struct([]);
@@ -75,7 +76,7 @@ TRUEmodel.Nz = length(Z);
 TRUEmodel.zsed = zsed;
 TRUEmodel.zmoh = zmoh;
 TRUEmodel.selev = 0;
-TRUEmodel.Sanis = zeros(length(Z),1);
+TRUEmodel.Sanis = 100*(xi-1);
 TRUEmodel.Panis = zeros(length(Z),1);
 TRUEmodel.Z = TRUEmodel.z;
 TRUEmodel.vs = TRUEmodel.VS;
