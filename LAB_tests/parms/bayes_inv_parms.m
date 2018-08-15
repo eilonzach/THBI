@@ -4,17 +4,18 @@
 
 %% Inversion parms
 inv = struct(    'verbose',true                 ,... % option to spit out more information+plots
-                 'niter',20000                   ,... % Number of iterations
-                 'burnin',5000                   ,... % don't record results before burnin iterations
-                 'cooloff',2000                  ,... % # of iterations over which temperature declines as erf
+                 'niter',21000                   ,... % Number of iterations
+                 'burnin',7000                   ,... % don't record results before burnin iterations
+                 'cooloff',2500                  ,... % # of iterations over which temperature declines as erf
                  'tempmax',4                     ,... % maximum multiple of all standard deviations
-                 'saveperN',25                  ,... % save only every saveperN iterations       
-                 'bestNmod2keep',-5000             ,... % keep only the best N models in each chain, defined here
+                 'saveperN',30                   ,... % save only every saveperN iterations       
+                 'bestNmod2keep',-5000           ,... % keep only the best N models in each chain, defined here
                  'kerneltolmax',1.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
                  'kerneltolmed',1.0              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'kerneltolmin',0.5              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'maxnkchain',200                ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'nchains',8                     ,... % number of chains to start in parallel
+                 'maxnkchain',300                ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'nchains',10                    ,... % number of chains to start in parallel
+                 'Nsavestate',2500               ,... % Niter per which the state of the parallel inversion is saved in .mat file
                  'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
                  'datatypes',{{'BW_Ps','BW_Sp','BW_Sp_lo','BW_Ps_lo','SW_Ray_phV','SW_Lov_phV','SW_HV'}});  
                                 % any of {{'SW_x_y' with x='Ray/Lov' and y='phV/grV'; 

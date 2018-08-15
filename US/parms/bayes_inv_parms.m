@@ -4,20 +4,21 @@
 
 %% Inversion parms
 inv = struct(    'verbose',true                 ,... % option to spit out more information+plots
-                 'niter',20000                   ,... % Number of iterations
-                 'burnin',5000                   ,... % don't record results before burnin iterations
-                 'cooloff',1500                  ,... % # of iterations over which temperature declines as erf
+                 'niter',24000                   ,... % Number of iterations
+                 'burnin',8000                   ,... % don't record results before burnin iterations
+                 'cooloff',2000                  ,... % # of iterations over which temperature declines as erf
                  'tempmax',4                     ,... % maximum multiple of all standard deviations
-                 'saveperN',25                  ,... % save only every saveperN iterations       
-                 'bestNmod2keep',-5000             ,... % keep only the best N models in each chain, defined here
+                 'saveperN',30                   ,... % save only every saveperN iterations       
+                 'bestNmod2keep',-5000           ,... % keep only the best N models in each chain, defined here
                  'kerneltolmax',1.5              ,... % kernel max. tolerance - max norm of perturbation before re-calc kernels
                  'kerneltolmed',1.0              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
                  'kerneltolmin',0.5              ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'maxnkchain',200                ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
-                 'nchains',8                     ,... % number of chains to start in parallel
+                 'maxnkchain',300                ,... % kernel min. tolerance - norm of perturbation that is totally acceptable
+                 'nchains',10                    ,... % number of chains to start in parallel
+                 'Nsavestate',2000               ,... % Niter per which the state of the parallel inversion is saved in .mat file
                  'Kweight',1                     ,... % option to weight SW misfit by fraction of kernel in model space
                  'BWclust',1                     ,... % option to use only one cluster of body waves (if so give "#") or all (give "0")
-                 'datatypes',{{'BW_Ps','BW_Ps_lo','BW_Sp','BW_Sp_lo','SW_HV','SW_Ray','SW_Lov'}});   
+                 'datatypes',{{'BW_Ps','BW_Ps_lo','BW_Sp','BW_Sp_lo','SW_HV','SW_Ray_phV','SW_Lov_phV'}});   
                                 % any of {{'SW_x_y' with x='Ray/Lov' and y='phV/grV'; 
                                 %          'BW_x_y' with x='Sp/Ps' and y=' /lo/fl';}}
 
@@ -27,7 +28,7 @@ modl = struct([]);
 modl(1).nstas = 1;
 modl.maxz = 300;                                      % maximum depth in model from ref ellipsoid, km
 modl.maxkz = 250;                                     % maximum depth of deepest non-basal knot, km
-modl.dz = 1.5;                                        % depth spacing of model, km
+modl.dz = 2;                                        % depth spacing of model, km
 
 modl.sed = struct(   'hmax',0.0                  ,... %5 max sed layer thickness, km
                      'hmin',0.0                  ,... %0 min sed layer thickness, km
@@ -136,7 +137,7 @@ cond = struct(  'pos_moho',         true         ,... % No negative moho jumps
                 'nobigdVmoh',       true         ,... % No Vs moho jumps exceeding 30%
                 'pos_crustdV',      false        ,... % Monotonic increase of V(p/s) in crust
                 'pos_seddV',        true         ,... % Monotonic increase of V(p/s) in sediments
-                'noVSgt49',         true         );  % No VS exceeding 4.9 km/s
+                'noVSgt49',         false         );  % No VS exceeding 4.9 km/s
             
             
 
