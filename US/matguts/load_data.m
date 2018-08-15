@@ -115,7 +115,7 @@ addpath(seismoddir);
 [Rperiods,iT] = sort(Rperiods);
 RphV = RphV(iT);
 
-SW_Ray = struct('periods',Rperiods,'phV',RphV,'sigma',[]);
+SW_Ray_phV = struct('periods',Rperiods,'phV',RphV,'sigma',[]);
 
 % -------- Love waves
 [Lperiods,LphV]  = Lph_dispcurve_latlon( avar.slat,avar.slon); % grab composite of AN and EQ
@@ -123,7 +123,7 @@ SW_Ray = struct('periods',Rperiods,'phV',RphV,'sigma',[]);
 [Lperiods,iT] = sort(Lperiods);
 LphV = LphV(iT);
 
-SW_Lov = struct('periods',Lperiods,'phV',LphV,'sigma',[]);
+SW_Lov_phV = struct('periods',Lperiods,'phV',LphV,'sigma',[]);
 
 % -------- Rayleigh HV ratios
 [ HVratios,HVstds,HVperiods] = disp_curve_HV( [avar.slat,avar.slon]);
@@ -143,7 +143,7 @@ SW_HV = struct('periods',HVperiods,'HVr',HVratios,'sigma',HVstds);
 
 
 %% collate
-trudata = struct('BW_Ps',BW_Ps,'BW_Sp',BW_Sp,'SW_Ray',SW_Ray,'SW_Lov',SW_Lov,'SW_HV',SW_HV);
+trudata = struct('BW_Ps',BW_Ps,'BW_Sp',BW_Sp,'SW_Ray_phV',SW_Ray_phV,'SW_Lov_phV',SW_Lov_phV,'SW_HV',SW_HV);
 
 
 cd(wd);
