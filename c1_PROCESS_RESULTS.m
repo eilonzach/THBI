@@ -13,6 +13,9 @@ end
 
 
 figure(88);clf, set(gcf,'pos',[850 198 900 888])
+%% title
+htit = title_custom([par.sta,' ',par.nwk],0.5,'fontweight','bold','fontsize',25);
+
 ax1 = subplot(2,1,1); ax1pos = get(ax1,'pos');
 ax3 = subplot(2,1,2); 
 ax2 = axes('pos',ax1pos); 
@@ -177,9 +180,6 @@ for iii = 1:nchains
 
 end % loop on chains
 
-%% title
-htit = title_custom([par.sta,' ',par.nwk],0.5,'fontweight','bold','fontsize',25);
-
 
 %% determine "good" models
 
@@ -207,7 +207,9 @@ for iii=1:nchains
         % work out if the chain got stuck - if there is no change to the
         % data over many iterations - must be stuck for 500 iterations to
         % signify
-        if any(any(diff(rms(ind,:),ceil(2000./par.inv.saveperN),1)==0))
+        Nstuck = 500;
+        if any(any(diff(rms(ind,:),ceil(Nstuck./par.inv.saveperN),1)==0))
+            fprintf('Chain %s stuck\n',mkchainstr(iii));
             rms_alldata(iii,id) = nan; continue;
         end
     end
