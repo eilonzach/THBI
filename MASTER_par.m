@@ -2,18 +2,18 @@ clear all
 close all
 
 
-projname = 'SYNTHETICS'; % SYNTHETICS, LAB_tests, or WYOMING, for now
-sta = 'EYMN';
+projname = 'US'; % SYNTHETICS, LAB_tests, or US, for now
+sta = 'DUG';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 % baz = 315;
 
 notes = [...
-    'Synthetic test using spline-based model. '...
+    'Synthetic test using discontinuous model with LAB. '...
     'Using all data types. '...
     'Changed the way the spline kernels are re-calculated after N iterations, so as to prevent big jumps in likelihood and therefore hanging chains. '...
-    'Several previous runs have shut down computer for reasons I do not understand. '...
-    'Execute for few iterations to try to see what breaks, but in a short run time... '...
+    'Several previous runs have shut down computer for reasons I do not understand, but this was with old order of recomputation of kernels. '...
+    'Execute for 18000 iterations + hope for ideal results. '...
 ]; 
 
 %% ------------------------- START ------------------------- 
@@ -39,8 +39,6 @@ if strcmp(projname,'SYNTHETICS')
 	noisegcarcs = [73,38];
 	noiseshape = 'real'; % 'white' or 'real'
 	noiseup = 0.5; % factor to increase real noise
-
-    ifsavedat = false;
 
 elseif strcmp(projname,'LAB_tests')
 	zsed = 0;
@@ -69,8 +67,6 @@ elseif strcmp(projname,'LAB_tests')
 	if any(strcmp(dtps,'SW_Lov_phV')), dtpstr=[dtpstr,'Lov']; end
 	if any(strcmp(dtps,'SW_HV')), dtpstr=[dtpstr,'HV']; end
 
-	ifsavedat = true;
-
 	sta = ['LAB_s',num2str(zsed),'_m',num2str(zmoh),'_z',num2str(zlab),'_w',num2str(wlab),'_f',num2str(100*flab),dtpstr];
     par.sta = sta; par.nwk = 'LAB_test';
 else
@@ -80,11 +76,13 @@ else
     datN = 20;
 end
 
-par.synth.noise_sta_deets = struct('datadir',['/Volumes/data/THBI/US/STAsinv/',noisesta,'_dat20/'],...
+if strcmp(projname,'SYNTHETICS') || strcmp(projname,'LAB_tests')
+    par.synth.noise_sta_deets = struct('datadir',['/Volumes/data/THBI/US/STAsinv/',noisesta,'_dat20/'],...
                          'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup,'noiseshape',noiseshape);
-
+end
 
 par.inv.verbose=false;
+ifsavedat = false;
 
 %% get saving things ready
 STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')]; par.STAMP = STAMP;
@@ -94,24 +92,22 @@ mkdir(resdir);
 fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
 
 par_ORIG = par;
-% par came from above script
-save([resdir,'/par'],'par');
-copyfile('parms/bayes_inv_parms.m',resdir);
 
-for id = 1:length(par.inv.datatypes)
-    allpdytp(id,:)=parse_dtype(par.inv.datatypes{id});
-end
+% save par and copy the parms.m file to the results directory
+save([resdir,'/par'],'par');
+eval(sprintf('! cp parms/bayes_inv_parms.m %s',resdir))
+
+allpdytp = parse_dtype_all(par);
 
 %% ========================  LOAD + PREP DATA  ========================  
-trudata = a2_LOAD_DATA(par,projname,resdir);
-
+[trudata,par,stadeets] = a2_LOAD_DATA(par,proj,resdir,avardir);
 
 %% ===========================  PRIOR  ===========================  
 zatdep = [5:5:par.mod.maxz]';
-% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-% prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
-% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-% save([resdir,'/prior'],'prior','par');
+fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
+plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+save([resdir,'/prior'],'prior','par');
 
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
@@ -119,13 +115,11 @@ zatdep = [5:5:par.mod.maxz]';
 profile clear
 profile on
 delete(gcp('nocreate'));
-
+ 
 TD = parallel.pool.Constant(trudata);
-% TD(1).Value = trudata;
+% TD(1).Value = trudata; par.inv.verbose = 0;
 
 %% START DIFFERENT MARKOV CHAINS IN PARALLEL
-% nchains = ;
-% ifpass = zeros(nchains,1);
 model0_perchain = cell(par.inv.nchains,1);
 misfits_perchain = cell(par.inv.nchains,1);
 allmodels_perchain = cell(par.inv.nchains,1);
@@ -147,7 +141,7 @@ fail_chain=20;
 while fail_chain>=20
 
 %% Prep posterior structure
-[ misfits,allmodels,savedat ] = b0_RESULTS_SETUP(par); %#ok<PFTUS>
+[ misfits,allmodels,savedat ] = b0_RESULTS_SETUP(par);
 
 %% Initiate model
 ifpass = 0;
@@ -177,7 +171,7 @@ end % now we have a starting model!
 %% ========================================================================
 ptb = cell({});
 nchain = 0;
-fail_chain = 0;
+fail_chain = 0; fail_reset = 0;
 ifaccept=true;
 if isfield(TD.Value,'SW_Ray')
     preSW = zeros(length(TD.Value.SW_Ray.periods),ceil(par.inv.niter./par.inv.saveperN));
@@ -186,19 +180,22 @@ end
 log_likelihood = -Inf;
 predata=[]; predat_save = []; misfit = [];
 % not parfor
+
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',chainstr)
-for ii = 1:par.inv.niter
+ii = 0;
+while ii < par.inv.niter
+ii = ii+1;
     
 %% SAVE model every saveperN
 if mod(ii,par.inv.saveperN)==0 && log_likelihood ~= -Inf
     [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
-    if isfield(TD.Value,'SW_Ray')
-        preSW(:,misfits.Nstored) = predata.SW_Ray.phV;
-    end
+%     if isfield(TD.Value,'SW_Ray_phV')
+%         preSW(:,misfits.Nstored) = predata.SW_Ray_phV.phV;
+%     end
 end
 
-%% SAVE inv state every 2500 iterations
-if rem(ii,2500)==0
+%% SAVE inv state every Nsavestate iterations
+if rem(ii,par.inv.Nsavestate)==0
     save_inv_state(resdir,chainstr,allmodels,misfits)
 end
     
@@ -207,7 +204,7 @@ try
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
-    newK = false;
+    newK = false; resetK = false;
     if fail_chain>19
         % if not enough saved in this chain, abort and restart
         if (ii - par.inv.burnin)/par.inv.saveperN < 200
@@ -215,6 +212,15 @@ try
         % if enough saved in chain, abort and keep the incomplete chain
         else 
             fail_chain = -fail_chain; break
+        end
+    end
+    if fail_reset>5
+        % if cannot reset kernels because current saved model is not viable
+        if (ii - par.inv.burnin)/par.inv.saveperN < 200
+            fail_chain = 100;  break % high fail_chain will mean we restart chain
+        % if enough saved in chain, abort and keep the incomplete chain
+        else 
+            fail_chain = -100; break 
         end
     end
     
@@ -237,34 +243,26 @@ try
     else
 		[model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
 		ifpass = a1_TEST_CONDITIONS( model1, par, par.inv.verbose  );
+		if p_bd==0, if par.inv.verbose, fprintf('  nope\n'); end; break; end
 		if ~ifpass, if par.inv.verbose, fprintf('  nope\n'); end; break; end
 		
 		[ modptb ] = calc_Vperturbation( Kbase.modelk,model1);
-		ptbnorm = 0.5*(norm(modptb.dvsv) + norm(modptb.dvsh)) + norm(modptb.dvpv);
+		
+        ptbnorm = 0.5*(norm(modptb.dvsv) + norm(modptb.dvsh)) + norm(modptb.dvpv);
+		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
     end
+    
+    % quickly plot model (if not in parallel and if verbose)
+    plot_quickmodel(par,model,model1)
 
-    if isempty(gcp('nocreate'))
-%         if exist('h','var'), delete(h); end
-        if par.inv.verbose 
-        figure(85);clf,set(gcf,'pos',[1294 4 622 529])
-        subplot(1,2,1), hold on, 
-        plot(TRUEmodel.VS,TRUEmodel.z,'k','linewidth',1); set(gca,'ydir','reverse')
-        plot(model.VS,model.z,'r','linewidth',1.5); set(gca,'ydir','reverse')
-        plot(model1.VS,model1.z,'b--','linewidth',1.5); set(gca,'ydir','reverse')
-        subplot(1,2,2), hold on, 
-        plot(TRUEmodel.VP,TRUEmodel.z,'k','linewidth',1); set(gca,'ydir','reverse')
-        plot(model.VP,model.z,'r','linewidth',1.5); set(gca,'ydir','reverse')
-        plot(model1.VP,model1.z,'b--','linewidth',1.5); set(gca,'ydir','reverse')
-        pause(0.01)
-        end
-    end    
     nchain  = kchain_addcount( nchain,ptbnorm,par );
     
 %% ===========================  FORWARD MODEL  ===========================
-	% don't re-calc if the only thing perturbed is the error
+	% don't re-calc if the only thing perturbed is the error, or if there
+	% is zero probability of acceptance!
     if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
         % make random run ID (to avoid overwrites in parfor)
-		ID = [chainstr,num2str(round(1e9*(now-t))),num2str(randi(9)),num2str(randi(9))];
+		ID = [chainstr,num2str(ii,'%05.f'),num2str(randi(99),'_%02.f')];
 
         try
             predata = b3_FORWARD_MODEL_BW( model1,par,TD.Value,ID,0 );
@@ -287,21 +285,11 @@ try
         end
         
 		% Explicitly use mineos + Tanimoto scripts if ptb is too large
-		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
         if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmed/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
             newK = true;
-        end
-%         % ALSO use MINEOS if chain too long
-        if nchain > 2*par.inv.maxnkchain
-            fprintf('Chain %s, iter %.0f, nchain=%.0f\n',chainstr,ii,nchain);
-        end
-            
-            
-        if newK
             [ predata,HVK_new ] = b3_FORWARD_MODEL_SW_precise( model1,par,predata,ID );
-		else 
-			Ktry = [];
-        end
+        end            
+            
     end % only redo data if model has changed 
 
 %      plot_TRUvsPRE_old(TD.Value,predata)]
@@ -354,49 +342,46 @@ try
         log_likelihood = log_likelihood1;
         misfit = misfit1;
         predat_save = predat_save1;
-        %% >>> testing
-%         n_since_acc = 0;
-        %% <<< testing
         
     %% UPDATE KERNEL if needed 
         if newK==true
-            [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,par,0,HVK_new);                        
+            [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,ii,par,0,HVK_new);                        
             nchain = 0;
         end
     
     else
         if par.inv.verbose, fprintf('  --FAIL--\n'); end
         if newK, delete_mineos_files(ID,'R'); end
-        if newK, delete_mineos_files(ID,'L'); end
-        
-        %% >>> testing
-%         n_since_acc = n_since_acc+1;
-        %% <<< testing
+        if newK, delete_mineos_files(ID,'L'); end       
     end
     
     % restart-chain if immediate failure
-    if isinf(log_likelihood), fail_chain=100; break; end 
-
-    %% >>> testing
-%     if n_since_acc > 100
-%         1
-%     end
-    %% <<< testing
-    
+    if isinf(log_likelihood), fail_chain=100; break; end     
     
 %% =========  reset kernel at end of burn in or after too many iter =======
     resetK = false;
-    if newK == false && ii == par.inv.burnin
+    if (newK && ifaccept) == false && ii == par.inv.burnin % reset kernel at end of burn in (and we didn't just reset it tacitly)
             fprintf('\n RECALCULATING %s KERNEL - end of burn in\n',chainstr);
             resetK = true;
     end
-    if newK == false && nchain > par.inv.maxnkchain
-            fprintf('\n RECALCULATING %s KERNEL - chain too long\n',chainstr);
+    if (newK && ifaccept) == false && nchain > par.inv.maxnkchain % reset kernel if chain too long (and we didn't just reset it tacitly)
+            fprintf('\n RECALCULATING %s KERNEL at iter %.0f - chain too long\n',chainstr,ii);
             resetK = true;
     end
     if resetK
-        % reset the kernels using the current model
-        [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,par,1);
+        try
+            % reset the kernels using the current model
+            [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,ii,par,1);
+            fail_reset = 0;
+        catch
+            % rewind back to last Kbase model that worked!
+            fprintf('Kernel reset BROKE at %s-%.0f... REWIND to %s-%.0f\n',chainstr,ii,chainstr,Kbase.itersave)
+            model = Kbase.modelk;
+            ii = Kbase.itersave;
+            predata = b3_FORWARD_MODEL_BW( model,par,TD.Value,ID,0 );
+            predata = b3_FORWARD_MODEL_SW_kernel( model,Kbase,par,predata );
+            fail_reset = fail_reset+1;
+        end
         % need to also reset likelihood and misfit to the new, precise data
         % (likelihood may have been artificially high due to kernel forward
         % calc. approximation - if so, need to undo this, or chain will get
@@ -405,23 +390,22 @@ try
         nchain = 0;
     end
 
-
-        %% >>> testing
-%         accdec(ii) = struct('iter',ii,'logL_current',log_likelihood,'logL_proposed',log_likelihood1,'ifacc',ifaccept,'temp',temp,'preF',p_bd*ifpass,'newk',newK);
-        %% <<< testing
- 
 catch
     if par.inv.verbose, fprintf('  --SOME ERROR--\n'); end
     fail_chain = fail_chain+1;
-    continue % skip this model!
 end % on try-catch
+
+if newK||resetK, delete_mineos_files(ID,'R'); end
+if newK||resetK, delete_mineos_files(ID,'L'); end
+
 end % on iterations
 %% -------------------------- End iteration  ------------------------------
 end % on the fail_chain while...
 % ----------
-fprintf('\n =========== ENDING ITERATIONS %s ===========\n',chainstr)
+fprintf('\n ================= ENDING ITERATIONS %s =================\n',chainstr)
 % save([resdir,'/chainout/',chainstr],'model0','misfits','allmodels')
 
+save_inv_state(resdir,chainstr,allmodels,misfits)
 misfits_perchain{iii} = misfits;
 allmodels_perchain{iii} = allmodels;
 if isfield(TD.Value,'SW_Ray')
@@ -430,6 +414,7 @@ end
 
 
 end % parfor loop
+delete(gcp('nocreate'));
 %% ========================================================================
 %% ========================================================================
 %% ----------------------- End loop on chains  ----------------------------
@@ -458,7 +443,7 @@ plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
 
 fprintf('  > Plotting prior vs. posterior\n')
 plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
-plot_P2P_recovery(prior,posterior,TRUEmodel,par,1,[resdir,'/mparm_recovery_p2p.pdf'])
+% plot_P2P_recovery(prior,posterior,TRUEmodel,par,1,[resdir,'/mparm_recovery_p2p.pdf'])
 
 fprintf('  > Plotting model suite\n')
 [ suite_of_models ] = c3_BUILD_MODEL_SUITE(allmodels_collated,par );
@@ -508,6 +493,9 @@ plot_TRUvsPRE_WAVEFORMS( trudata,final_predata,1,[resdir,'/final_true_vs_pred_da
 
 plot_FIG2_FIT_MODEL( final_model,posterior,prior,par,1,[resdir,'/fig2_FIT_MODEL.pdf']);
 
+profile viewer
+
+
 % did we save the data?
 if ifsavedat
     savedat.gdmods = find([allmodels.bestmods]');
@@ -521,6 +509,4 @@ end
 %rmpath([resdir]);
 
 % clear('TRUEmodel')
-profile viewer
-
 return
