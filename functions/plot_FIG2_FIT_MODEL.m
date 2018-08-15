@@ -43,7 +43,7 @@ text(ax1,vslims(1,1)+0.1,Zmoh(1)+8,sprintf('$%.1f \\pm %.1f$',Zmoh),...
 
 set(ax1,'ydir','reverse','fontsize',14,'ytick',[0:25:max(Z)],...
 'color','none','xlim',vslims);
-title(ax1,'\textbf{Vs model}','fontsize',20,'Interpreter','latex')
+% title(ax1,'\textbf{Vs model}','fontsize',20,'Interpreter','latex')
 xlabel(ax1,'\textbf{Vs (km/s)}','fontsize',18,'Interpreter','latex')
 ylabel(ax1,'\textbf{Depth (km)}','fontsize',18,'Interpreter','latex')
 
@@ -72,6 +72,7 @@ xlim(ax2,[par.mod.crust.vpvsmin,par.mod.crust.vpvsmax])
 xlabel(ax2,'\textbf{Crustal $\mathbf{V_P/V_S}$ ratio}','fontsize',18,'Interpreter','latex')
 
 par.sta = regexprep(par.sta,'_','\\_');
+par.nwk = regexprep(par.nwk,'_','\\_');
 title(ax2,['\textbf{',par.sta,' ',par.nwk,'}'],'fontsize',22,'interpreter','latex')
 
 
@@ -117,8 +118,8 @@ if isstruct(TRUEmodel)
     vs = TRUEmodel.VS;
     vp = TRUEmodel.VP;
     Z = TRUEmodel.z;
+    plot(ax1,vs,Z,':b','Linewidth',1.5);
 end
-plot(ax1,vs,Z,':b','Linewidth',1.5);
 
 
 % 
