@@ -1,15 +1,15 @@
-function [trudata] = a2_LOAD_DATA(par,projname,resdir)
+function [trudata,par,stadeets] = a2_LOAD_DATA(par,proj,resdir,avardir)
 % function to load data (differs depending on which synth or real)
 
 fprintf('LOADING data\n')
-global projdir THBIpath TRUEmodel
+global THBIpath TRUEmodel %#ok<NUSED>
 
-if strcmp(projname,'SYNTHETICS')
+if strcmp(proj.name,'SYNTHETICS')
     
     fprintf(' > Creating custom model and synthetic data\n')
     
     % make synth model
-    z0_SYNTH_MODEL_fig3_splinemod(par,0);  %close(95)
+    z0_SYNTH_MODEL_splinemoduse(par,0);  %close(95)
     save([resdir,'/trumodel'],'TRUEmodel');
 
     % make synth data
@@ -20,9 +20,8 @@ if strcmp(projname,'SYNTHETICS')
 
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
-    stadeets = struct('Latitude',[],'Longitude',[]);
 
-elseif strcmp(projname,'LAB_tests')
+elseif strcmp(proj.name,'LAB_tests')
 	z0_SYNTH_MODEL_LAB_TEST(par,par.synth.model.zsed,par.synth.model.zmoh,par.synth.model.zlab,par.synth.model.wlab,par.synth.model.flab,1) ;
 	save([resdir,'/trumodel'],'TRUEmodel');
 
@@ -40,15 +39,15 @@ elseif strcmp(projname,'LAB_tests')
     stadeets = struct('Latitude',[],'Longitude',[]);
 
 else
-	try stadeets = irisFetch.Stations('station',nwk,sta,'*','*'); 
+	try stadeets = irisFetch.Stations('station',par.nwk,par.sta,'*','*'); 
     catch, load([proj.rawdatadir,'/stainfo_master.mat']); 
-        stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},sta)).Latitude,...
-                          'Longitude',stainfo(strcmp({stainfo.StationCode},sta)).Longitude);
+        stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},par.sta)).Latitude,...
+                          'Longitude',stainfo(strcmp({stainfo.StationCode},par.sta)).Longitude);
     end
 
 %     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
-    [trudata,zeroDstr] = load_data(avardir,sta,nwk,gc);
-    sta = [sta,zeroDstr];
+    [trudata,zeroDstr] = load_data(avardir,par.sta,par.nwk,par.gc);
+    par.sta = [par.sta,zeroDstr];
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
     
@@ -89,5 +88,13 @@ end
 % plot_TRU_WAVEFORMS(trudata);
 % plot_TRUvsPRE(trudata,trudata);
 save([resdir,'/trudata_USE'],'trudata');
+
+if ~exist('stadeets','var')
+        stadeets = struct('Latitude',[],'Longitude',[]);
+end
+if ~exist('sta','var')
+        sta = 'SYN';
+end 
+
 end
 
