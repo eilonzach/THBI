@@ -130,6 +130,7 @@ end % parfor loop
 %% ========================================================================
 %% ========================================================================
 fprintf('Duration of entire run: %.0f s\n',(now-t)*86400)
+delete(gcp('nocreate'))
 
 empprior = emppriors{1};
 ptb = ptbs{1};
