@@ -7,6 +7,7 @@ if isempty(Kbase)
 end
 
 Kbase.modelk = model;
+Kbase.itersave=0;
 for id = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{id}; 
     pdtyp = parse_dtype(dtype); 

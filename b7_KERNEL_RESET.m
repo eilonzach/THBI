@@ -1,5 +1,5 @@
-function [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,par,redo_phV,HVK_new)
-% [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,par,redo_phV,HVK_new)
+function [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,iter,par,redo_phV,HVK_new)
+% [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,iter,par,redo_phV,HVK_new)
 %   Function to reset the surface wave kernels using the current model.
 %   This function is called when the accepted model has diverged
 %   sufficiently from the Kbase model that the kernel-computed
@@ -33,6 +33,7 @@ if nargin < 6 || isempty(redo_phV) || redo_phV==true
 end
 
 Kbase.modelk = model;
+Kbase.itersave = iter;
 for id = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{id}; 
     pdtyp = parse_dtype(dtype); 
@@ -49,13 +50,15 @@ for id = 1:length(par.inv.datatypes)
         MINEOS_file_delete = 1;
         ifplot = 0;
         grV = [];
-        phV = predata.(['SW_',pdtyp{2},'_phV']).phV;
+        phV = predata.(dtype).phV;
 %         [phV,grV] = run_mineos(model,predata.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
         K = run_kernels(predata.(dtype).periods, pdtyp{2},pdtyp{3}, ID, MINEOS_file_delete, ifplot, par.inv.verbose);
         Kbase = populate_Kbase( Kbase, dtype, phV, grV, {K} );
     end
     
 end
+
+
 
 end
 
