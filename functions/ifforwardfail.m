@@ -32,6 +32,27 @@ if isfield(predata,'BW_Sp') && ~isempty(predata.BW_Sp)
             iffail = true;
         end
     end
+end     
+
+if isfield(predata,'SW_Ray_phV') && ~isempty(predata.SW_Ray_phV)
+    if any(isnan(predata.SW_Ray_phV.phV))
+        fprintf('NaN Rayleigh wave phV data!\n');
+        iffail = true;
+    end
+end        
+
+if isfield(predata,'SW_Lov_phV') && ~isempty(predata.SW_Lov_phV)
+    if any(isnan(predata.SW_Lov_phV.phV))
+        fprintf('NaN Love wave phV data!\n');
+        iffail = true;
+    end
+end        
+
+if isfield(predata,'SW_HV') && ~isempty(predata.SW_HV)
+    if any(isnan(predata.SW_HV.HVr))
+        fprintf('NaN HV ratio data!\n');
+        iffail = true;
+    end
 end        
 
 end
