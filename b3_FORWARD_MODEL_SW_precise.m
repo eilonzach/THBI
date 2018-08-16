@@ -26,14 +26,14 @@ end
 
 SW = struct('Ray',struct('phV',[],'grV',[]),'Lov',struct('phV',[],'grV',[]),'HV',struct('HVr',[]));
 
-if any(strcmp(allpdytp(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'Ray'),1,'first'));
-    [SW.Ray.phV,SW.Ray.grV] = run_mineos(model,predata.(itp{1}).periods,'R',ID,0,0,par.inv.verbose);
+if any(strcmp(allpdytp(:,2),'HV')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'HV'),1,'first'));
+    [SW.HV.HVr,HVK_new] = run_HVkernel(model,predata.(itp{1}).periods,['HV_',ID],1,0,par.inv.verbose);
 end
 if any(strcmp(allpdytp(:,2),'Lov')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'Lov'),1,'first'));
     [SW.Lov.phV,SW.Lov.grV] = run_mineos(model,predata.(itp{1}).periods,'L',ID,0,0,par.inv.verbose);
 end
-if any(strcmp(allpdytp(:,2),'HV')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'HV'),1,'first'));
-    [SW.HV.HVr,HVK_new] = run_HVkernel(model,predata.(itp{1}).periods,['HV_',ID],1,0,par.inv.verbose);
+if any(strcmp(allpdytp(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(allpdytp(:,2),'Ray'),1,'first'));
+    [SW.Ray.phV,SW.Ray.grV] = run_mineos(model,predata.(itp{1}).periods,'R',ID,0,0,par.inv.verbose);
 end
 
 for id = 1:length(par.inv.datatypes)
