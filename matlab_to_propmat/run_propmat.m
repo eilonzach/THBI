@@ -2,7 +2,7 @@ function [traces,tt,status,cmdout] = run_propmat(LAYmodel,ID,ph,samprate,inc,syn
 % [traces,tt,LAYmodel1D] = run_propmat(model,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
 % 
 % Function to run the propagator matrix code for a given layerised model. 
-
+% tic
 if nargin < 2 || isempty(ID)
     ID = 'eg';
 end
@@ -78,6 +78,7 @@ system(['chmod +u+x ' execfile]);
 %% delete files
 % delete(execfile,odatfile,ifile,ofile1,ofile2,'synth.out');
 delete(modfile,execfile,odatfile,ifile,ofile0,ofile1,ofile2);
+
 % % plot
 % figure(2); clf, hold on
 % comps = {'VERTICAL','RADIAL','TRANSVERSE'}; traces = traces(:,[3,1,2]);
@@ -88,3 +89,6 @@ delete(modfile,execfile,odatfile,ifile,ofile0,ofile1,ofile2);
 % ylabel(comps{ip},'fontsize',19,'fontweight','bold')
 % end
 % set(gcf,'position',[680         273        1058         825])
+
+% fprintf('Propmat %s%s took %.5f s\n',ID,ph,toc)
+
