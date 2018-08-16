@@ -76,10 +76,30 @@ if any(strcmp(pdtyps(:,2),'Ps'))
     Psdat = par.inv.datatypes{find(strcmp(pdtyps(:,2),'Ps'),1,'first')};
     [ unique_rayps_P,irayps_P ] = rayp_vals( [predata.(Psdat).rayp] );
     for ir = 1:length(unique_rayps_P)
-        rayp = unique_rayps_P(ir);
+        rayp = unique_rayps_P(ir); % in s/deg
         samprate = unique([predata.(Psdat)(irayps_P==ir).samprate]);
         P_inc = rayp2inc(rayp,laymodel.Vp(end),6371-laymodel.zlayb(end));
-        [predat_ps,tt_ps] = run_propmat(laymodel,ID,'Ps',samprate, P_inc, par.forc.synthperiod,par.forc.nsamps);
+        % check so we don't use too many layers - evaluate P-s time for 
+        % conversion at each layer
+        tps = (laymodel.zlayb-laymodel.zlayt).*( sqrt(laymodel.Vs.^-2 - rayp_sdeg2skm(rayp)^2) - sqrt(laymodel.Vp.^-2 - rayp_sdeg2skm(rayp)^2) );
+        % use only layers where P-s arrival would not come in before window end
+            n_before_twin = find( cumsum(tps) > (T_conv_max_Ps(par) + 3),1,'first');
+            if ~isempty(n_before_twin)
+                nuse = [1:n_before_twin]';
+                fns = fieldnames(laymodel);
+                laymodel_Puse = laymodel; 
+                laymodel_Puse.nlay = length(nuse);
+                for jj = 1:length(fns)
+                    if length(laymodel.(fns{jj}))==1, continue; end
+                    laymodel_Puse.(fns{jj}) = laymodel_Puse.(fns{jj})(nuse);
+                end
+                % set appropriate P_inc for the actual base
+                P_inc = rayp2inc(rayp,laymodel_Puse.Vs(end),6371-laymodel_Puse.zlayb(end));
+            else
+                laymodel_Puse = laymodel;
+            end        
+        
+        [predat_ps,tt_ps] = run_propmat(laymodel_Puse,ID,'Ps',samprate, P_inc, par.forc.synthperiod,par.forc.nsamps);
         % pad with zeros
         tt_ps = [tt_ps(1) + [-1000:-1]'./samprate; tt_ps ;tt_ps(end) + [1:1000]'./samprate];
         predat_ps = [zeros(1000,3);predat_ps;zeros(1000,3)];
