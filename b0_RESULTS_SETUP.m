@@ -5,16 +5,23 @@ function [ misfits,allmodels,savedat,log_likelihood ] = b0_RESULTS_SETUP(par )
 
 %% OUTPUT
 o=[];
-nn = nan(par.inv.niter,1);
-oo = zeros(par.inv.niter,1);
+Nsave = ceil(par.inv.niter/par.inv.saveperN);
+nn = nan(Nsave,1);
+oo = zeros(Nsave,1);
 
 % misfits 
 misfits = struct('globmaxL',0,'lastL',0,'lastlogL',-Inf,... % minimum global errror, most recent error
+                 'logLike',nn,'Like',nn,... % likelihoods at each stage in the inversion
+                 'chi2sum',nn,...  % chi2sum is the chi-squared misfit summed across all data types
+                 'time',nn,... % time since inversion started (in seconds)
                  'iter',0,... % iteration number
-                 'chi2sum',nn,...  % chi2 is the chi-squared misfit, accounting for data error
                  'Nstored',0);
-                 % norm is the sum of the squared error
-                 
+% Will also store (but done inside b9_SAVE_RESULT)
+%       chi2 = the chi-squared misfit for each data type, accounting for data error, i.e. E2/sig/sig
+%       rms  = the root mean squared error for each dat type, i.e. sqrt(E2/N)
+%       E2   = the normalised, weighted, sum of squared errors
+             
+             
 % log likelihood
 log_likelihood = -Inf;
 
@@ -28,7 +35,7 @@ allmodels = struct('z',o,'z0',o,'iter',o,...
                'crustmparm',struct('h',o,'Nkn',o,'VS_kn',o,'splines',o),...
                'mantmparm',struct('Nkn',o,'VS_kn',o,'splines',o),...
                'M',nan,'Nstored',0);
-allmodels(ceil(par.inv.niter/par.inv.saveperN))=allmodels;
+allmodels(Nsave)=allmodels;
 
 %save data
 dtypes = par.inv.datatypes;

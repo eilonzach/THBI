@@ -1,30 +1,38 @@
-function   [misfits,allmodels,savedat] = b9_SAVE_RESULT(iter,log_likelihood,misfit,model,misfits,allmodels,predata,savedat)
-%  [misfits,allmodels,savedat] = b9_SAVE_RESULT(iter,log_likelihood,misfit,model,misfits,allmodels,predata)
+function   [misfits,allmodels,savedat] = b9_SAVE_RESULT(iter,log_likelihood,misfit,model,misfits,allmodels,predata,savedat,time0)
+%  [misfits,allmodels,savedat] = b9_SAVE_RESULT(iter,log_likelihood,misfit,model,misfits,allmodels,predata,time0)
 % 
 % Function to store model into results structure and to store the misfit
 % for future reference
 
 %% MISFITS
-N = misfits.Nstored+1;
+% N = misfits.Nstored+1; 
+
+% choose the next N as the save number that corresponds to one more than
+% the numnber saved for iterations less than the current iteration. That
+% way if we reset the model of the MCMC, it will back-track and write over
+% old saves, too. 
+N = sum(misfits.iter < iter & misfits.iter~=0) + 1;
+
 likelihood = exp(log_likelihood);
 misfits.lastlogL = log_likelihood;
 misfits.lastL = likelihood;
 misfits.globmaxL = max(misfits.globmaxL,likelihood);
 
-misfits.iter(N,1) = iter;
 misfits.logLike(N,1) = log_likelihood;
 misfits.Like(N,1) = likelihood;
 
 misfits.chi2sum(N,1)    = misfit.chi2sum;
 
-misfits.chi2(N,1) = misfit.chi2;
-misfits.rms(N,1) = misfit.rms;
-misfits.E2(N,1) = misfit.E2;
+misfits.chi2(N,1) = misfit.chi2; % chi2 is the chi-squared misfit for each data type, accounting for data error, i.e. E2/sig/sig
+misfits.rms(N,1) = misfit.rms; % rms is the root mean squared error for each dat type, i.e. sqrt(E2/N)
+misfits.E2(N,1) = misfit.E2; % E2 is the normalised, weighted, sum of squared errors
 
+misfits.time(N,1) = (now-time0)*86400; % in seconds
+misfits.iter(N,1) = iter;
 misfits.Nstored = N;
 
 %% MODEL
-N = allmodels(1).Nstored+1;
+% N = allmodels(1).Nstored+1;
 fns = fieldnames(model);
 for ifn = 1:length(fns)
     allmodels(N).(fns{ifn}) = model.(fns{ifn});
