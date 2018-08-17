@@ -44,24 +44,15 @@ else
         stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},par.sta)).Latitude,...
                           'Longitude',stainfo(strcmp({stainfo.StationCode},par.sta)).Longitude);
     end
-
-%     [~,~,~,TRUEmodel.Z,TRUEmodel.vs,TRUEmodel.vp,TRUEmodel.rho] = RD_1D_Vprofile; close(gcf);
+    
     [trudata,zeroDstr] = load_data(avardir,par.sta,par.nwk,par.gc);
     par.sta = [par.sta,zeroDstr];
+    
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
+    % set prior sigma as the mean of the data uncertainty if available
+    par = prior_sigma_distribute(par,trudata);
     
-    for idt = 1:length(par.inv.datatypes)
-        dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
-        if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
-            trudata.(dtype) = trudata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
-        end
-        % set prior sigma as geometric mean of data sigma
-        if isfield(trudata.(dtype),'sigma') && ~isnan(geomean(trudata.(dtype).sigma))
-            par.mod.data.prior_sigma.(pdt{1}).(pdt{2}).(pdt{3}) = geomean(trudata.(dtype).sigma);
-        end
-    end
-
     % get rid of data that wont be used in inversion - NB NEED EXACT DATA MATCH
     trudtypes = fieldnames(trudata);
     for idt = 1:length(trudtypes)
@@ -72,8 +63,26 @@ else
         if par.inv.BWclust~=0 && any(regexp(trudtypes{idt},'BW'))
             fprintf('WARNING - removing %s data not in cluster %.0f\n',trudtypes{idt},par.inv.BWclust)
             trudata.(trudtypes{idt}) = trudata.(trudtypes{idt})([trudata.(trudtypes{idt}).clust]==par.inv.BWclust);
+            % if getting rid of that cluster killed the data type, then
+            % delete the data fieldname
+            if isempty(trudata.(trudtypes{idt}))
+                fprintf('THAT WAS ALL THE %s data\n',trudtypes{idt})
+                trudata = rmfield(trudata,trudtypes{idt});
+            end
         end
     end
+    
+    % get rid of datatypes from par if not (any longer) in real data
+    kill = false(length(par.inv.datatypes),1);
+    for idt = 1:length(par.inv.datatypes)
+        dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
+        % since we added in all data types above, if any not left now, it
+        % is because they don't exist in the real data - should not use
+        if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
+            kill(idt) = true;
+        end
+    end
+    par.inv.datatypes(kill) = [];
 
 end
 
