@@ -199,7 +199,7 @@ for iii=1:nchains
         % assign structures
         if nchains>1, mf = misfits{iii}; else mf = misfits; end
         if isempty(mf), goodchains(iii)=false; continue; end
-        ind = mf.iter > par.inv.burnin;
+        ind = mf.iter > par.inv.burnin & mf.iter~=0;
         dtype = par.inv.datatypes{id};
         % work out rms for this dtype (average across all data streams for this dtype)
         rms = [mf.rms.(dtype)]';
