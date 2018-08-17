@@ -34,7 +34,7 @@ for iii = 1:nchains
     knmat_c = nan(par.mod.crust.kmax,length(am));
     knmat_m = nan(par.mod.mantle.kmax,length(am));
 
-    for im = 1:length(am);
+    for im = 1:length(am)
         knmat_c(1:am(im).crustmparm.Nkn,im) = am(im).crustmparm.knots;
         knmat_m(1:am(im).mantmparm.Nkn,im) = am(im).mantmparm.knots;
     end
