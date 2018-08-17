@@ -3,7 +3,7 @@ close all
 
 
 projname = 'US'; % SYNTHETICS, LAB_tests, or US, for now
-sta = 'DUG';
+sta = 'AHID';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 % baz = 315;
@@ -104,19 +104,22 @@ allpdytp = parse_dtype_all(par);
 
 %% ===========================  PRIOR  ===========================  
 zatdep = [5:5:par.mod.maxz]';
-fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
-plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-save([resdir,'/prior'],'prior','par');
+% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+% prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
+% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+% save([resdir,'/prior'],'prior','par');
 
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
 profile clear
 profile on
-delete(gcp('nocreate'));
- 
+
+% ===== Prepare for parallel pool =====
+delete(gcp('nocreate')); 
+parpool(par.inv.nchains);
 TD = parallel.pool.Constant(trudata);
+% (((( If not parallel: ))))
 % TD(1).Value = trudata; par.inv.verbose = 0;
 
 %% START DIFFERENT MARKOV CHAINS IN PARALLEL
@@ -183,12 +186,14 @@ predata=[]; predat_save = []; misfit = [];
 
 fprintf('\n =========== STARTING ITERATIONS %s ===========\n',chainstr)
 ii = 0;
+time0 = now;
+
 while ii < par.inv.niter
 ii = ii+1;
     
 %% SAVE model every saveperN
 if mod(ii,par.inv.saveperN)==0 && log_likelihood ~= -Inf
-    [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat);
+    [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat,time0);
 %     if isfield(TD.Value,'SW_Ray_phV')
 %         preSW(:,misfits.Nstored) = predata.SW_Ray_phV.phV;
 %     end
@@ -260,7 +265,7 @@ try
 %% ===========================  FORWARD MODEL  ===========================
 	% don't re-calc if the only thing perturbed is the error, or if there
 	% is zero probability of acceptance!
-    if ~strcmp('sigma',ptb{ii}(end-4:end)) || isempty(predata)
+    if ~strcmp('sig',ptb{ii}(1:3)) || isempty(predata)
         % make random run ID (to avoid overwrites in parfor)
 		ID = [chainstr,num2str(ii,'%05.f'),num2str(randi(99),'_%02.f')];
 
@@ -375,7 +380,7 @@ try
             fail_reset = 0;
         catch
             % rewind back to last Kbase model that worked!
-            fprintf('Kernel reset BROKE at %s-%.0f... REWIND to %s-%.0f\n',chainstr,ii,chainstr,Kbase.itersave)
+            fprintf('Kernel reset BROKE at %s-%.0f... REWIND to %s-%.0f <<<<<<<<<<<<<<< \n',chainstr,ii,chainstr,Kbase.itersave)
             model = Kbase.modelk;
             ii = Kbase.itersave;
             predata = b3_FORWARD_MODEL_BW( model,par,TD.Value,ID,0 );
@@ -399,6 +404,7 @@ if newK||resetK, delete_mineos_files(ID,'R'); end
 if newK||resetK, delete_mineos_files(ID,'L'); end
 
 end % on iterations
+
 %% -------------------------- End iteration  ------------------------------
 end % on the fail_chain while...
 % ----------
@@ -415,6 +421,7 @@ end
 
 end % parfor loop
 delete(gcp('nocreate'));
+
 %% ========================================================================
 %% ========================================================================
 %% ----------------------- End loop on chains  ----------------------------
@@ -422,6 +429,7 @@ delete(gcp('nocreate'));
 %% ========================================================================
 save([resdir,'/matlab'])
 fprintf('Duration of entire run: %.0f s\n',(now-t)*86400)
+plot_invtime(misfits_perchain,[resdir,'/invTime.pdf']);
 
 %% Process results
 fprintf('  > Processing results\n')
