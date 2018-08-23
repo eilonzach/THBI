@@ -60,6 +60,11 @@ else
             fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
             trudata = rmfield(trudata,trudtypes{idt});
         end
+    end
+    
+    % get rid of remaining data that is not in the right cluster
+    trudtypes = fieldnames(trudata);
+    for idt = 1:length(trudtypes)    
         if par.inv.BWclust~=0 && any(regexp(trudtypes{idt},'BW'))
             fprintf('WARNING - removing %s data not in cluster %.0f\n',trudtypes{idt},par.inv.BWclust)
             trudata.(trudtypes{idt}) = trudata.(trudtypes{idt})([trudata.(trudtypes{idt}).clust]==par.inv.BWclust);
