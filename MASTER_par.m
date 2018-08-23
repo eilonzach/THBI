@@ -3,17 +3,13 @@ close all
 
 
 projname = 'US'; % SYNTHETICS, LAB_tests, or US, for now
-sta = 'AHID';
+sta = 'HWUT';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 % baz = 315;
 
 notes = [...
-    'Synthetic test using discontinuous model with LAB. '...
-    'Using all data types. '...
-    'Changed the way the spline kernels are re-calculated after N iterations, so as to prevent big jumps in likelihood and therefore hanging chains. '...
-    'Several previous runs have shut down computer for reasons I do not understand, but this was with old order of recomputation of kernels. '...
-    'Execute for 18000 iterations + hope for ideal results. '...
+    'Using only surface waves data types. '...
 ]; 
 
 %% ------------------------- START ------------------------- 
@@ -94,7 +90,6 @@ fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
 par_ORIG = par;
 
 % save par and copy the parms.m file to the results directory
-save([resdir,'/par'],'par');
 eval(sprintf('! cp parms/bayes_inv_parms.m %s',resdir))
 
 allpdytp = parse_dtype_all(par);
@@ -112,15 +107,16 @@ zatdep = [5:5:par.mod.maxz]';
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
+save([resdir,'/par'],'par');
 profile clear
 profile on
 
 % ===== Prepare for parallel pool =====
-delete(gcp('nocreate')); 
-parpool(par.inv.nchains);
-TD = parallel.pool.Constant(trudata);
+% delete(gcp('nocreate')); 
+% parpool(par.inv.nchains);
+% TD = parallel.pool.Constant(trudata);
 % (((( If not parallel: ))))
-% TD(1).Value = trudata; par.inv.verbose = 0;
+TD(1).Value = trudata; par.inv.verbose = 0;
 
 %% START DIFFERENT MARKOV CHAINS IN PARALLEL
 model0_perchain = cell(par.inv.nchains,1);
@@ -135,7 +131,7 @@ fprintf('\n =========== STARTING PARALLEL CHAINS ===========\n')
 %% ========================================================================
 t = now;
 % mkdir([resdir,'/chainout']);
-parfor iii = 1:par.inv.nchains 
+for iii = 1:par.inv.nchains 
 chainstr = mkchainstr(iii);
 
 
@@ -292,7 +288,7 @@ try
 		% Explicitly use mineos + Tanimoto scripts if ptb is too large
         if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmed/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
             newK = true;
-            [ predata,HVK_new ] = b3_FORWARD_MODEL_SW_precise( model1,par,predata,ID );
+            [ predata,SW_precise ] = b3_FORWARD_MODEL_SW_precise( model1,par,predata,ID );
         end            
             
     end % only redo data if model has changed 
@@ -350,7 +346,7 @@ try
         
     %% UPDATE KERNEL if needed 
         if newK==true
-            [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,ii,par,0,HVK_new);                        
+            [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,ii,par,0,SW_precise);                        
             nchain = 0;
         end
     

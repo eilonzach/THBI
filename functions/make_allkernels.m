@@ -18,8 +18,9 @@ for id = 1:length(par.inv.datatypes)
         [HVr_new,HVK_new] = run_HVkernel(model,data.(dtype).periods,ID,1,0,par.inv.verbose);
         Kbase = populate_Kbase( Kbase,dtype,HVr_new,[],{HVK_new} );    
     else
-        [phV,grV] = run_mineos(model,data.(dtype).periods,pdtyp{2},ID,0,0,par.inv.verbose);
-        K = run_kernels(data.(dtype).periods,pdtyp{2},pdtyp{3},ID,1,0,par.inv.verbose);
+        par_mineos = struct('R_or_L',pdtyp{2},'phV_or_grV',pdtyp{3},'ID',ID);
+        [phV,grV,eigfiles] = run_mineos(model,data.(dtype).periods,par_mineos,0,0,par.inv.verbose);
+        K = run_kernels(data.(dtype).periods,par_mineos,eigfiles,1,0,par.inv.verbose);
         Kbase = populate_Kbase( Kbase,dtype,phV,grV,{K} );
     end
     
