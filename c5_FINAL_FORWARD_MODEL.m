@@ -194,11 +194,11 @@ if any(strcmp(pdtyps(:,1),'SW'))
                     
     if any(strcmp(pdtyps(:,2),'Ray')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'Ray'),1,'first'));
         par_mineos = struct('R_or_L','R','ID',ID);
-        [SW.Ray.phV,SW.Ray.grV] = run_mineos(modminrun,data.(itp{1}).periods,par_mineos,0,0,par.inv.verbose);
+        [SW.Ray.phV,SW.Ray.grV] = run_mineos(modminrun,data.(itp{1}).periods,par_mineos,1,0,par.inv.verbose);
     end
     if any(strcmp(pdtyps(:,2),'Lov')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'Lov'),1,'first'));
         par_mineos = struct('R_or_L','L','ID',ID);
-        [SW.Lov.phV,SW.Lov.grV] = run_mineos(modminrun,data.(itp{1}).periods,par_mineos,0,0,par.inv.verbose);
+        [SW.Lov.phV,SW.Lov.grV] = run_mineos(modminrun,data.(itp{1}).periods,par_mineos,1,0,par.inv.verbose);
     end
     if any(strcmp(pdtyps(:,2),'HV')), itp = par.inv.datatypes(find(strcmp(pdtyps(:,2),'HV'),1,'first'));
         SW.HV.HVr = run_HVkernel(modminrun,data.(itp{1}).periods,'final',1,0,par.inv.verbose);
