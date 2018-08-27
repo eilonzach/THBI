@@ -126,7 +126,7 @@ LphV = LphV(iT);
 SW_Lov_phV = struct('periods',Lperiods,'phV',LphV,'sigma',[]);
 
 % -------- Rayleigh HV ratios
-[ HVratios,HVstds,HVperiods] = disp_curve_HV( [avar.slat,avar.slon]);
+[ HVratios,HVstds,HVperiods] = disp_curve_HV( round_level([avar.slat,avar.slon],0.1),0,[],10,1.5);
 
 [HVperiods,iT] = sort(HVperiods);
 HVratios = HVratios(iT);
