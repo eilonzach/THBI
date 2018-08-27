@@ -1,4 +1,4 @@
-function [trudata,par,stadeets] = a2_LOAD_DATA(par,proj,resdir,avardir)
+function [trudata,par] = a2_LOAD_DATA(par,proj,resdir,avardir)
 % function to load data (differs depending on which synth or real)
 
 fprintf('LOADING data\n')
@@ -36,17 +36,17 @@ elseif strcmp(proj.name,'LAB_tests')
     end
     
     trudata = duplicate_data_distribute(trudata,par);
-    stadeets = struct('Latitude',[],'Longitude',[]);
+    par.data.stadeets.stadeets = struct('Latitude',[],'Longitude',[]);
 
 else
-	try stadeets = irisFetch.Stations('station',par.nwk,par.sta,'*','*'); 
+	try par.data.stadeets.stadeets = irisFetch.Stations('station',par.data.stadeets.nwk,par.data.stadeets.sta,'*','*'); 
     catch, load([proj.rawdatadir,'/stainfo_master.mat']); 
-        stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},par.sta)).Latitude,...
-                          'Longitude',stainfo(strcmp({stainfo.StationCode},par.sta)).Longitude);
+        par.data.stadeets.stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Latitude,...
+                          'Longitude',stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Longitude);
     end
     
-    [trudata,zeroDstr] = load_data(avardir,par.sta,par.nwk,par.gc);
-    par.sta = [par.sta,zeroDstr];
+    [trudata,zeroDstr] = load_data(avardir,par.data.stadeets.sta,par.data.stadeets.nwk,par.data.gc);
+    par.data.stadeets.sta = [par.data.stadeets.sta,zeroDstr];
     
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
@@ -103,9 +103,6 @@ end
 % plot_TRUvsPRE(trudata,trudata);
 save([resdir,'/trudata_USE'],'trudata');
 
-if ~exist('stadeets','var')
-        stadeets = struct('Latitude',[],'Longitude',[]);
-end
 if ~exist('sta','var')
         sta = 'SYN';
 end 

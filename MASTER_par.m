@@ -3,7 +3,7 @@ close all
 
 
 projname = 'US'; % SYNTHETICS, LAB_tests, or US, for now
-sta = 'HWUT';
+sta = 'EYMN';
 nwk = 'US';
 gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
 % baz = 315;
@@ -26,9 +26,8 @@ run('project_details');
 run parms/bayes_inv_parms
 if strcmp(projname,'SYNTHETICS')
     if isfield(par.synth,'noisetype') && strcmp(par.synth.noisetype,'real'), sta=['SYNTH_',sta]; else sta = 'SYNTH'; end
-    par.sta = sta; 
-    par.nwk = '--';
-
+    par.stadeets = struct('sta',sta','nwk','--');
+    
 	% noise details, if "real"
 	noisesta = 'RSSD';
 	noisenwk = 'IU';
@@ -64,11 +63,8 @@ elseif strcmp(projname,'LAB_tests')
 	if any(strcmp(dtps,'SW_HV')), dtpstr=[dtpstr,'HV']; end
 
 	sta = ['LAB_s',num2str(zsed),'_m',num2str(zmoh),'_z',num2str(zlab),'_w',num2str(wlab),'_f',num2str(100*flab),dtpstr];
-    par.sta = sta; par.nwk = 'LAB_test';
+    nwk = 'LAB_test';
 else
-    par.sta = sta;
-    par.nwk = nwk;
-    par.gc = gc;
     datN = 20;
 end
 
@@ -81,11 +77,16 @@ par.inv.verbose=false;
 ifsavedat = false;
 
 %% get saving things ready
-STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')]; par.STAMP = STAMP;
-avardir = sprintf('%s/%s_dat%.0f/',proj.STAinversions,sta,datN);
-resdir = [avardir,STAMP];
+par.proj = proj;
+STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')];
+avardir = sprintf('%s/%s_dat%.0f/',par.proj.STAinversions,sta,datN);
+resdir = [avardir,STAMP]; 
 mkdir(resdir);
 fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
+
+par.data = struct('stadeets',struct('sta',sta,'nwk',nwk,'Latitude',[],'Longitude',[]),...
+                  'gc',gc,'datN',datN,'avardir',avardir);
+par.res = struct('STAMP',STAMP,'resdir',resdir);
 
 par_ORIG = par;
 
@@ -95,12 +96,12 @@ eval(sprintf('! cp parms/bayes_inv_parms.m %s',resdir))
 allpdytp = parse_dtype_all(par);
 
 %% ========================  LOAD + PREP DATA  ========================  
-[trudata,par,stadeets] = a2_LOAD_DATA(par,proj,resdir,avardir);
+[trudata,par] = a2_LOAD_DATA(par,proj,resdir,avardir);
 
 %% ===========================  PRIOR  ===========================  
-zatdep = [5:5:par.mod.maxz]';
+par.res.zatdep = [5:5:par.mod.maxz]';
 % fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-% prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,zatdep);
+% prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,par.res.zatdep);
 % plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
 % save([resdir,'/prior'],'prior','par');
 
@@ -423,7 +424,7 @@ delete(gcp('nocreate'));
 %% ----------------------- End loop on chains  ----------------------------
 %% ========================================================================
 %% ========================================================================
-save([resdir,'/matlab'])
+c0_SAVE_OUTPUT(resdir,misfits_perchain,allmodels_perchain);
 fprintf('Duration of entire run: %.0f s\n',(now-t)*86400)
 plot_invtime(misfits_perchain,[resdir,'/invTime.pdf']);
 
@@ -440,7 +441,7 @@ allmodels_perchain = allmodels_perchain(goodchains);
 [ hypparm_trends ] = plot_HYPERPARAMETER_TRENDS( allmodels_perchain,[resdir,'/hyperparmtrend.pdf'] );
 plot_KNOT_TRENDS( allmodels_perchain,par,[resdir,'/knottrends']  )
 
-posterior = c2_BUILD_POSTERIOR(allmodels_collated,par,zatdep);
+posterior = c2_BUILD_POSTERIOR(allmodels_collated,par,par.res.zatdep);
 
 fprintf('  > Plotting posterior\n')
 plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
