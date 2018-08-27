@@ -14,7 +14,7 @@ end
 
 figure(88);clf, set(gcf,'pos',[850 198 900 888])
 %% title
-htit = title_custom([par.sta,' ',par.nwk],0.5,'fontweight','bold','fontsize',25);
+htit = title_custom([par.data.stadeets.sta,' ',par.data.stadeets.nwk],0.5,'fontweight','bold','fontsize',25);
 
 ax1 = subplot(2,1,1); ax1pos = get(ax1,'pos');
 ax3 = subplot(2,1,2); 

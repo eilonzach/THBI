@@ -127,7 +127,7 @@ SWs_perchain = cell(par.inv.nchains,1);
 
 %% ========================================================================
 %% ========================================================================
-fprintf('\n =========== STARTING PARALLEL CHAINS ===========\n')
+fprintf('\n ============== STARTING CHAIN(S) ==============\n')
 %% ========================================================================
 %% ========================================================================
 t = now;
@@ -452,7 +452,7 @@ plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
 
 fprintf('  > Plotting model suite\n')
 [ suite_of_models ] = c3_BUILD_MODEL_SUITE(allmodels_collated,par );
-plot_SUITE_of_MODELS( suite_of_models,posterior,1,[resdir,'/suite_of_models.pdf'],[stadeets(1).Latitude,stadeets(1).Longitude]);
+plot_SUITE_of_MODELS( suite_of_models,posterior,1,[resdir,'/suite_of_models.pdf'],[par.data.stadeets.Latitude,par.data.stadeets.Longitude]);
 plot_HEATMAP_ALLMODELS(suite_of_models,par,1,[resdir,'/heatmap_of_models.pdf']);
 
 %% Save some things
@@ -467,7 +467,7 @@ save([resdir,'/SWs_pred'],'SWs_perchain');
 
 %% Final interpolated model with errors
 final_model = c4_FINAL_MODEL(posterior,allmodels_collated,par,1,[resdir,'/final_model']);
-plot_FINAL_MODEL( final_model,posterior,1,[resdir,'/final_model.pdf'],true,[stadeets(1).Latitude,stadeets(1).Longitude]);
+plot_FINAL_MODEL( final_model,posterior,1,[resdir,'/final_model.pdf'],true,[par.data.stadeets.Latitude,par.data.stadeets.Longitude]);
 
 %% predict data with the final model, and calculate the error!
 [ final_predata ] = c5_FINAL_FORWARD_MODEL( final_model,par,trudata );
