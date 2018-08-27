@@ -40,25 +40,29 @@ else
     [Zd(2).std,Zd(2).mu] = gaussfit( X, Nds,(X(end)-X(1))/4, mean(X(Nds==max(Nds))) );
 end
 
+%% Indices of models 
+i50     = round(0.5*Nm);
+isig1   = [round(0.3173*Nm) round(0.6827*Nm)];
+isig2   = [round(0.055*Nm) round(0.9545*Nm)];
+iminmax = [max([1,round(0.005*Nm)]) min([Nm,round(0.995*Nm)])];
+
 %% Vp/Vs
 vord = sort(posterior.vpvs);
-final_model.vpvsav = vord(round(0.5*Nm));      % median value
-final_model.vpvsminmax = [vord([round(0.005*Nm) round(0.995*Nm)])];
-final_model.vpvssig1 = [vord([round(0.3173*Nm) round(0.6827*Nm)])];
-final_model.vpvssig2 = [vord([round(0.055*Nm) round(0.9545*Nm)])];
+final_model.vpvsav = vord(i50);      % median value
+final_model.vpvsminmax = vord(iminmax);
+final_model.vpvssig1 = vord(isig1);
+final_model.vpvssig2 = vord(isig2);
 
 %% xi
 vord = sort(posterior.xicrust);
 final_model.xicrav = vord(round(0.5*Nm));      % median value
-final_model.xicrminmax = [vord([round(0.005*Nm) round(0.995*Nm)])];
-final_model.xicrsig2 = [vord([round(0.055*Nm) round(0.9545*Nm)])];
+final_model.xicrminmax = vord(iminmax);
+final_model.xicrsig2 = vord(isig2);
 
 vord = sort(posterior.ximant);
 final_model.ximaav = vord(round(0.5*Nm));      % median value
-final_model.ximaminmax = [vord([round(0.005*Nm) round(0.995*Nm)])];
-final_model.ximasig2 = [vord([round(0.055*Nm) round(0.9545*Nm)])];
-
-
+final_model.ximaminmax = vord(iminmax);
+final_model.ximasig2 = vord(isig2);
 
 %% Loop through depths obtaining max/min
 Z = sort(unique([[0:par.mod.dz:par.mod.maxz],...
@@ -85,13 +89,13 @@ mdn = lb;
 
 for iz = 1:Nz
     vord = sort(varz(iz,:));
-    lb(iz) = vord(round(0.005*Nm));     % lower bound (not quite min, to avoid wacky ones)
-    ub(iz) = vord(round(0.995*Nm));     % upper bound (not quite max, to avoid wacky ones)
-    l1std(iz) = vord(round(0.3173*Nm)); % 1 std below median
-    u1std(iz) = vord(round(0.6827*Nm)); % 1 std above median
-    l2std(iz) = vord(round(0.0455*Nm)); % 2 std below median
-    u2std(iz) = vord(round(0.9545*Nm)); % 2 std above median
-    mdn(iz) = vord(round(0.5*Nm));      % median value
+    lb(iz) = vord(iminmax(1));     % lower bound (not quite min, to avoid wacky ones)
+    ub(iz) = vord(iminmax(2));     % upper bound (not quite max, to avoid wacky ones)
+    l1std(iz) = vord(isig1(1)); % 1 std below median
+    u1std(iz) = vord(isig1(2)); % 1 std above median
+    l2std(iz) = vord(isig2(1)); % 2 std below median
+    u2std(iz) = vord(isig2(2)); % 2 std above median
+    mdn(iz) = vord(i50);      % median value
 end
 
 final_model.Z = Z;
