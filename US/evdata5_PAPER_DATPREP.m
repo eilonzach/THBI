@@ -1,9 +1,9 @@
 close all
 clear 
 %% Setup
-datadir = 'DATA/'; % need final slash
-station = 'ECHS';
-network = 'YO';
+datadir = '/Volumes/data/THBI/US/STAsrawdat/'; % need final slash
+station = 'BOZ';
+network = 'US';
 gcreq = [30,75]; % 
 
 phases = {'Ps','Sp'}; % {'Ps','Sp'}

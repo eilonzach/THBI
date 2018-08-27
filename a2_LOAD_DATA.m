@@ -66,6 +66,10 @@ else
     trudtypes = fieldnames(trudata);
     for idt = 1:length(trudtypes)    
         if par.inv.BWclust~=0 && any(regexp(trudtypes{idt},'BW'))
+            if isempty(trudata.(trudtypes{idt}))
+                trudata = rmfield(trudata,trudtypes{idt});
+                continue
+            end
             fprintf('WARNING - removing %s data not in cluster %.0f\n',trudtypes{idt},par.inv.BWclust)
             trudata.(trudtypes{idt}) = trudata.(trudtypes{idt})([trudata.(trudtypes{idt}).clust]==par.inv.BWclust);
             % if getting rid of that cluster killed the data type, then

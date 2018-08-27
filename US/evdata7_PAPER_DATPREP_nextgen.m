@@ -1,18 +1,18 @@
 close all
 clear 
 %% Setup
-datadir = 'DATA/'; % need final slash
-avardir = 'AVARS_nextgen'; % path to output avar dir
-station = 'RSSD';
-network = 'IU';
+datadir = '/Volumes/data/THBI/US/STAsrawdat/'; % need final slash
+avardir = '/Volumes/data/THBI/US/STAsinv/'; % path to output avar dir
+station = 'BOZ';
+network = 'US';
 gcreq = [30,75]; % 
 
 phases = {'Ps','Sp'}; % {'Ps','Sp'}
 
-ifsave = false;
+ifsave = true;
 ifcalcsurfV = false; % option to re-calculate surface 
 ifPSV = true;
-verbose = true;
+ifverbose = false;
 ifcheat = false;
 
 % FINAL DATA processing parms
@@ -97,7 +97,7 @@ Vmodel = struct('z',Z,'VP',vp,'VS',vs);
 % Use all data available
 % weight error maps by SNR
 if ifcalcsurfV && ifPSV
-    [Vp_surf,Vs_surf] = evdata_VpVs_est(eqar,phases,psv_filtfs,psv_win,[],[psv_SNRmin,psv_SNRmax],SNR_filtfs,SNR_win,verbose);
+    [Vp_surf,Vs_surf] = evdata_VpVs_est(eqar,phases,psv_filtfs,psv_win,[],[psv_SNRmin,psv_SNRmax],SNR_filtfs,SNR_win,ifverbose);
     Vp_surf = Vp_surf.comp3_wtstk;
     Vs_surf = Vs_surf.comp3_wtstk;
     pause(0.1)
@@ -444,7 +444,10 @@ for ip = 1:length(phases)
     end
 
     pause(0.1)
-    pause
+    if ifverbose
+        fprintf('>> Click/hit space to continue <<\n');
+        pause
+    end
     % ----------------------- save data level 8 -----------------------
     plot_dat{8,ip} = struct('data',S2datPSV(:,1:2),'tt',Stt);
     % ----------------------- save data level 8 -----------------------
