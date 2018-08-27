@@ -9,5 +9,15 @@ matlab_to_mineos/*
 *.cmd
 *.mod
 *.rtz
+*.log
+*.mode
+*.model
+*.q
+*.asc
+*.eig
+*.strip
+*.run_kernels
+*.run_mineos
+*cvfrechet*s
 test_detailed_balance*
 defunct*
