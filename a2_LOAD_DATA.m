@@ -1,16 +1,16 @@
-function [trudata,par] = a2_LOAD_DATA(par,proj,resdir,avardir)
+function [trudata,par] = a2_LOAD_DATA(par)
 % function to load data (differs depending on which synth or real)
 
 fprintf('LOADING data\n')
 global THBIpath TRUEmodel %#ok<NUSED>
 
-if strcmp(proj.name,'SYNTHETICS')
+if strcmp(par.proj.name,'SYNTHETICS')
     
     fprintf(' > Creating custom model and synthetic data\n')
     
     % make synth model
     z0_SYNTH_MODEL_splinemoduse(par,0);  %close(95)
-    save([resdir,'/trumodel'],'TRUEmodel');
+    save([par.res.resdir,'/trumodel'],'TRUEmodel');
 
     % make synth data
     [ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
@@ -21,9 +21,9 @@ if strcmp(proj.name,'SYNTHETICS')
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
 
-elseif strcmp(proj.name,'LAB_tests')
+elseif strcmp(par.proj.name,'LAB_tests')
 	z0_SYNTH_MODEL_LAB_TEST(par,par.synth.model.zsed,par.synth.model.zmoh,par.synth.model.zlab,par.synth.model.wlab,par.synth.model.flab,1) ;
-	save([resdir,'/trumodel'],'TRUEmodel');
+	save([par.res.resdir,'/trumodel'],'TRUEmodel');
 
 	% make synth data
 	[ trudata ] = z1_SYNTH_DATA(par,0); % in ZRT format
@@ -40,12 +40,12 @@ elseif strcmp(proj.name,'LAB_tests')
 
 else
 	try par.data.stadeets.stadeets = irisFetch.Stations('station',par.data.stadeets.nwk,par.data.stadeets.sta,'*','*'); 
-    catch, load([proj.rawdatadir,'/stainfo_master.mat']); 
+    catch, load([par.proj.rawdatadir,'/stainfo_master.mat']); 
         par.data.stadeets.stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Latitude,...
                           'Longitude',stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Longitude);
     end
     
-    [trudata,zeroDstr] = load_data(avardir,par.data.stadeets.sta,par.data.stadeets.nwk,par.data.gc);
+    [trudata,zeroDstr] = load_data(par);
     par.data.stadeets.sta = [par.data.stadeets.sta,zeroDstr];
     
     % distribute data for different processing (e.g. _lo, _cms)
@@ -96,7 +96,7 @@ else
 end
 
 % save data
-save([resdir,'/trudata_ORIG'],'trudata');
+save([par.res.resdir,'/trudata_ORIG'],'trudata');
 
 % window, filter data 
 for idt = 1:length(par.inv.datatypes)
@@ -105,7 +105,7 @@ for idt = 1:length(par.inv.datatypes)
 end
 % plot_TRU_WAVEFORMS(trudata);
 % plot_TRUvsPRE(trudata,trudata);
-save([resdir,'/trudata_USE'],'trudata');
+save([par.res.resdir,'/trudata_USE'],'trudata');
 
 if ~exist('sta','var')
         sta = 'SYN';

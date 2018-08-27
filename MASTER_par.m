@@ -3,9 +3,9 @@ close all
 
 
 projname = 'US'; % SYNTHETICS, LAB_tests, or US, for now
-sta = 'EYMN';
+sta = 'BOZ';
 nwk = 'US';
-gc = [69,59,40,38,36,66]; % will search for gcarcs +/-3 of this value;
+gc = 'all'; % will search for gcarcs +/-3 of this value; % 'all' to do all gcs
 % baz = 315;
 
 notes = [...
@@ -96,14 +96,14 @@ eval(sprintf('! cp parms/bayes_inv_parms.m %s',resdir))
 allpdytp = parse_dtype_all(par);
 
 %% ========================  LOAD + PREP DATA  ========================  
-[trudata,par] = a2_LOAD_DATA(par,proj,resdir,avardir);
+[trudata,par] = a2_LOAD_DATA(par);
 
 %% ===========================  PRIOR  ===========================  
 par.res.zatdep = [5:5:par.mod.maxz]';
-% fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-% prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,par.res.zatdep);
-% plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-% save([resdir,'/prior'],'prior','par');
+fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,par.res.zatdep);
+plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
+save([resdir,'/prior'],'prior','par');
 
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
@@ -113,11 +113,11 @@ profile clear
 profile on
 
 % ===== Prepare for parallel pool =====
-% delete(gcp('nocreate')); 
-% parpool(par.inv.nchains);
-% TD = parallel.pool.Constant(trudata);
+delete(gcp('nocreate')); 
+parpool(par.inv.nchains);
+TD = parallel.pool.Constant(trudata);
 % (((( If not parallel: ))))
-TD(1).Value = trudata; par.inv.verbose = 0;
+% TD(1).Value = trudata; par.inv.verbose = 0;
 
 %% START DIFFERENT MARKOV CHAINS IN PARALLEL
 model0_perchain = cell(par.inv.nchains,1);
@@ -132,7 +132,7 @@ fprintf('\n ============== STARTING CHAIN(S) ==============\n')
 %% ========================================================================
 t = now;
 % mkdir([resdir,'/chainout']);
-for iii = 1:par.inv.nchains 
+parfor iii = 1:par.inv.nchains 
 chainstr = mkchainstr(iii);
 
 
