@@ -1,5 +1,5 @@
-function [misfits_perchain,allmodels_perchain] = c9_rescue_inv(par,resdir)
-%[misfits_perchain,allmodels_perchain] = c9_rescue_inv(par,resdir)
+function [misfits_perchain,allmodels_perchain,par] = c9_rescue_inv(resdir)
+%[misfits_perchain,allmodels_perchain,par] = c9_rescue_inv(resdir)
 %   Function to load saved states of chains in the even the inversion is
 %   stopped early. 
 
@@ -13,6 +13,8 @@ for iii = 1:par.inv.nchains
     misfits_perchain{iii} = a.misfits;
     allmodels_perchain{iii} = a.allmodels;
 end
+
+load([resdir,'/par.mat'],'par');
 
 end
 
