@@ -21,3 +21,4 @@ matlab_to_mineos/*
 *cvfrechet*s
 test_detailed_balance*
 defunct*
+*.m~
