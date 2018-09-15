@@ -39,10 +39,16 @@ elseif strcmp(par.proj.name,'LAB_tests')
     par.data.stadeets.stadeets = struct('Latitude',[],'Longitude',[]);
 
 else
-	try par.data.stadeets.stadeets = irisFetch.Stations('station',par.data.stadeets.nwk,par.data.stadeets.sta,'*','*'); 
-    catch, load([par.proj.rawdatadir,'/stainfo_master.mat']); 
-        par.data.stadeets.stadeets = struct('Latitude',stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Latitude,...
-                          'Longitude',stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Longitude);
+	try 
+        stadeets = irisFetch.Stations('station',par.data.stadeets.nwk,par.data.stadeets.sta,'*','*'); 
+        fns = fieldnames(stadeets);
+        for ii = 1:length(fns)
+            par.data.stadeets.(fns{ii}) = stadeets.(fns{ii});
+        end
+    catch 
+        load([par.proj.rawdatadir,'/stainfo_master.mat']); 
+        par.data.stadeets.Latitude = stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Latitude;
+        par.data.stadeets.Longitude = stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Longitude;
     end
     
     [trudata,zeroDstr] = load_data(par);
