@@ -3,13 +3,16 @@ close all
 
 
 projname = 'US'; % SYNTHETICS, LAB_tests, or US, for now
-sta = 'BOZ';
-nwk = 'US';
+sta = 'WCN';
+nwk = 'NN';
 gc = 'all'; % will search for gcarcs +/-3 of this value; % 'all' to do all gcs
 % baz = 315;
+datN = 30; % generation of data processing
 
 notes = [...
-    'Using only surface waves data types. '...
+    'Not using Ps data, not permitting mantle anisotropy. '...
+    'Moho constrained between 30 and 40 km depth - cf SR16. '...
+    'Relaxed condition of no negative crustal velocity gradients. '...
 ]; 
 
 %% ------------------------- START ------------------------- 
@@ -64,8 +67,6 @@ elseif strcmp(projname,'LAB_tests')
 
 	sta = ['LAB_s',num2str(zsed),'_m',num2str(zmoh),'_z',num2str(zlab),'_w',num2str(wlab),'_f',num2str(100*flab),dtpstr];
     nwk = 'LAB_test';
-else
-    datN = 20;
 end
 
 if strcmp(projname,'SYNTHETICS') || strcmp(projname,'LAB_tests')
