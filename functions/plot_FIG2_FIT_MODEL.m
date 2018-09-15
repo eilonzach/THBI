@@ -71,9 +71,9 @@ set(ax2,'fontsize',14),
 xlim(ax2,[par.mod.crust.vpvsmin,par.mod.crust.vpvsmax])
 xlabel(ax2,'\textbf{Crustal $\mathbf{V_P/V_S}$ ratio}','fontsize',18,'Interpreter','latex')
 
-par.sta = regexprep(par.sta,'_','\\_');
-par.nwk = regexprep(par.nwk,'_','\\_');
-title(ax2,['\textbf{',par.sta,' ',par.nwk,'}'],'fontsize',22,'interpreter','latex')
+sta = regexprep(par.data.stadeets.sta,'_','\\_');
+nwk = regexprep(par.data.stadeets.nwk,'_','\\_');
+title(ax2,['\textbf{',sta,' ',nwk,'}'],'fontsize',22,'interpreter','latex')
 
 
 % Moho depth

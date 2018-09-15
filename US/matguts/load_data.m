@@ -1,5 +1,5 @@
-function [ trudata,zeroDstr ] = load_data( avardir,sta,nwk,gc )
-%[ trudata,cheatstr ] = load_data( avardir,sta,nwk,gc )
+function [ trudata,zeroDstr ] = load_data( par )
+%[ trudata,cheatstr ] = load_data( par )
 
 if nargin < 6
     baz = [];
@@ -13,6 +13,10 @@ zeroDstr = []; % whether or not the daughter component is zeroed at the time of 
 % zeroDstr = '_zeroDstr';
 
 wd = pwd;
+
+avardir = par.data.avardir;
+sta = par.data.stadeets.sta;
+nwk = par.data.stadeets.nwk;
 
 %     addpath('matguts')
 cd(avardir);

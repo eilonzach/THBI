@@ -3,12 +3,15 @@
 lonlim = [-123 -102];
 latlim = [35 50];
 
+lonlim = -120 + [-1 1];
+latlim =   39 + [-1 1];
+
 starttime = '1970-01-01 00:00:00';
-startbytime = '2017-01-01 00:00:00';
-min_longevity_yrs = 15;
+startbytime = '2018-01-01 00:00:00';
+min_longevity_yrs = 5;
 
 %% Get to work
-javaaddpath('/Users/zeilon/Documents/MATLAB/IRIS-WS-2.0.15.jar')
+javaaddpath('/Users/zeilon/Dropbox/Shared/AttenBody_201807/IRIS-WS-2.0.15.jar')
 addpath('plotting')
 
 % grab stations

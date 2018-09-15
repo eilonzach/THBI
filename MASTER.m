@@ -2,7 +2,7 @@ clear all
 close all
 
 
-projname = 'WYOMING'; % SYNTHETICS or WYOMING, for now
+projname = 'US'; % SYNTHETICS, LAB_tests, or US, for now
 sta = 'ECSD';
 nwk = 'US';
 gc = [69,59,40,38,32,66]; % will search for gcarcs +/-3 of this value;

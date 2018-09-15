@@ -2,7 +2,7 @@ clear all
 
 mkdir request_files
 cd request_files
-addpath('~/Documents/MATLAB/BayesianJointInv/WYOMING/')
+addpath('~/Documents/MATLAB/BayesianJointInv/US/')
 
 % Parameters"
 request_details_all = struct(...
@@ -63,6 +63,10 @@ evdata2_WAVEFORMS_breqfast('B02B','YO',true,false,request_details_allh);
 evdata2_WAVEFORMS_breqfast('X04','YO',true,false,request_details_allh);
 evdata2_WAVEFORMS_breqfast('D04','YO',true,false,request_details_allh);
 
+% Reno
+evdata2_WAVEFORMS_breqfast('WCN','NN',true,false,request_details_all);
+
+
 cd ..
 
 return
@@ -92,3 +96,13 @@ evdata2_WAVEFORMS_breqfast('ECHS','YO',false,true,request_details_all);
 evdata2_WAVEFORMS_breqfast('B02B','YO',false,true,request_details_allh);
 evdata2_WAVEFORMS_breqfast('X04','YO',false,true,request_details_allh);
 evdata2_WAVEFORMS_breqfast('D04','YO',false,true,request_details_allh);
+
+% Reno
+evdata2_WAVEFORMS_breqfast('WCN','NN',false,true,request_details_all);
+
+%% Put things where they need to be
+
+movefile(sprintf('dat_%s_%s_30to75.mat','WCN','NN'),'/Volumes/data/THBI/US/STAsrawdat/');
+movefile(sprintf('_%s_%s_30_75_*','WCN','NN'),'/Volumes/data/THBI/US/STAsrawdat/requests');
+
+

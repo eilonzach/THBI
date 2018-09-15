@@ -1,5 +1,5 @@
 function [reqfile, datafile] = evdata2_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess,request_details)
-% reqfile = evdata2_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess)
+% [reqfile, datafile] = evdata2_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess,request_details)
 
 if nargin < 1 || isempty(station) 
     station = 'J19A';
@@ -133,7 +133,7 @@ for ip = 1:length(phases)
     fprintf('Processing %.0f events for %s... ',length(evinfo),phases{ip})
     [ traces ] = breq_fast_process( label{ip},'zeilon',station,'BH?',network,[],time0(:,ip));
     if isempty(traces), continue; end
-    for ie = 1:length(traces);
+    for ie = 1:length(traces)
         fprintf(' processing trace %.0f...\n',ie)
         tr = traces(ie,:);
         % continue if empty
@@ -238,6 +238,8 @@ rayps = rayps(gdevts,:);
 dat_all = dat_all(:,gdevts,:,:);
 tt_all = tt_all(:,gdevts,:);
 
+if isempty(tt_all), fprintf('>>>> No data\n');return; end
+
 figure(66);plot(tt_all(:,1,1),sum(dat_all(:,:,1,1),2))
 
 % %% align with CC
@@ -275,7 +277,7 @@ figure(66);plot(tt_all(:,1,1),sum(dat_all(:,:,1,1),2))
 % %     pause
 % end
 arr_datenum_abs = zeros(norids,length(phases));
-for ie = 1:norids;
+for ie = 1:norids
 	arr_datenum_abs(ie,:) = arr_times(ie,:)/86400 + datenum(evinfo(ie).PreferredTime);
 end
 

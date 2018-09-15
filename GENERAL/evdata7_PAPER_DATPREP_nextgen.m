@@ -2,37 +2,39 @@ close all
 clear 
 %% Setup
 datadir = '/Volumes/data/THBI/US/STAsrawdat/'; % need final slash
-station = 'BOZ';
-network = 'US';
+avardir = '/Volumes/data/THBI/US/STAsinv/'; % path to output avar dir
+station = 'WCN';
+network = 'NN';
 gcreq = [30,75]; % 
+generation = 30; % generation of solution and data processing
 
 phases = {'Ps','Sp'}; % {'Ps','Sp'}
 
-ifsave = false;
+ifsave = true;
 ifcalcsurfV = false; % option to re-calculate surface 
 ifPSV = true;
-verbose = true;
+ifverbose = false;
 ifcheat = true;
 
 % FINAL DATA processing parms
 %=================================
 gc_lims = [30,75]; % 
-filtfs = [1/100;1000]; % filter frequencies pre PCA, in Hz
+filtfs = [1/50;1000]; % filter frequencies pre PCA, in Hz
 % dat_win = [-70 70]; % in sec around main arrival
-Npass = 1;
+Npass = 1; % 1 (causal) 2 (acausal)
 %=================================
 
 % CHEAT - kill parts of waveforms we know we don't like...
 % P-dat
-cheat_win(:,:,1) = [-3   3  % P  comp
-                    -1   35];% SV comp
+cheat_win(:,:,1) = [-3   35  % P  comp
+                     1   35];% SV comp
 % S-dat
-cheat_win(:,:,2) = [-35   1  % P  comp
-                     -5   5];% SV comp
+cheat_win(:,:,2) = [-35   -1  % P  comp
+                     -35   5];% SV comp
 
 % polest parms
-pol_filtfs = [1/100 1];
-pol_win = [-10 5];
+pol_filtfs = [1/40 1];
+pol_win = [-5 5];
 
 % Processing parms
 npoles = 2;
@@ -40,48 +42,65 @@ tapertime = 5; % s at beginnning and end of window to taper over
 
 % SNR parms
 SNR_filtfs = [0.02;100];
-SNR_win = [[-85 -15];[-5 5]];
-SNRmin = 1;%3!!
-SNRmax = 20;% for weighting of error surfaces
+% SNR_filtfs = [1/100;1000];
+SNR_win = [[-85 -15];[-10 10]]; % noise window, data window, in sec from main arrival
+SNRmin = 3;%3!!
 
 % P/SV parms
-psv_SNRmin = 6;%3!!
-psv_SNRmax = 20;% for max weighting of error surfaces
-psv_filtfs = [[0.1;1],[0.066667;0.5]]; % p,s
-psv_win = [[-5;5],[-5;5]]; % p,s
+psv_SNRmin = 3;%3!!
+psv_SNRmax = 30;% for max weighting of error surfaces
+psv_filtfs = [[0.01;1],[0.066667;0.5]]; % p,s
+% psv_filtfs = [[1/100;1000],[1/100;1000]]; % p,s
+psv_win = [[-5;5],[-5;5]]; % p,s  [[-5;5],[-3;6]]
 
-Vp_default = 4.5;%RSSD: 4.53; % WVOR: 3.45 % HYB: 4.5
-Vs_default = 3.18;%RSSD: 2.98; % WVOR: 2.46 % HYB: 3.18
+Vp_default = 3.1*1.8;%RSSD: 5.0; % WVOR: 3.45 % HYB: 4.5
+Vs_default = 3.1;%RSSD: 3.0; % WVOR: 2.46 % HYB: 3.18
 
 % Xcorr parms
-xcor_filtfs = [[0.1;2],[0.05;1/5]]; % p,s
+xcor_filtfs = [[0.1;2],[0.05;1/1]]; % p,s
 xcor_win = [-20 5];
-acormin = 0.50;
+acormin = 0.75;
 stkacormin = 0.90;
 maxlag = 10;
 
 % cluster parms
 maxdepth = 100;  % maximum EQ depth
-min4clust = 5; % minimum # of EQ to even try the stack
+min4clust = 25; % minimum # of EQ to even try the stack
 clust_bazwin = 30;
-clust_arcwin = 10;
+clust_arcwin = 20;
 clust_cutoff = 5; % minimum Delta of clustered EQ locations (deg)
-min4stack = 1;  % minumum # of traces in order to keep the stack
+min4stack = 10;  % minumum # of traces in order to keep the stack
 
 
-addpath('~/Documents/MATLAB/BayesianJointInv/WYOMING/matguts/')
+addpath('~/Documents/MATLAB/BayesianJointInv/US/matguts/')
 addpath('~/Documents/MATLAB/BayesianJointInv/functions/')
 
 %% Load data, prep outputs
 load(sprintf('%sdat_%s_%s_%.0fto%.0f',datadir,station,network,gcreq(1),gcreq(2)));
 SNR_est = zeros(eqar.norids,2,2); % orid,component,phase
+stadeets = irisFetch.Stations('station',network,station,'*','*'); slat = stadeets(1).Latitude; slon = stadeets(1).Longitude;
+odir = [avardir,station,'_dat',num2str(generation)]; 
+mkdir(odir);
 
+%% get Shen and Ritzwoller model for migration; tack ak135 onto the bottom of it
+ncfile = '~/Work/data/models_seismic/SR16_3d_Vs/US.2016.nc';
+[ model ] = read_seismodel_nc( ncfile );
 
-%% Estimate Vs in the crust by minimising P/SV
+vs = squeeze(model.Vsv(mindex(model.lon,mod(slon,360)),mindex(model.lat,slat),:));
+vp = squeeze(model.Vpv(mindex(model.lon,mod(slon,360)),mindex(model.lat,slat),:));
+Z = model.Z;
+if max(Z)<400 
+    addpath('~/Documents/MATLAB/seizmo/models/')
+    akmod = ak135('depths',400);
+    Z = [Z;akmod.depth]; vs = [vs;akmod.vs]; vp = [vp;akmod.vp]; 
+end % extend all models to 250 km depth
+Vmodel = struct('z',Z,'VP',vp,'VS',vs);
+
+%% Estimate Vp and Vs in the crust by minimising P/SV
 % Use all data available
 % weight error maps by SNR
 if ifcalcsurfV && ifPSV
-    [Vp_surf,Vs_surf] = evdata_VpVs_est(eqar,phases,psv_filtfs,psv_win,[],[psv_SNRmin,psv_SNRmax],SNR_filtfs,SNR_win,verbose);
+    [Vp_surf,Vs_surf] = evdata_VpVs_est(eqar,phases,psv_filtfs,psv_win,[],[psv_SNRmin,psv_SNRmax],SNR_filtfs,SNR_win,ifverbose);
     Vp_surf = Vp_surf.comp3_wtstk;
     Vs_surf = Vs_surf.comp3_wtstk;
     pause(0.1)
@@ -107,7 +126,9 @@ iclusts = 1:nclust;
 
 %% Subset to cluster with largest N (can relax this later to loop on all)
 for icl = 1:length(iclusts)
-
+    fprintf('\n==================================================\n')
+    fprintf('===== Cluster %.0f  gcarc ~ %4.1f  seaz ~ %5.1f  =====\n\n',icl,mean(eqar.gcarcs(T==icl)),mean(eqar.seazs(T==icl)))
+    
     plot_dat = cell({});
     nevinds = zeros(length(phases),1);
     evinds_use = cell(length(phases),1);
@@ -116,6 +137,19 @@ for icl = 1:length(iclusts)
     seaz_av = nan(length(phases),1);
     data_stk =[];
     tt_stk = [];
+
+% Individual surface transform velocities...    
+% if ifcalcsurfV && ifPSV
+%     evinds_do_psv  = [1:eqar.norids]';
+%     evinds_do_psv(~(T==iclusts(icl))) = [];    
+% 	[Vp_surf,Vs_surf] = evdata_VpVs_est(eqar,phases,psv_filtfs,psv_win,evinds_do_psv,[psv_SNRmin,psv_SNRmax],SNR_filtfs,SNR_win,verbose);
+%     Vp_surf = Vp_surf.comp3_wtstk;
+%     Vs_surf = Vs_surf.comp3_wtstk;
+% else
+%     Vp_surf = Vp_default;
+%     Vs_surf = Vs_default;
+% end
+
 
     
 %% loop on phases   
@@ -128,14 +162,14 @@ for ip = 1:length(phases)
     if strcmp(phases{ip},'Sp'),evinds(eqar.gcarcs(evinds)<60) = []; end
     if isempty(evinds) || length(evinds)<min4stack, continue; end
     
-    
     %% QC step to kill anything with gradients that are way way out of the ordiary (e.g. from instrument spike)
     evinds(any(abs(diff(eqar.dataZRT(:,evinds,1,ip)))>30*mean(rms(diff(eqar.dataZRT(:,evinds,1,ip))))))=[];
     evinds(any(abs(diff(eqar.dataZRT(:,evinds,2,ip)))>30*mean(rms(diff(eqar.dataZRT(:,evinds,2,ip))))))=[];
     evinds(any(abs(diff(eqar.dataZRT(:,evinds,1,ip)))>50*mean(rms(diff(eqar.dataZRT(:,evinds,1,ip))))))=[];
     evinds(any(abs(diff(eqar.dataZRT(:,evinds,2,ip)))>50*mean(rms(diff(eqar.dataZRT(:,evinds,2,ip))))))=[];
+    fprintf(' > %.0f evinds\n',length(evinds))
     
-    % grab the sample rate
+    %% grab the sample rate
     samprate = unique(round(1./diff(eqar.tt(:,:,ip))));
     ph = phases{ip};
     switch ph(1)
@@ -189,7 +223,7 @@ for ip = 1:length(phases)
     fprintf(' > estimating SNR\n')
     % data clean for SNRest
     cp_snr = struct('samprate',samprate,'fhi',SNR_filtfs(2),'flo',SNR_filtfs(1),...
-                'pretime',-eqar.tt(1,1,ip),'prex',-SNR_win(1,1)-tapertime,'postx',SNR_win(2,2)+tapertime,...
+                'pretime',-eqar.tt(1,1,ip),'prex',tapertime-SNR_win(1,1),'postx',SNR_win(2,2)+tapertime,...
                 'npoles',npoles,'norm',1);
     cp_snr.taperx = tapertime./(cp_snr.prex+cp_snr.postx);
     [ SNRdatp,~,~,~,~,SNRtt] = data_clean(  datPSV(:,evinds,chp),cp_snr ); 
@@ -202,7 +236,7 @@ for ip = 1:length(phases)
     SNR_est(evinds,chd,ip) = max(abs(SNRdatd(dwin,:)))./2./rms(detrend(SNRdatd(nswin,:)));
         
 %% QC on SNR
-    fprintf(' > eliminate low SNR\n')
+    fprintf(' > eliminate %.0f low SNR\n',sum(SNR_est(evinds,chp,ip)<SNRmin))
     evinds(SNR_est(evinds,chp,ip)<SNRmin) = [];
     if length(evinds)<min4stack, continue; end
 
@@ -222,6 +256,7 @@ for ip = 1:length(phases)
         ddpol(evind) = polarity_est(sum(poldat,2),poldat(:,ie),5*samprate);
     end
     % kill arrs with no discernible pol
+    fprintf('      killing %.0f traces with bad pol\n',sum(ddpol(evinds)==0))
     evinds(ddpol(evinds)==0) = [];
     if length(evinds)<min4stack, continue; end
 
@@ -247,21 +282,32 @@ for ip = 1:length(phases)
     
     while any(acor<0)
         fprintf('    xcorr-ing %.0f traces\n',size(xcordat,2))
-        [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat,1./samprate, -xcor_win(1), maxlag,verbose);
+        [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat,1./samprate, -xcor_win(1), maxlag,0);
         fprintf('      killing %.0f traces\n',sum(acor<0))
         xcordat(:,acor<0) = [];
-        evinds(acor<0) = []; if evinds==0, break; end
+        evinds(acor<0) = [];
     end
-    while any(acor<acormin)
+    while any(acor<acormin) && length(evinds)>=min4stack
         fprintf('    xcorr-ing %.0f traces\n',size(xcordat,2))
-        [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat,1./samprate, -xcor_win(1), maxlag,verbose);
+        [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat,1./samprate, -xcor_win(1), maxlag,0);
         fprintf('      killing %.0f traces\n',sum(acor<acormin))
         xcordat(:,acor<acormin) = [];
-        evinds(acor<acormin) = []; if evinds==0, break; end
+        evinds(acor<acormin) = [];
     end
     if length(evinds)<min4stack, continue; end
     
-    %% Align traces and stack
+    %% get average time of maximum 
+    Tmax = zeros(length(evinds),1);
+    for ie = 1:length(evinds)
+        evind = evinds(ie);
+        ind = abs(eqar.tt(:,evind,ip))<6;
+        [~,Tmax(ie)] = crossing(datPSV(ind,evind,chp),eqar.tt(ind,evind,ip)+dcor(ie),max(datPSV(ind,evind,chp)));
+    end
+    %use this to correct the dcors give max at origin
+    dcor = dcor+mean(Tmax);
+    
+    
+    %% Align traces, migrate, and stack
     fprintf(' > align traces\n')
     CdatPSV = nan(size(datPSV,1),eqar.norids,2);
     for ie = 1:length(evinds)
@@ -273,13 +319,43 @@ for ip = 1:length(phases)
 %         CdatPSV(:,evind,1) = filt_quick(CdatPSV(:,evind,1),filtfs(1),filtfs(2),1/samprate,npoles,Npass);
 %         CdatPSV(:,evind,2) = filt_quick(CdatPSV(:,evind,2),filtfs(1),filtfs(2),1/samprate,npoles,Npass);
     end
+
+    %% migrate
+    % get ray parameter of cluster
+    raypavs_clust = rayp_sdeg2skm(mean(eqar.rayps(evinds,ip)));
+    CdatPSVmig = CdatPSV;
+    for ie = 1:length(evinds)
+        evind = evinds(ie);
+        posTdir = -1i^(2*ip);% 1 for ip==1, -1 for ip==2;
+        indmig = find(posTdir*eqar.tt(:,evind,ip) >= 0);
+        indpre = find(posTdir*eqar.tt(:,evind,ip) < 0);
+        
+        ott = migrate_PorS_conv( eqar.tt(indmig,evind,ip),Vmodel,rayp_sdeg2skm(eqar.rayps(evind,ip)),raypavs_clust,phases{ip});
+        
+        indmig = indmig(~isnan(ott));
+        % resolve onto new time axis
+        migdat1 = interp1(ott(~isnan(ott)),CdatPSV(indmig,evind,1),eqar.tt(:,evind,ip),'linear',nan);
+        migdat2 = interp1(ott(~isnan(ott)),CdatPSV(indmig,evind,2),eqar.tt(:,evind,ip),'linear',nan);
+        % add in pre-arrival data
+        migdat1(indpre) = CdatPSV(indpre,evind,1);
+        migdat2(indpre) = CdatPSV(indpre,evind,2);
+        
+        CdatPSVmig(:,evind,1) = migdat1;
+        CdatPSVmig(:,evind,2) = migdat2;
+    end
+        
+    
+%     figure;plot(eqar.tt(:,1,ip),CdatPSVmig(:,evinds,1))
+%     figure;plot(eqar.tt(:,1,ip),CdatPSV(:,evinds,1))
     
     % STACK #1
     fprintf(' > stack #1\n')
-    SdatPSV = squeeze(sum(CdatPSV(:,evinds,:),2));    
+    SdatPSV = squeeze(sum(CdatPSVmig(:,evinds,:),2));    
+
+    %     figure;plot(eqar.tt(:,1,ip),SdatPSV,eqar.tt(:,1,ip),SdatPSVmig)
     
     % ----------------------- save data level 4 -----------------------
-    plot_dat{4,ip} = struct('data',CdatPSV(:,evinds,1:2),'tt',eqar.tt(:,evinds,ip));
+    plot_dat{4,ip} = struct('data',CdatPSVmig(:,evinds,1:2),'tt',eqar.tt(:,evinds,ip));
     % ----------------------- save data level 4 -----------------------
 
     % ----------------------- save data level 5 -----------------------
@@ -309,19 +385,40 @@ for ip = 1:length(phases)
         % align
         C2datPSV(:,evind,1) = interp1(eqar.tt(:,evind,ip), datPSV(:,evind,1) ,eqar.tt(:,evind,ip)+dcor_stk(ie),'linear',0); % interp to new time axis with the shift
         C2datPSV(:,evind,2) = interp1(eqar.tt(:,evind,ip), datPSV(:,evind,2) ,eqar.tt(:,evind,ip)+dcor_stk(ie),'linear',0); % interp to new time axis with the shift
-        % 100s high pass
-%         C2datPSV(:,evind,1) = filt_quick(C2datPSV(:,evind,1),filtfs(1),filtfs(2),1/samprate,npoles,Npass);
-%         C2datPSV(:,evind,2) = filt_quick(C2datPSV(:,evind,2),filtfs(1),filtfs(2),1/samprate,npoles,Npass);
+    end
+    
+    %% migrate2
+    % get ray parameter of cluster
+    raypavs_clust = rayp_sdeg2skm(mean(eqar.rayps(evinds,ip)));
+    C2datPSVmig = C2datPSV;
+    for ie = 1:length(evinds)
+        evind = evinds(ie);
+        posTdir = -1i^(2*ip);% 1 for ip==1, -1 for ip==2;
+        indmig = find(posTdir*eqar.tt(:,evind,ip) >= 0);
+        indpre = find(posTdir*eqar.tt(:,evind,ip) < 0);
+        
+        ott = migrate_PorS_conv( eqar.tt(indmig,evind,ip),Vmodel,rayp_sdeg2skm(eqar.rayps(evind,ip)),raypavs_clust,phases{ip});
+        
+        indmig = indmig(~isnan(ott));
+        % resolve onto new time axis
+        migdat1 = interp1(ott(~isnan(ott)),C2datPSV(indmig,evind,1),eqar.tt(:,evind,ip),'linear',nan);
+        migdat2 = interp1(ott(~isnan(ott)),C2datPSV(indmig,evind,2),eqar.tt(:,evind,ip),'linear',nan);
+        % add in pre-arrival data
+        migdat1(indpre) = C2datPSV(indpre,evind,1);
+        migdat2(indpre) = C2datPSV(indpre,evind,2);
+        
+        C2datPSVmig(:,evind,1) = migdat1;
+        C2datPSVmig(:,evind,2) = migdat2;
     end
     
     % STACK #2
     fprintf(' > Re-stack\n')
-    S2datPSV = squeeze(sum(C2datPSV(:,evinds,:),2));
+    S2datPSV = squeeze(sum(C2datPSVmig(:,evinds,:),2));
     S2datPSV = S2datPSV./maxab(S2datPSV(:));
     Stt = eqar.tt(:,1,ip);
 
     % ----------------------- save data level 6 -----------------------
-    plot_dat{6,ip} = struct('data',C2datPSV(:,evinds,1:2),'tt',eqar.tt(:,evinds,ip));
+    plot_dat{6,ip} = struct('data',C2datPSVmig(:,evinds,1:2),'tt',eqar.tt(:,evinds,ip));
     % ----------------------- save data level 6 -----------------------
 
     % ----------------------- save data level 7 -----------------------
@@ -339,6 +436,7 @@ for ip = 1:length(phases)
 %     [~,tshftd] = crossing(-S2datPSV(:,chp),Stt,max(-S2datPSV(:,chp)));
 %     tshft = min([tshftd,tshftu]);
     [~,tshft] = crossing(S2datPSV(:,chp),Stt,max(S2datPSV(:,chp)));
+    title(sprintf('Cluster %.0f  Phase %s $\\Delta\\sim%4.1f$  $\\phi\\sim%5.1f$ \n\n',icl,phases{ip},mean(eqar.gcarcs(evinds)),mean(eqar.seazs(evinds))),'fontsize',22,'interpreter','latex')
 
     
     Stt = Stt - tshft;
@@ -349,7 +447,10 @@ for ip = 1:length(phases)
     end
 
     pause(0.1)
-    
+    if ifverbose
+        fprintf('>> Click/hit space to continue <<\n');
+        pause
+    end
     % ----------------------- save data level 8 -----------------------
     plot_dat{8,ip} = struct('data',S2datPSV(:,1:2),'tt',Stt);
     % ----------------------- save data level 8 -----------------------
@@ -459,8 +560,8 @@ if ifsave
     if ifcheat, plotdatfile = [plotdatfile,'_cheat']; end
     save(plotdatfile,'plot_dat')
     
-    if exist('AVARS','dir'); movefile([arfile,'.mat'],'AVARS'); end
-    if exist('AVARS','dir'); movefile([plotdatfile,'.mat'],'AVARS'); end
+    if exist(odir,'dir'); movefile([arfile,'.mat'],odir); end
+    if exist(odir,'dir'); movefile([plotdatfile,'.mat'],odir); end
 end
 
 fprintf('Cluster %.0f complete\n\n',icl)
