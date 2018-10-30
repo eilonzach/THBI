@@ -1,11 +1,16 @@
 close all
 clear 
 %% Setup
-datadir = '/Volumes/data/THBI/US/STAsrawdat/'; % need final slash
-avardir = '/Volumes/data/THBI/US/STAsinv/'; % path to output avar dir
-station = 'WCN';
-network = 'NN';
-gcreq = [30,75]; % 
+proj = struct('name','NWUS');
+proj.dir = ['~/Documents/MATLAB/BayesianJointInv/',proj.name];
+wd = pwd;
+addpath(wd);
+
+%% load project, station, and request details and request details
+load([proj.dir,'/project_details.mat']);
+load([proj.infodir,'stations.mat']);
+load([proj.infodir,'/data_request_details.mat']);
+
 generation = 30; % generation of solution and data processing
 
 phases = {'Ps','Sp'}; % {'Ps','Sp'}
@@ -14,7 +19,7 @@ ifsave = true;
 ifcalcsurfV = false; % option to re-calculate surface 
 ifPSV = true;
 ifverbose = false;
-ifcheat = true;
+ifpatricide = true;
 
 % FINAL DATA processing parms
 %=================================
@@ -24,12 +29,12 @@ filtfs = [1/50;1000]; % filter frequencies pre PCA, in Hz
 Npass = 1; % 1 (causal) 2 (acausal)
 %=================================
 
-% CHEAT - kill parts of waveforms we know we don't like...
+% PATRICIDE - kill parts of waveforms we think are incorrectly-transformed parent...
 % P-dat
-cheat_win(:,:,1) = [-3   35  % P  comp
+patricide_win(:,:,1) = [-3   35  % P  comp
                      1   35];% SV comp
 % S-dat
-cheat_win(:,:,2) = [-35   -1  % P  comp
+patricide_win(:,:,2) = [-35   -1  % P  comp
                      -35   5];% SV comp
 
 % polest parms
@@ -44,7 +49,7 @@ tapertime = 5; % s at beginnning and end of window to taper over
 SNR_filtfs = [0.02;100];
 % SNR_filtfs = [1/100;1000];
 SNR_win = [[-85 -15];[-10 10]]; % noise window, data window, in sec from main arrival
-SNRmin = 3;%3!!
+SNRmin = 2;%3!!
 
 % P/SV parms
 psv_SNRmin = 3;%3!!
@@ -57,14 +62,14 @@ Vp_default = 3.1*1.8;%RSSD: 5.0; % WVOR: 3.45 % HYB: 4.5
 Vs_default = 3.1;%RSSD: 3.0; % WVOR: 2.46 % HYB: 3.18
 
 % Xcorr parms
-xcor_filtfs = [[0.1;2],[0.05;1/1]]; % p,s
+xcor_filtfs = [[0.4;2],[0.05;1/1]]; % p,s
 xcor_win = [-20 5];
-acormin = 0.75;
+acormin = 0.70; % 0.75
 stkacormin = 0.90;
-maxlag = 10;
+maxlag = 10; % in seconds
 
 % cluster parms
-maxdepth = 100;  % maximum EQ depth
+maxdepth = 200;  % maximum EQ depth
 min4clust = 25; % minimum # of EQ to even try the stack
 clust_bazwin = 30;
 clust_arcwin = 20;
@@ -72,27 +77,44 @@ clust_cutoff = 5; % minimum Delta of clustered EQ locations (deg)
 min4stack = 10;  % minumum # of traces in order to keep the stack
 
 
-addpath('~/Documents/MATLAB/BayesianJointInv/US/matguts/')
+% addpath('~/Documents/MATLAB/BayesianJointInv/US/matguts/')
 addpath('~/Documents/MATLAB/BayesianJointInv/functions/')
 
+% load Shen & Ritzwoller model for migration
+ncfile = '~/Work/data/models_seismic/SR16_3d_Vs/US.2016.nc';
+[ sr16_model ] = read_seismodel_nc( ncfile );
+
+
+%% ==================  LOOP OVER STATIONS IN DB  ================== 
+%% ==================  LOOP OVER STATIONS IN DB  ================== 
+for is = 5:5%;stainfo.nstas
+station = stainfo.stas{is};
+network = stainfo.nwk{is};
+fprintf( '\n --------- STATION %s,  NETWORK %s  --------- \n',station,network);
+
+rawfile = dir(sprintf('%sdat_%s_%s*',proj.rawdatadir,station,network));
+if isempty(rawfile)
+    fprintf( '>>> No data for sta=%s, nwk=%s <<<\n',station,network);
+    continue
+end
+if length(rawfile)>1, error('More than one data file for this sta+nwk...'); end
+
+
 %% Load data, prep outputs
-load(sprintf('%sdat_%s_%s_%.0fto%.0f',datadir,station,network,gcreq(1),gcreq(2)));
-SNR_est = zeros(eqar.norids,2,2); % orid,component,phase
-stadeets = irisFetch.Stations('station',network,station,'*','*'); slat = stadeets(1).Latitude; slon = stadeets(1).Longitude;
-odir = [avardir,station,'_dat',num2str(generation)]; 
-mkdir(odir);
+load([rawfile.folder,'/',rawfile.name]);
+odir = [proj.STAinversions,station,'_',network,'_dat',num2str(generation)]; 
+if ~exist(odir,'dir')~=7, mkdir(odir); end
 
 %% get Shen and Ritzwoller model for migration; tack ak135 onto the bottom of it
-ncfile = '~/Work/data/models_seismic/SR16_3d_Vs/US.2016.nc';
-[ model ] = read_seismodel_nc( ncfile );
-
-vs = squeeze(model.Vsv(mindex(model.lon,mod(slon,360)),mindex(model.lat,slat),:));
-vp = squeeze(model.Vpv(mindex(model.lon,mod(slon,360)),mindex(model.lat,slat),:));
-Z = model.Z;
+vs = squeeze(sr16_model.Vsv(mindex(sr16_model.lon,mod(stainfo.slons(is),360)),mindex(sr16_model.lat,stainfo.slats(is)),:));
+vp = squeeze(sr16_model.Vpv(mindex(sr16_model.lon,mod(stainfo.slons(is),360)),mindex(sr16_model.lat,stainfo.slats(is)),:));
+Z = sr16_model.Z;
 if max(Z)<400 
     addpath('~/Documents/MATLAB/seizmo/models/')
     akmod = ak135('depths',400);
-    Z = [Z;akmod.depth]; vs = [vs;akmod.vs]; vp = [vp;akmod.vp]; 
+    Z = [Z;akmod.depth]; 
+    vs = [vs;akmod.vs]; 
+    vp = [vp;akmod.vp]; 
 end % extend all models to 250 km depth
 Vmodel = struct('z',Z,'VP',vp,'VS',vs);
 
@@ -109,6 +131,7 @@ else
     Vs_surf = Vs_default;
 end
 
+SNR_est = zeros(eqar.norids,2,2); % orid,component,phase
 
 % return
 
@@ -246,14 +269,25 @@ for ip = 1:length(phases)
     % data clean for polest
     cp = struct('samprate',samprate,'fhi',pol_filtfs(2),'flo',pol_filtfs(1),...
                 'pretime',-eqar.tt(1,1,ip),'prex',-pol_win(1),'postx',pol_win(2),...
-                'taperx',1./diff(pol_win),'npoles',npoles,'norm',1);
+                'taperx',0.5./diff(pol_win),'npoles',npoles,'norm',1);
     [ poldat,~,~,~,~,~] = data_clean(  datPSV(:,evinds,chp),cp ); 
+    
+    % make preliminary stack to compare polarity
+    [ B,ind ] = maxab( poldat ); % find maximum points 
+    ind = ind - min(ind);
+    poldat_shiftscale = nan(size(poldat,1)+max(ind),size(poldat,2));
+    for ii = 1:length(evinds)
+    % shift and scale all traces to align these max points (flipping
+    % reverse polarity ones just for this prelim stack - not in data, yet)
+        poldat_shiftscale(:,ii) = [zeros(max(ind)-ind(ii),1);poldat(:,ii)./B(ii);zeros(ind(ii),1)];
+    end
+    prelimstack = sum(poldat_shiftscale(floor(max(ind)/2):end-1-ceil(max(ind)/2),:),2); % cut stack to be same length as data
     
     ddpol = zeros(eqar.norids,1);
     for ie = 1:length(evinds)
         evind = evinds(ie);
         % compare each indiv. to stack's polarity (as loose ref waveform)
-        ddpol(evind) = polarity_est(sum(poldat,2),poldat(:,ie),5*samprate);
+        ddpol(evind) = polarity_est(prelimstack,poldat(:,ie),5*samprate);
     end
     % kill arrs with no discernible pol
     fprintf('      killing %.0f traces with bad pol\n',sum(ddpol(evinds)==0))
@@ -455,20 +489,20 @@ for ip = 1:length(phases)
     plot_dat{8,ip} = struct('data',S2datPSV(:,1:2),'tt',Stt);
     % ----------------------- save data level 8 -----------------------
     
-    %% CHEAT by killing parts of waveforms we dislike...
-    if ifcheat
+    %% PATRICIDE by killing parts of waveforms we think are un-rotated parent...
+    if ifpatricide
 
     for ic = 1:2
-        S2datPSV_cheat(:,ic) = flat_hanning_win(Stt,S2datPSV(:,ic),cheat_win(ic,1,ip),cheat_win(ic,2,ip),2);
+        S2datPSV_patricide(:,ic) = flat_hanning_win(Stt,S2datPSV(:,ic),patricide_win(ic,1,ip),patricide_win(ic,2,ip),2);
     end
     
     figure(21+10*ip), clf, set(gcf,'pos',[15 425 1426 420]), hold on
-    htr = plot(Stt,S2datPSV_cheat,'linewidth',1.5);
+    htr = plot(Stt,S2datPSV_patricide,'linewidth',1.5);
     set(gca,'xlim',[-50 50],'ylim',[-1. 1.],'fontsize',18)
     legend({'P','SV'})
     
-    % sub in cheating data
-    S2datPSV = S2datPSV_cheat;
+    % sub in patricidal data
+    S2datPSV = S2datPSV_patricide;
     end
     
     %% SNR on each component
@@ -553,11 +587,11 @@ if ifsave
     fprintf('SAVING----------\n')
     
     arfile = sprintf('avar_dat_%s_%s_%.0f_%.0f',station,network,mean(gcarc_av),mean(seaz_av));
-    if ifcheat, arfile = [arfile,'_cheat']; end 
+    if ifpatricide, arfile = [arfile,'_patricide']; end 
     save(arfile,'avar');
     
     plotdatfile = sprintf('plotting_dat_%s_%s_%.0f_%.0f',station,network,mean(gcarc_av),mean(seaz_av));
-    if ifcheat, plotdatfile = [plotdatfile,'_cheat']; end
+    if ifpatricide, plotdatfile = [plotdatfile,'_patricide']; end
     save(plotdatfile,'plot_dat')
     
     if exist(odir,'dir'); movefile([arfile,'.mat'],odir); end
@@ -566,3 +600,6 @@ end
 
 fprintf('Cluster %.0f complete\n\n',icl)
 end % on cluster loop
+
+
+end % station loop

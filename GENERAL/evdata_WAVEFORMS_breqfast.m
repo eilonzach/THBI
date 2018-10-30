@@ -1,5 +1,5 @@
-function [reqfile, datafile] = evdata2_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess,request_details)
-% [reqfile, datafile] = evdata2_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess,request_details)
+function [reqfile, datafile] = evdata_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess,request_details)
+% [reqfile, datafile] = evdata_WAVEFORMS_breqfast(station,network,ifrequest,ifprocess,request_details)
 
 if nargin < 1 || isempty(station) 
     station = 'J19A';
@@ -63,7 +63,7 @@ gcarcs = zeros(norids,1);
 seazs = zeros(norids,1);
 arr_times = zeros(norids,length(phases));
 rayps = zeros(norids,length(phases));
-for ie = 1:norids;
+for ie = 1:norids
     [gcarcs(ie),seazs(ie)] = distance(stainfo(1).Latitude,stainfo(1).Longitude,...
                                 evinfo(ie).PreferredLatitude,evinfo(ie).PreferredLongitude);
     for ip = 1:length(phases)
@@ -131,92 +131,110 @@ dat_all = zeros(diff(datwind)*samprate,norids,3,length(phases)); % channels in o
 tt_all= zeros(diff(datwind)*samprate,norids,length(phases));
 for ip = 1:length(phases)
     fprintf('Processing %.0f events for %s... ',length(evinfo),phases{ip})
-    [ traces ] = breq_fast_process( label{ip},'zeilon',station,'BH?',network,[],time0(:,ip));
+    [ traces ] = breq_fast_process( label{ip},'zeilon',station,chans,network,[],time0(:,ip));
     if isempty(traces), continue; end
     for ie = 1:length(traces)
         fprintf(' processing trace %.0f...\n',ie)
-        tr = traces(ie,:);
+        tr_ev = traces(ie,:);
         % continue if empty
-        for ic = 1:length(tr),ischan(ic)=~isempty(tr(ic).network); end
-        tr = tr(ischan);
-  
-        % continue if not 3 chans
-        if length(tr)<3, continue; end
-        if length(tr)>3 % two sensors/locations for this instrument
-            if mod(length(tr),3)~=0, continue; end % not multiple of 3 chans
-            if length(tr)>3
-                tr = tr([tr.depth] == min(unique([tr.depth]))); % prefer non-borehole
-                tr = tr([tr.sampleRate] == max(unique([tr.sampleRate]))); % prefer high samprate
+        for ic = 1:length(tr_ev),ischan(ic)=~isempty(tr_ev(ic).network); end
+        tr_ev = tr_ev(ischan);
+        if length(tr_ev)<3, continue; end
+        
+        % find out how many different locations per station for this event
+        [locs,nlocs] = tr_locs(tr_ev); 
+        
+        nlocav = 0;
+        for il = 1:nlocs % loop over locations
+            tr = tr_ev(locs==il);
+        
+            % continue if not 3 chans
+            if length(tr)<3, continue; end
+%             if mod(length(tr),3)~=0, continue; end % not multiple of 3 chans
+            if length(tr)>3 % same location but still >3 traces - must be different samprates
+                 tr = tr([tr.sampleRate] == max(unique([tr.sampleRate]))); % prefer high samprate
             end
-            if length(tr)>3
-                tr(strcmp({tr.location},''))=[];
+            if length(tr)~=3, continue; end
+            
+%            
+%             if length(tr)>3
+%                 tr = tr([tr.depth] == min(unique([tr.depth]))); % prefer non-borehole
+%                
+%             end
+%             if length(tr)>3
+%                 tr(strcmp({tr.location},''))=[];
+%             end
+%             if length(tr)>3
+%                 tr = tr(str2num(char({tr.location})) == min(unique(str2num(char({tr.location}))))); % prefer low number location
+%             end
+%             if length(tr)>3
+%                 error('too many locs!')
+%             end
+
+
+            %% down/up sample
+            for ic = 1:3
+                if samprate~=tr(1).sampleRate
+                    tr(ic).data = downsamp(tr(ic).data,tr(ic).sampleRate,samprate);
+                    tr(ic).sampleCount = length(tr(ic).data);
+                    tr(ic).sampleRate = samprate;
+                end  
             end
-            if length(tr)>3
-                tr = tr(str2num(char({tr.location})) == min(unique(str2num(char({tr.location}))))); % prefer low number location
+
+            %% interp to common time axis - gets rid of requested buffer second
+            tt_win = datwind(1) + [0:(diff(datwind)*tr(1).sampleRate - 1)]'./tr(1).sampleRate;
+            datc = zeros(length(tt_win),3);
+            for ic = 1:3
+                tt_raw = tr(ic).startTime + [0:tr(ic).sampleCount-1]'./tr(ic).sampleRate/86400;
+                tt_rel = (tt_raw - datenum(evinfo(ie).PreferredTime))*86400 - arr_times(ie,ip);
+                datc(:,ic) = interp1(tt_rel,tr(ic).data,tt_win);
             end
-            if length(tr)>3
-                error('too many locs!')
+
+            %% remove instrument response
+            for ic = 1:3
+                datc(:,ic) = rm_resp(datc(:,ic),tr(ic).sacpz.zeros,tr(ic).sacpz.poles,tr(ic).sacpz.constant,...
+                                     tr(ic).sampleRate,strcmp(tr(ic).sacpz.units,'M'),0);
             end
-        end
 
-        %% down/up sample
-        for ic = 1:3
-            if samprate~=tr(1).sampleRate
-                tr(ic).data = downsamp(tr(ic).data,tr(ic).sampleRate,samprate);
-                tr(ic).sampleCount = length(tr(ic).data);
-                tr(ic).sampleRate = samprate;
-            end  
-        end
+            %% Rotate to ZNE 
+            % rotation matrix for channels - Z(positive-DOWN), N, E directions 
+            dp = [tr.dip];
+            az = [tr.azimuth];
+            Rmat = [sind(dp(1))  cosd(dp(1))*cosd(az(1))  cosd(dp(1))*sind(az(1));
+                    sind(dp(2))  cosd(dp(2))*cosd(az(2))  cosd(dp(2))*sind(az(2));
+                    sind(dp(3))  cosd(dp(3))*cosd(az(3))  cosd(dp(3))*sind(az(3))];
 
-        %% interp to common time axis - gets rid of requested buffer second
-        tt_win = datwind(1) + [0:(diff(datwind)*tr(1).sampleRate - 1)]'./tr(1).sampleRate;
-        datc = zeros(length(tt_win),3);
-        for ic = 1:3
-            tt_raw = tr(ic).startTime + [0:tr(ic).sampleCount-1]'./tr(ic).sampleRate/86400;
-            tt_rel = (tt_raw - datenum(evinfo(ie).PreferredTime))*86400 - arr_times(ie,ip);
-            datc(:,ic) = interp1(tt_rel,tr(ic).data,tt_win);
-        end
+            datZNE = datc*Rmat;
 
-        %% remove instrument response
-        for ic = 1:3
-            datc(:,ic) = rm_resp(datc(:,ic),tr(ic).sacpz.zeros,tr(ic).sacpz.poles,tr(ic).sacpz.constant,...
-                                 tr(ic).sampleRate,strcmp(tr(ic).sacpz.units,'M'),0);
-        end
+            %% ZNE to ZRT
+            dat(:,:,il) = zne2zrt(datZNE,seazs(ie));% in ZRT, with T positive to right and Z positive down (still)
 
-        %% Rotate to ZNE 
-        % rotation matrix for channels - Z(positive-DOWN), N, E directions 
-        dp = [tr.dip];
-        az = [tr.azimuth];
-        Rmat = [sind(dp(1))  cosd(dp(1))*cosd(az(1))  cosd(dp(1))*sind(az(1));
-                sind(dp(2))  cosd(dp(2))*cosd(az(2))  cosd(dp(2))*sind(az(2));
-                sind(dp(3))  cosd(dp(3))*cosd(az(3))  cosd(dp(3))*sind(az(3))];
+        %         %% Processing
+        %         % detrend
+        %         dat = detrend(dat);
+        %         
+        %         % highpass filter at 100 s
+        %         dat = filt_quick(dat,1/100,samprate/2,1./samprate,2);
+        % 
+        %         %window
+        %         dat = flat_hanning_win(tt_win,dat,datwind(1),datwind(2),tapertime);
 
-        datZNE = datc*Rmat;
+        % %         compare
+        %         figure(45);clf;for ic = 1:3, hold on;plot(tr(ic).data);end
+        %         figure(44);clf; plot(tt_win,dat)
 
-        %% ZNE to ZRT
-        dat = zne2zrt(datZNE,seazs(ie));% in ZRT, with T positive to right and Z positive down (still)
-
-    %         %% Processing
-    %         % detrend
-    %         dat = detrend(dat);
-    %         
-    %         % highpass filter at 100 s
-    %         dat = filt_quick(dat,1/100,samprate/2,1./samprate,2);
-    % 
-    %         %window
-    %         dat = flat_hanning_win(tt_win,dat,datwind(1),datwind(2),tapertime);
-
-    % %         compare
-    %         figure(45);clf;for ic = 1:3, hold on;plot(tr(ic).data);end
-    %         figure(44);clf; plot(tt_win,dat)
-
+            nlocav = nlocav + 1;
+        end % loop on locs
+        
+        %% average data across locations
+        dat = sum(dat,3)./nlocav; 
 
         %% put in data structure
         dat_all(:,ie,:,ip) = dat;
         tt_all(:,ie,ip) = tt_win;
-    end
+    end % loop on events
     fprintf(' stored\n')
-end
+end % loop on phases
 
 
 %% kill nans or empties

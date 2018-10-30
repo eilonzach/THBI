@@ -1,16 +1,17 @@
 %% Script to establish a database of stations and events for body wave study
 clear all
+ifrunall = true;
 
-proj = struct('name','AFR');
+proj = struct('name','NWUS');
 proj.dir = ['~/Documents/MATLAB/BayesianJointInv/',proj.name];
 
 %% Station parameters
-sta_latlims = [-2 17]; % [min_lat max_lat] for stations
-sta_lonlims = [32 47]; % [min_lon max_lon] for stations
+sta_latlims = [40 55]; % [min_lat max_lat] for stations
+sta_lonlims = [-130 -85]; % [min_lon max_lon] for stations
 sta_chans = 'BH*,HH*'; % channel codes to search for
 starttime = '1970-01-01 00:00:00';
-startbytime = '2017-01-01 00:00:00';
-min_longevity_yrs = 15;
+startbytime = '2010-01-01 00:00:00';
+min_longevity_yrs = 10;
 
 %% Event parameters
 mag_lims = [5.7 7.4];
@@ -57,7 +58,9 @@ addpath([proj.dir,'/matguts']);
 
 cd(proj.dir)
 
-return 
+if ~ifrunall
+    return 
+end
 
 %% Write request details information
 request_details_all = struct(...
@@ -68,7 +71,11 @@ request_details_all = struct(...
         'datwind',  datwind);
 
 save([proj.infodir,'/data_request_details.mat'],'request_details_all');
-return
+
+if ~ifrunall
+    return
+end
+
 %% Get station + channel information
 javaaddpath('/Users/zeilon/Documents/MATLAB/IRIS-WS-2.0.15.jar')
 % save station request info
@@ -128,7 +135,9 @@ stainfo.chanazs = chanazs;
                         
 save([proj.infodir,'/stations'],'stainfo','stations_IRIS','stations_request');
 
-return
+if ~ifrunall
+    return
+end
 
 %% Response SAC_PZ files
 % Build and send BREQFAST request file for dataless seed                     
