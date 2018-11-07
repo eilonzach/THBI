@@ -19,7 +19,7 @@ iclust = zeros(size(seazs));
 
 %% Parse EQ into gcarc/baz space
 baztry = [0:359]';
-arctry = [0:180-arcwin+1]';
+arctry = [00:180-arcwin+1]';
 eqinbin = zeros(length(baztry),length(arctry));
 
 for ibaz = 1:length(baztry)
@@ -53,6 +53,11 @@ while any(any(eqinbin>min4clust))
     end 
 end
 nclust = icl;
+
+if nclust == 0 
+    fprintf('Not enough earthquakes in any bin to form a single cluster\n');
+    return
+end
 
 %% plot histograms of parms within each cluster
 if ifplot
