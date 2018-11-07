@@ -101,7 +101,7 @@ for ip = 1:length(phases)
     win = psv_win(:,ip);
     cp = struct('samprate',samprate,'fhi',psv_filtfs(2,ip),'flo',psv_filtfs(1,ip),...
                 'pretime',-eqar.tt(1,1,ip),'prex',-win(1),'postx',win(2),...
-                'taperx',1./diff(win),'npoles',npoles,'norm',1);
+                'taperx',1./diff(win),'npoles',npoles,'norm',0); % << should NOT normalise!
   
     [ datZ,~,~,~,~,~]  = data_clean(eqar.dataZRT(:,evinds{ip},1,ip),cp ); 
     [ datR,~,~,~,~,tt] = data_clean(eqar.dataZRT(:,evinds{ip},2,ip),cp ); 
@@ -125,11 +125,12 @@ for ip=1:2
     for ie = 1:length(evinds{ip})
         evind = evinds{ip}(ie);
         Estk(:,:,ip) = Estk(:,:,ip) + SNR_est(evind,ip)*Esurf(:,:,evind,ip)/mingrid(Esurf(:,:,evind,ip));
+%         Estk(:,:,ip) = Estk(:,:,ip) + Esurf(:,:,evind,ip)/mingrid(Esurf(:,:,evind,ip));
     end
     Estk(:,:,ip) = Estk(:,:,ip)./mingrid(Estk(:,:,ip));
 end
 % relative weight of Ps and Sp:
-wts = [median(SNR_est(evinds{1},1)),median(SNR_est(evinds{2},2))];
+wts = [median(SNR_est(evinds{1},1))*length(evinds{1}),median(SNR_est(evinds{2},2))*length(evinds{2})];
 % stack weighted Ps and Sp E grids
 Estk(:,:,3) = wts(1)*Estk(:,:,1) + wts(2)*Estk(:,:,2);
 Estk(:,:,3) = Estk(:,:,3)./mingrid(Estk(:,:,3));
@@ -144,6 +145,7 @@ Vs_surf.comp1_median = median(Vs_est_all(evinds{1},1));
 Vs_surf.comp1_mean = mean(Vs_est_all(evinds{1},1));
 Vs_surf.comp1_meanwtd = mean_wtd(Vs_est_all(evinds{1},1),SNR_est(evinds{1},1));
 Vs_surf.comp1_wtstk = vs_range(x1);
+
 Vp_surf.comp1_median = median(Vp_est_all(evinds{1},1));
 Vp_surf.comp1_mean = mean(Vp_est_all(evinds{1},1));
 Vp_surf.comp1_meanwtd = mean_wtd(Vp_est_all(evinds{1},1),SNR_est(evinds{1},1));
@@ -178,6 +180,7 @@ if verbose
 figure(12), clf, set(gcf,'pos',[15 370 1426 428])
 subplot(1,3,1), hold on, title('Ps error map')
     contourf(vs_range,vp_range,Estk(:,:,1),40,'edgecolor','none'), colorbar
+    
     scatter(Vs_surf.comp1_wtstk,Vp_surf.comp1_wtstk,50,'r','filled')
 subplot(1,3,2), hold on, title('Sp error map')
     contourf(vs_range,vp_range,Estk(:,:,2),40,'edgecolor','none'), colorbar
@@ -191,8 +194,13 @@ subplot(1,3,3), hold on, title('Combined error map')
 
 
 figure(11)
+subplot(1,2,1), plot(SNR_est(:,1),Vp_est_all(:,1),'o')
+subplot(1,2,2), plot(SNR_est(:,2),Vp_est_all(:,2),'o')
+
+figure(13)
 subplot(1,2,1), plot(SNR_est(:,1),Vs_est_all(:,1),'o')
 subplot(1,2,2), plot(SNR_est(:,2),Vs_est_all(:,2),'o')
+
 end
 
 
