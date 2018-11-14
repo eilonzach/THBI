@@ -65,6 +65,11 @@ if any(strcmp(fieldnames(cond),'nobigdVmoh')) && cond.nobigdVmoh==true
         if ifverbose,fprintf('Failed: moho fractional dVS>30%\n'); end        
         return
     end
+    if model.mantmparm.VS_sp(1) - model.crustmparm.VS_sp(end) > 0.9
+        ifpass = false;
+        if ifverbose,fprintf('Failed: moho absolute dVS>0.8 km/s\n'); end        
+        return
+    end
 end
 
 %% Monotonic increase of V in crust - use the spline knots for this
