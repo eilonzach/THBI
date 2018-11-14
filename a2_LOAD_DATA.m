@@ -54,6 +54,8 @@ else
     [trudata,zeroDstr] = load_data(par);
     par.data.stadeets.sta = [par.data.stadeets.sta,zeroDstr];
     
+    if isempty(trudata), return; end
+    
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
     % set prior sigma as the mean of the data uncertainty if available
@@ -64,6 +66,10 @@ else
     for idt = 1:length(trudtypes)
         if all(~strcmp(trudtypes{idt},par.inv.datatypes)) % no match
             fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
+            trudata = rmfield(trudata,trudtypes{idt});
+        end
+        if isempty(trudata.(trudtypes{idt}))
+            fprintf('WARNING - No %s data in trudata\n',trudtypes{idt})
             trudata = rmfield(trudata,trudtypes{idt});
         end
     end
