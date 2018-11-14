@@ -16,7 +16,7 @@ generation = 30; % generation of solution and data processing
 phases = {'Ps','Sp'}; % {'Ps','Sp'}
 
 ifsave = true;
-ifcalcsurfV = false; % option to re-calculate surface 
+ifcalcsurfV = true; % option to re-calculate surface 
 ifPSV = true;
 ifverbose = false;
 ifpatricide = true;
@@ -32,10 +32,10 @@ Npass = 1; % 1 (causal) 2 (acausal)
 % PATRICIDE - kill parts of waveforms we think are incorrectly-transformed parent...
 % P-dat
 patricide_win(:,:,1) = [-3   35  % P  comp
-                     1   35];% SV comp
+                     0   35];% SV comp     % was [1 35]
 % S-dat
-patricide_win(:,:,2) = [-35   -1  % P  comp
-                     -35   5];% SV comp
+patricide_win(:,:,2) = [-35   0  % P  comp  % was [-35 -1]
+                     -35   5];% SV comp   
 
 % polest parms
 pol_filtfs = [1/40 1];
@@ -54,9 +54,9 @@ SNRmin = 2;%3!!
 % P/SV parms
 psv_SNRmin = 3;%3!!
 psv_SNRmax = 30;% for max weighting of error surfaces
-psv_filtfs = [[0.01;1],[0.066667;0.5]]; % p,s
-% psv_filtfs = [[1/100;1000],[1/100;1000]]; % p,s
-psv_win = [[-5;5],[-5;5]]; % p,s  [[-5;5],[-3;6]]
+% psv_filtfs = [[0.01;1],[0.066667;0.5]]; % p,s
+psv_filtfs = [[0.4;2],[0.05;1/1]]; % p,s
+psv_win = [[-10;10],[-10;10]]; % p,s  [[-5;5],[-3;6]]
 
 Vp_default = 3.1*1.8;%RSSD: 5.0; % WVOR: 3.45 % HYB: 4.5
 Vs_default = 3.1;%RSSD: 3.0; % WVOR: 2.46 % HYB: 3.18
@@ -64,8 +64,8 @@ Vs_default = 3.1;%RSSD: 3.0; % WVOR: 2.46 % HYB: 3.18
 % Xcorr parms
 xcor_filtfs = [[0.4;2],[0.05;1/1]]; % p,s
 xcor_win = [-20 5];
-acormin = 0.70; % 0.75
-stkacormin = 0.90;
+acormin = 0.60; % 0.7
+stkacormin = 0.80; % 0.9
 maxlag = 10; % in seconds
 
 % cluster parms
@@ -75,7 +75,6 @@ clust_bazwin = 30;
 clust_arcwin = 20;
 clust_cutoff = 5; % minimum Delta of clustered EQ locations (deg)
 min4stack = 10;  % minumum # of traces in order to keep the stack
-
 
 % addpath('~/Documents/MATLAB/BayesianJointInv/US/matguts/')
 addpath('~/Documents/MATLAB/BayesianJointInv/functions/')
@@ -87,7 +86,7 @@ ncfile = '~/Work/data/models_seismic/SR16_3d_Vs/US.2016.nc';
 
 %% ==================  LOOP OVER STATIONS IN DB  ================== 
 %% ==================  LOOP OVER STATIONS IN DB  ================== 
-for is = 5:5%;stainfo.nstas
+for is = 28:stainfo.nstas
 station = stainfo.stas{is};
 network = stainfo.nwk{is};
 fprintf( '\n --------- STATION %s,  NETWORK %s  --------- \n',station,network);
@@ -109,13 +108,19 @@ if ~exist(odir,'dir')~=7, mkdir(odir); end
 vs = squeeze(sr16_model.Vsv(mindex(sr16_model.lon,mod(stainfo.slons(is),360)),mindex(sr16_model.lat,stainfo.slats(is)),:));
 vp = squeeze(sr16_model.Vpv(mindex(sr16_model.lon,mod(stainfo.slons(is),360)),mindex(sr16_model.lat,stainfo.slats(is)),:));
 Z = sr16_model.Z;
-if max(Z)<400 
+if mean(vs)>10
     addpath('~/Documents/MATLAB/seizmo/models/')
-    akmod = ak135('depths',400);
+    akmod = ak135('depths',[0:5:300]');
+    Z = akmod.depth; 
+    vs = akmod.vs; 
+    vp = akmod.vp; 
+elseif max(Z)<300 
+    addpath('~/Documents/MATLAB/seizmo/models/')
+    akmod = ak135('depths',[max(Z)+5:5:300]');
     Z = [Z;akmod.depth]; 
     vs = [vs;akmod.vs]; 
     vp = [vp;akmod.vp]; 
-end % extend all models to 250 km depth
+end % extend all models to 400 km depth
 Vmodel = struct('z',Z,'VP',vp,'VS',vs);
 
 %% Estimate Vp and Vs in the crust by minimising P/SV
@@ -313,7 +318,7 @@ for ip = 1:length(phases)
 
     % CROSS CORRELATE - iteratively throw out low acor
     acor = -1;
-    
+    % get rid of negative acors
     while any(acor<0)
         fprintf('    xcorr-ing %.0f traces\n',size(xcordat,2))
         [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat,1./samprate, -xcor_win(1), maxlag,0);
@@ -321,6 +326,7 @@ for ip = 1:length(phases)
         xcordat(:,acor<0) = [];
         evinds(acor<0) = [];
     end
+    % get rid of acors below acormin threshold
     while any(acor<acormin) && length(evinds)>=min4stack
         fprintf('    xcorr-ing %.0f traces\n',size(xcordat,2))
         [dcor, dcstd, dvcstd, acor]=xcortimes(xcordat,1./samprate, -xcor_win(1), maxlag,0);
@@ -407,7 +413,8 @@ for ip = 1:length(phases)
         dcor_stk(ie) = diff(dd);
     end
     % reject indiv traces that don't look enough like the stack...
-    evinds(acor_stk<stkacormin) = [];
+    fprintf('      killing %.0f traces that do not look like stack\n',sum(acor_stk<stkacormin))
+	evinds(acor_stk<stkacormin) = [];
     dcor_stk(acor_stk<stkacormin) = [];
     if length(evinds)<min4stack, continue; end
     

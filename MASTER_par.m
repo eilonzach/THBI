@@ -1,13 +1,26 @@
-clear all
+clear % clear all to make sure we use values below
 close all
 
+global run_params
 
-projname = 'US'; % SYNTHETICS, LAB_tests, or US, for now
-sta = 'WCN';
-nwk = 'NN';
-gc = 'all'; % will search for gcarcs +/-3 of this value; % 'all' to do all gcs
-% baz = 315;
-datN = 30; % generation of data processing
+if isempty(run_params)
+    projname = 'NWUS'; % SYNTHETICS, LAB_tests, or US, for now
+    sta = 'AGMN';
+    nwk = 'US';
+    gc = 'all'; % will search for gcarcs +/-3 of this value; % 'all' to do all gcs
+    datN = 30; % generation of data processing
+    STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')];
+    overwrite = true;
+else
+    projname = run_params.projname;
+    sta = run_params.sta;
+    nwk = run_params.nwk;
+    gc = run_params.gc;
+    datN = run_params.datN;
+    STAMP = run_params.STAMP;
+    overwrite = run_params.overwrite;
+end
+
 
 notes = [...
     'Not using Ps data, not permitting mantle anisotropy. '...
@@ -22,7 +35,9 @@ projdir = [THBIpath,'/',projname,'/'];
 cd(projdir);
 
 run([THBIpath,'/a0_STARTUP_BAYES']);
-run('project_details');
+load('project_details');
+addpath([proj.dir,'matguts/']);
+
 
 
 %% PARMS
@@ -79,17 +94,28 @@ ifsavedat = false;
 
 %% get saving things ready
 par.proj = proj;
-STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')];
-avardir = sprintf('%s/%s_dat%.0f/',par.proj.STAinversions,sta,datN);
+avardir = sprintf('%s%s_%s_dat%.0f/',par.proj.STAinversions,sta,nwk,datN);
 resdir = [avardir,STAMP]; 
-mkdir(resdir);
+if ~exist(resdir,'dir'), mkdir(resdir); end
 fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
 
 par.data = struct('stadeets',struct('sta',sta,'nwk',nwk,'Latitude',[],'Longitude',[]),...
                   'gc',gc,'datN',datN,'avardir',avardir);
-par.res = struct('STAMP',STAMP,'resdir',resdir);
+
+par.res.STAMP = STAMP;
+par.res.resdir= resdir;
+par.res = orderfields(par.res,{'STAMP','resdir','zatdep'});
 
 par_ORIG = par;
+
+% save par
+if exist([resdir,'/misfits_perchain_orig.mat'],'file')==2
+%     yn=input('Station already has results - overwrite? (y/[n]) ','s');
+%     if ~strcmp(yn,'y'), return; end
+    fprintf('Station already has results...')
+    if ~overwrite, fprintf(' SKIPPING\n'); return; else, fprintf(' OVERWRITING\n'); end
+end
+save([resdir,'/par'],'par');
 
 % save par and copy the parms.m file to the results directory
 eval(sprintf('! cp parms/bayes_inv_parms.m %s',resdir))
@@ -98,9 +124,12 @@ allpdytp = parse_dtype_all(par);
 
 %% ========================  LOAD + PREP DATA  ========================  
 [trudata,par] = a2_LOAD_DATA(par);
+if isempty(trudata)
+    error('No data for station %s, nwk %s\n\n',par.data.stadeets.sta,par.data.stadeets.nwk);
+end
 
 %% ===========================  PRIOR  ===========================  
-par.res.zatdep = [5:5:par.mod.maxz]';
+% <NOW DONE IN BAYES_INV_PARMS> par.res.zatdep = [5:5:par.mod.maxz]';
 fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
 prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,par.res.zatdep);
 plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
@@ -109,7 +138,6 @@ save([resdir,'/prior'],'prior','par');
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
-save([resdir,'/par'],'par');
 profile clear
 profile on
 
@@ -295,7 +323,7 @@ try
             
     end % only redo data if model has changed 
 
-%      plot_TRUvsPRE_old(TD.Value,predata)]
+%      plot_TRUvsPRE(TD.Value,predata);
 
     % continue if any Sp or PS inhomogeneous or nan or weird output
     if ifforwardfail(predata,par)
