@@ -125,7 +125,8 @@ allpdytp = parse_dtype_all(par);
 %% ========================  LOAD + PREP DATA  ========================  
 [trudata,par] = a2_LOAD_DATA(par);
 if isempty(trudata)
-    error('No data for station %s, nwk %s\n\n',par.data.stadeets.sta,par.data.stadeets.nwk);
+    fprintf('No data for station %s, nwk %s\n\n',par.data.stadeets.sta,par.data.stadeets.nwk);
+    error
 end
 
 %% ===========================  PRIOR  ===========================  
