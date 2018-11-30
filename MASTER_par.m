@@ -8,6 +8,7 @@ if isempty(run_params)
     sta = 'AGMN';
     nwk = 'US';
     gc = 'all'; % will search for gcarcs +/-3 of this value; % 'all' to do all gcs
+    BWclust = 0;
     datN = 30; % generation of data processing
     STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')];
     overwrite = true;
@@ -16,6 +17,7 @@ else
     sta = run_params.sta;
     nwk = run_params.nwk;
     gc = run_params.gc;
+    BWclust = run_params.BWclust;
     datN = run_params.datN;
     STAMP = run_params.STAMP;
     overwrite = run_params.overwrite;
@@ -89,6 +91,7 @@ if strcmp(projname,'SYNTHETICS') || strcmp(projname,'LAB_tests')
                          'sta',noisesta,'nwk',noisenwk,'gc',noisegcarcs,'noiseup',noiseup,'noiseshape',noiseshape);
 end
 
+par.inv.BWclust = BWclust;
 par.inv.verbose=false;
 ifsavedat = false;
 
@@ -124,10 +127,7 @@ allpdytp = parse_dtype_all(par);
 
 %% ========================  LOAD + PREP DATA  ========================  
 [trudata,par] = a2_LOAD_DATA(par);
-if isempty(trudata)
-    fprintf('No data for station %s, nwk %s\n\n',par.data.stadeets.sta,par.data.stadeets.nwk);
-    error
-end
+check_data(trudata,par)
 
 %% ===========================  PRIOR  ===========================  
 % <NOW DONE IN BAYES_INV_PARMS> par.res.zatdep = [5:5:par.mod.maxz]';
@@ -162,7 +162,7 @@ fprintf('\n ============== STARTING CHAIN(S) ==============\n')
 %% ========================================================================
 t = now;
 % mkdir([resdir,'/chainout']);
-parfor iii = 1:par.inv.nchains 
+parfor iii = 1:par.inv.nchains   
 chainstr = mkchainstr(iii);
 
 
@@ -493,7 +493,9 @@ save([resdir,'/posterior'],'posterior');
 % save([resdir,'/allmods_collated'],'allmodels_collated');
 save([resdir,'/mod_suite'],'suite_of_models');
 save([resdir,'/goodchains'],'goodchains');
+try
 save([resdir,'/SWs_pred'],'SWs_perchain');
+end
 
 %% Final interpolated model with errors
 final_model = c4_FINAL_MODEL(posterior,allmodels_collated,par,1,[resdir,'/final_model']);
@@ -518,6 +520,8 @@ for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt};
     [ final_predata ] = predat_process( final_predata,dtype,par);
 end
+save([resdir,'/final_predata'],'final_predata');
+
    
 [ final_misfit ] = b4_CALC_MISFIT( trudata,final_predata,par,0 );
 [ final_log_likelihood,final_misfit ] = b5_CALC_LIKELIHOOD( final_misfit,trudata,final_model.hyperparms,par );

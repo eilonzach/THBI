@@ -13,24 +13,25 @@ load([proj.infodir,'stations.mat']);
 
 %% specify details of this run
 generation = 30; % generation of solution and data processing
-gc = 'all';
+gc = 1;
+BWclust = 1;
+STAMP = 'AGU18v2';
 
-STAMP = 'AGU18v1';
-
-overwrite = true;
+overwrite = false;
 
 %% put parameters in place for running all stations
 global run_params
 
 run_params.projname = proj.name;
 run_params.gc = gc;
+run_params.BWclust = BWclust;
 run_params.datN = generation;
 run_params.STAMP = STAMP;
 run_params.overwrite = overwrite;
 
 %% ==================  LOOP OVER STATIONS IN DB  ================== 
-for is = 10:stainfo.nstas
-    fprintf('\n\n'); for i=1:3, for j=1:40, fprintf('**'); end; fprintf('*\n'); end; fprintf('\n');
+for is = 38:stainfo.nstas
+    fprintf('\n'); for i=1:3, for j=1:40, fprintf('**'); end; fprintf('*\n'); end; fprintf('\n');
     
     fprintf('STATION: %s\n',stainfo.stas{is})
     fprintf('NETWORK: %s\n\n',stainfo.nwk{is})
@@ -44,5 +45,7 @@ function execute_MASTER_par
     global run_params
     try
     MASTER_par;
+    catch
+%         1;
     end
 end

@@ -4,6 +4,8 @@ function [trudata,par] = a2_LOAD_DATA(par)
 fprintf('LOADING data\n')
 global THBIpath TRUEmodel %#ok<NUSED>
 
+%% -----------------------------------------------------------------
+%% SYNTHETICS
 if strcmp(par.proj.name,'SYNTHETICS')
     
     fprintf(' > Creating custom model and synthetic data\n')
@@ -20,7 +22,8 @@ if strcmp(par.proj.name,'SYNTHETICS')
 
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
-
+%% -----------------------------------------------------------------
+%% LAB TESTING
 elseif strcmp(par.proj.name,'LAB_tests')
 	z0_SYNTH_MODEL_LAB_TEST(par,par.synth.model.zsed,par.synth.model.zmoh,par.synth.model.zlab,par.synth.model.wlab,par.synth.model.flab,1) ;
 	save([par.res.resdir,'/trumodel'],'TRUEmodel');
@@ -38,6 +41,8 @@ elseif strcmp(par.proj.name,'LAB_tests')
     trudata = duplicate_data_distribute(trudata,par);
     par.data.stadeets.stadeets = struct('Latitude',[],'Longitude',[]);
 
+%% -----------------------------------------------------------------
+%% REAL DATA
 else
 	try 
         stadeets = irisFetch.Stations('station',par.data.stadeets.nwk,par.data.stadeets.sta,'*','*'); 
@@ -99,7 +104,7 @@ else
         dtype = par.inv.datatypes{idt}; pdt = parse_dtype( dtype ); 
         % since we added in all data types above, if any not left now, it
         % is because they don't exist in the real data - should not use
-        if ~isfield(trudata,par.inv.datatypes{idt}) && strcmp(pdt{1},'BW') 
+        if ~isfield(trudata,par.inv.datatypes{idt}) %&& strcmp(pdt{1},'BW') 
             kill(idt) = true;
         end
     end

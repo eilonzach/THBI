@@ -44,6 +44,11 @@ v2 = mean([interp1(Eperiods,EphV_period,p2),interp1(ANperiods,ANphV_period,p2)],
 periods = [p1;p2;p3];
 phVs    = [v1;v2;v3];
 
+%% delete any nans
+kill = isnan(phVs);
+periods(kill) = [];
+phVs(kill) = [];
+
 
 end
 

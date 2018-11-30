@@ -35,5 +35,12 @@ ANphV_period = disp_curve_AN_latlon(ANperiods,ilat,ilon,datadir);
 % phVs    = [v1;v2;v3];
 periods = ANperiods;
 phVs = ANphV_period;
+
+%% delete any nans
+kill = isnan(phVs);
+periods(kill) = [];
+phVs(kill) = [];
+
+
 end
 

@@ -5,7 +5,7 @@ if nargin < 6
     baz = [];
 end
 
-P_win = [-5 35];
+P_win = [-5 25];
 S_win = [-35 5] ;
 tapertime = 2;
 samprate = 10;
@@ -123,18 +123,24 @@ addpath(seismoddir);
 [Rperiods,RphV]  = Rph_dispcurve_latlon( avar.slat,avar.slon); % grab composite of AN and EQ
 % err = error_curve_EQ_latlon( 1./periods,avar.slat,avar.slon,phVerrordir);
 
-[Rperiods,iT] = sort(Rperiods);
-RphV = RphV(iT);
-
-SW_Ray_phV = struct('periods',Rperiods,'phV',RphV,'sigma',[]);
+if ~isempty(RphV)
+    [Rperiods,iT] = sort(Rperiods);
+    RphV = RphV(iT);
+    SW_Ray_phV = struct('periods',Rperiods,'phV',RphV,'sigma',[]);
+else
+    SW_Ray_phV=[];
+end
 
 % -------- Love waves
 [Lperiods,LphV]  = Lph_dispcurve_latlon( avar.slat,avar.slon); % grab composite of AN and EQ
 
-[Lperiods,iT] = sort(Lperiods);
-LphV = LphV(iT);
-
-SW_Lov_phV = struct('periods',Lperiods,'phV',LphV,'sigma',[]);
+if ~isempty(LphV)
+    [Lperiods,iT] = sort(Lperiods);
+    LphV = LphV(iT);
+    SW_Lov_phV = struct('periods',Lperiods,'phV',LphV,'sigma',[]);
+else
+    SW_Lov_phV=[];
+end
 
 % -------- Rayleigh HV ratios
 [ HVratios,HVstds,HVperiods] = disp_curve_HV( round_level([avar.slat,avar.slon],0.1),0,[],10,1.5);
@@ -148,7 +154,11 @@ HVperiods = HVperiods(gdT);
 HVratios = HVratios(gdT);
 HVstds = HVstds(gdT);
 
-SW_HV = struct('periods',HVperiods,'HVr',HVratios,'sigma',HVstds);
+if ~isempty(HVratios)
+    SW_HV = struct('periods',HVperiods,'HVr',HVratios,'sigma',HVstds);
+else
+    SW_HV=[];
+end
 
 
 
