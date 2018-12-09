@@ -4,11 +4,11 @@ function axs = plot_TRU_WAVEFORMS( trudata,ifsave,ofile)
 % function to plot predicted and true seismograms (Vertical and Radial)
 % Assumes date in 3-column ZRT matrices with equal sample rate 
 
-if nargin < 3 || isempty(ifsave)
+if nargin < 2 || isempty(ifsave)
     ifsave=false;
 end
 
-if nargin < 4 || isempty(ofile)
+if nargin < 3 || isempty(ofile)
     ofile='true_data';
 end
 

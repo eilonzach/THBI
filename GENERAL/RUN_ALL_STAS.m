@@ -3,8 +3,7 @@ clear all
 %% Setup
 proj = struct('name','NWUS');
 proj.dir = ['~/Documents/MATLAB/BayesianJointInv/',proj.name];
-wd = pwd;
-addpath(wd);
+wd = pwd; addpath(wd);
 cd(proj.dir);
 
 %% load project, station, and request details and request details
@@ -16,6 +15,8 @@ generation = 30; % generation of solution and data processing
 gc = 1;
 BWclust = 1;
 STAMP = 'AGU18v2';
+
+onesta = ''; % DO EYMN next
 
 overwrite = false;
 
@@ -30,7 +31,12 @@ run_params.STAMP = STAMP;
 run_params.overwrite = overwrite;
 
 %% ==================  LOOP OVER STATIONS IN DB  ================== 
-for is = 38:stainfo.nstas
+for is = 98:stainfo.nstas % got to BMO, UO = is 89
+    
+    if exist('onesta') && ~isempty(onesta)
+        if ~strcmp(stainfo.stas{is},onesta), continue; end
+    end
+    
     fprintf('\n'); for i=1:3, for j=1:40, fprintf('**'); end; fprintf('*\n'); end; fprintf('\n');
     
     fprintf('STATION: %s\n',stainfo.stas{is})
@@ -38,7 +44,13 @@ for is = 38:stainfo.nstas
     run_params.sta = stainfo.stas{is};
     run_params.nwk = stainfo.nwk{is};
     
+    % do the work (and make all the Mineos files) in a workdir
+    if exist('workdir','dir')~=7, mkdir('workdir'); end
+    cd('workdir')
+    
     execute_MASTER_par
+    
+    cd(proj.dir)
 end
 
 function execute_MASTER_par

@@ -71,7 +71,7 @@ switch pdtyp{1}
             hp(1) = plot(1./trudata.(dtype).periods,trudata.(dtype).phV,'k-','linewidth',3,'markersize',12,'Marker',msym);
             hp(2) = plot(1./predata.(dtype).periods,predata.(dtype).phV,'r-','linewidth',1.5,'markersize',10,'Marker',msym);
             hl = legend(hp,'True','Pred','Location','NorthEast'); set(hl,'fontsize',15);
-            figN_add('x=R, o=L',ax5,0.05,0.04,12)
+            figN_add('x=R, o=L',ax5,0.05,0.04,12);
             set(ax5,'fontsize',15,'xlim',[0 1.1/min(trudata.(dtype).periods)])
             xlabel('Frequency (Hz)','fontsize',18)
             ylabel('Phase Velocity (km/s)','fontsize',18)
