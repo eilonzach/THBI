@@ -1,18 +1,35 @@
-% function figh = plot_STA_MAP_US(stainfo)
+function [figh,axh,hstas] = plot_STA_MAP_US(fig,stainfo,lolim,lalim)
+
+if nargin<4
+    lalim = [39 56];
+end 
+if nargin<3
+    lolim = [-130 -85];
+end
 
 addpath('~/Dropbox/MATLAB/lib/m_map/');
 
-figure(1); clf; set(gcf,'pos',[70 708 1092 598]);
+figh = figure(fig); clf; set(gcf,'pos',[70 708 1092 598]);
 
-m_proj('Gall-peters','lon',[-130 -85],'lat',[39 56])
+m_proj('Gall-peters','lon',lolim,'lat',lalim)
 m_coast;
-m_grid('linestyle','none','tickdir','out','linewidth',3);
-% m_elev('contourf',[0:400:6000]);
+m_grid('linestyle','none','tickdir','out','linewidth',3,'fontsize',14,'layer','top');
+
+
 % colormap(flipud(copper));
-[CS,CH]=m_etopo2('contourf',[-5000:200:3000],'edgecolor','none');
-colormap(1 - (1-[m_colmap('blues',25);m_colmap('gland',15)]).^1);
+[CS,CH]=m_etopo2('contourf',[[-5000:200:0],[1,10,50,100:200:3000]],'edgecolor','none');
+colormap(1 - (1-[m_colmap('water',27);m_colmap('bland',18)]).^1);
+caxis([-5000 3000])
+% [Cw,Cw]=m_etopo2('contourf',[0 0],'edgecolor','none');
 
-m_plot(stainfo.slons,stainfo.slats,'^k','MarkerFaceColor','r','markersize',11,'linewidth',2)   
+stinbounds = stainfo.slats<=max(lalim) & stainfo.slats>=min(lalim) &...
+             stainfo.slons<=max(lolim) & stainfo.slons>=min(lolim);
 
 
-% end
+hstas = m_plot(stainfo.slons(stinbounds),stainfo.slats(stinbounds),'^k','MarkerFaceColor','r','markersize',11,'linewidth',2);
+
+axh = gca;
+
+
+
+end

@@ -127,6 +127,7 @@ allpdytp = parse_dtype_all(par);
 
 %% ========================  LOAD + PREP DATA  ========================  
 [trudata,par] = a2_LOAD_DATA(par);
+plot_TRU_WAVEFORMS(trudata);
 check_data(trudata,par)
 
 %% ===========================  PRIOR  ===========================  
