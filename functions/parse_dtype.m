@@ -9,9 +9,15 @@ function [ parsed_dtype ] = parse_dtype( dtype )
 %           'Twin' can be default or 'cms', which indicates crustal multiples
 %               included for the P wave
 %           'filtf' can be default (no-filter) or 'lo'
+%  if BW, the fields are: { Phase | CCP | filtf }
+%           'Phase' can be 'Ps' or 'Sp'
+%           'CCP' can be default (real data) or 'ccp', which indicates the 
+%               data is to be drawn from regional CCP stack
+%           'filtf' can be default (no-filter) or 'lo'
 %  if SW, the fields are: { RL | PGE }
-%           'RL' can be 'Ray' or 'Lov' for Rayleigh or Love waves
-%           'PGE' can be 'Phase', 'Group', or 'Ellip'(ticity)
+%           'RL' can be 'Ray' or 'Lov'  or 'HV' 
+%               for Rayleigh or Love waves or Rayleigh_HV ratios
+%           'PGE' can be 'Phase', 'Group' [[NOT: or 'Ellip'(ticity)]]
 
 
 %backwards compatibility
@@ -62,7 +68,41 @@ if strcmp(pdt{1},'BW')
     % FILTF
     if any(strcmp(pdt,'lo'))
         parsed_dtype{4} = 'lo';
+    end
+    
+elseif strcmp(pdt{1},'RF')
+    % defaults
+    parsed_dtype = cell(1,4); 
+    parsed_dtype{1} = 'RF';
+    parsed_dtype{2} = '';
+    parsed_dtype{3} = 'def';
+    parsed_dtype{4} = 'def';
+    % PHASE
+    if any(strcmp(pdt,'Ps'))
+        parsed_dtype{2} = 'Ps';
+    elseif any(strcmp(pdt,'Sp'))
+        parsed_dtype{2} = 'Sp'; 
+    end
+    % TWIN
+    if any(strcmpi(pdt,'ccp'))
+        parsed_dtype{3} = 'ccp';
     end        
+    % FILTF
+    if any(strcmpi(pdt,'lo'))
+        parsed_dtype{4} = 'lo';
+    end
+    
+elseif strcmp(pdt{1},'HKstack')
+    % defaults
+    parsed_dtype = cell(1,4); 
+    parsed_dtype{1} = 'HKstack';
+    parsed_dtype{2} = 'P';
+    % PHASE
+    if any(strcmp(pdt,'_P'))
+        parsed_dtype{2} = 'P';
+    elseif any(strcmp(pdt,'_S'))
+        parsed_dtype{2} = 'S'; 
+    end
 
 elseif strcmp(pdt{1},'SW')
     % defaults
