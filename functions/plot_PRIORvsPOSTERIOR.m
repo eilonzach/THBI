@@ -25,18 +25,18 @@ set(gca,'fontsize',14,'box','on','linewidth',1.5,'layer','top',...
         'xlim',[par.mod.sed.hmin+par.mod.crust.hmin par.mod.sed.hmax+par.mod.crust.hmax],'ylim',[0 axlim(gca,4)])
 title('Moho depth (km)','fontsize',16)
 
-%% V crust top + bottom
-subplot(342), cla, hold on
-X = midpts(linspace(par.mod.crust.vsmin,par.mod.crust.vsmax,20));
-No = hist(posterior.VScrusttop,X)/posterior.Nstored;
-Ni = hist(prior.VScrusttop,X)/prior.Nstored;
-bar(X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
-bar(X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',1.5);
-set(gca,'fontsize',14,'box','on','linewidth',1.5,'layer','top',...
-        'xlim',[par.mod.crust.vsmin,par.mod.crust.vsmax],'ylim',[0 axlim(gca,4)])
-title('Vs crust top (km/s)','fontsize',16)
+%% V crust bottom (commented out top)
+% subplot(342), cla, hold on
+% X = midpts(linspace(par.mod.crust.vsmin,par.mod.crust.vsmax,20));
+% No = hist(posterior.VScrusttop,X)/posterior.Nstored;
+% Ni = hist(prior.VScrusttop,X)/prior.Nstored;
+% bar(X,No','facecolor',[0.9 0.1 0.1],'edgecolor','none','BarWidth',1);
+% bar(X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',1.5);
+% set(gca,'fontsize',14,'box','on','linewidth',1.5,'layer','top',...
+%         'xlim',[par.mod.crust.vsmin,par.mod.crust.vsmax],'ylim',[0 axlim(gca,4)])
+% title('Vs crust top (km/s)','fontsize',16)
 
-subplot(343), cla, hold on
+subplot(342), cla, hold on
 X = midpts(linspace(par.mod.crust.vsmin,par.mod.crust.vsmax,20));
 No = hist(posterior.VScrustbot,X)/posterior.Nstored;
 Ni = hist(prior.VScrustbot,X)/prior.Nstored;
@@ -47,7 +47,7 @@ set(gca,'fontsize',14,'box','on','linewidth',1.5,'layer','top',...
 title('Vs crust bot (km/s)','fontsize',16)
 
 %% Moho dVs
-subplot(344), cla, hold on
+subplot(343), cla, hold on
 X = midpts(linspace(0,30,20));
 No = hist(posterior.fdVSmoh,X)/posterior.Nstored;
 Ni = hist(prior.fdVSmoh,X)/prior.Nstored;
@@ -56,6 +56,22 @@ bar(X,Ni','facecolor','none','edgecolor',[0.2 0.2 0.2],'BarWidth',1,'LineWidth',
 set(gca,'fontsize',14,'box','on','linewidth',1.5,'layer','top',...
         'ylim',[0 axlim(gca,4)])
 title('fractional dVs at Moho (%)','fontsize',16)
+
+%% H-K value
+subplot(344), cla, hold on
+% Xh = linspace(par.mod.sed.hmin+par.mod.crust.hmin,par.mod.sed.hmax+par.mod.crust.hmax,30);
+% Xk = linspace(par.mod.crust.vpvsmin,par.mod.crust.vpvsmax,20);
+% No = histcounts2(posterior.vpvs,posterior.zmoh,Xk,Xh); No = No/maxgrid(No);
+% Ni = histcounts2(prior.vpvs,prior.zmoh,Xk,Xh); Ni = Ni/maxgrid(Ni);
+% contourf(midpts(Xk),midpts(Xh),No',[0:0.1:1],'linestyle','none');
+% contour(midpts(Xk),midpts(Xh),Ni',[0.7:0.1:1],'--k','LineWidth',1.5);
+plot(prior.vpvs,prior.zmoh,'.k','markersize',2)
+plot(posterior.vpvs,posterior.zmoh,'.r','markersize',2)
+set(gca,'fontsize',14,'box','on','linewidth',1.5,'layer','top',...
+     'xlim',[par.mod.crust.vpvsmin,par.mod.crust.vpvsmax],...
+     'ylim',[par.mod.sed.hmin+par.mod.crust.hmin par.mod.sed.hmax+par.mod.crust.hmax])
+title('H-K comparison','fontsize',16)
+
 
 %% Crustal Vp/Vs
 subplot(345), cla, hold on
