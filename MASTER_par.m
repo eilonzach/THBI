@@ -4,14 +4,15 @@ close all
 global run_params
 
 if isempty(run_params)
-    projname = 'NWUS'; % SYNTHETICS, LAB_tests, or US, for now
-    sta = 'AGMN';
-    nwk = 'US';
+    projname = 'AK'; % SYNTHETICS, LAB_tests, or US, for now
+    sta = 'BPAW';
+    nwk = 'AK';
     gc = 'all'; % will search for gcarcs +/-3 of this value; % 'all' to do all gcs
     BWclust = 0;
     datN = 30; % generation of data processing
     STAMP=[sta,datestr(now,'_yyyymmddHHMM_pll')];
     overwrite = true;
+    cd AK
 else
     projname = run_params.projname;
     sta = run_params.sta;
@@ -99,7 +100,7 @@ ifsavedat = false;
 par.proj = proj;
 avardir = sprintf('%s%s_%s_dat%.0f/',par.proj.STAinversions,sta,nwk,datN);
 resdir = [avardir,STAMP]; 
-if ~exist(resdir,'dir'), mkdir(resdir); end
+if ~exist(resdir,'dir'), try mkdir(resdir); catch, error('Looks like no path to output directory - is it mounted?'); end, end
 fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
 
 par.data = struct('stadeets',struct('sta',sta,'nwk',nwk,'Latitude',[],'Longitude',[]),...
@@ -128,27 +129,38 @@ allpdytp = parse_dtype_all(par);
 %% ========================  LOAD + PREP DATA  ========================  
 [trudata,par] = a2_LOAD_DATA(par);
 plot_TRU_WAVEFORMS(trudata);
-check_data(trudata,par)
+% check_data(trudata,par)
 
 %% ===========================  PRIOR  ===========================  
-% <NOW DONE IN BAYES_INV_PARMS> par.res.zatdep = [5:5:par.mod.maxz]';
-fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
-prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,par.res.zatdep);
-plot_MODEL_SUMMARY(prior,1,[resdir,'/prior_fig.pdf']);
-save([resdir,'/prior'],'prior','par');
+% see if prior exists already
+if exist([proj.dir,'prior.mat'],'file')
+    a = load([proj.dir,'prior.mat']);
+    % only do prior if par has changed
+    redoprior = par_equiv_prior(par,a.par);
+    prior = a.prior;
+else
+    redoprior = true;
+end
+    
+if redoprior
+    fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
+    prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,par.res.zatdep);
+    plot_MODEL_SUMMARY(prior,par,1,[resdir,'/prior_fig.pdf']);
+    save([proj.dir,'/prior'],'prior','par');
+end
 
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
 %% ---------------------------- INITIATE ----------------------------
-profile clear
-profile on
+% profile clear
+% profile on
 
 % ===== Prepare for parallel pool =====
-delete(gcp('nocreate')); 
-parpool(par.inv.nchains);
-TD = parallel.pool.Constant(trudata);
+% delete(gcp('nocreate')); 
+% parpool(min([par.inv.nchains,18]));
+% TD = parallel.pool.Constant(trudata);
 % (((( If not parallel: ))))
-% TD(1).Value = trudata; par.inv.verbose = 0;
+TD(1).Value = trudata; par.inv.verbose = 0;
 
 %% START DIFFERENT MARKOV CHAINS IN PARALLEL
 model0_perchain = cell(par.inv.nchains,1);
@@ -163,7 +175,7 @@ fprintf('\n ============== STARTING CHAIN(S) ==============\n')
 %% ========================================================================
 t = now;
 % mkdir([resdir,'/chainout']);
-parfor iii = 1:par.inv.nchains   
+for iii = 1:par.inv.nchains   
 chainstr = mkchainstr(iii);
 
 
@@ -183,6 +195,7 @@ while ifpass==0
         model = model0;
         model = expand_dathparms_to_data( model,TD.Value,par );
         ifpass = a1_TEST_CONDITIONS( model, par );
+        Pm_prior = calc_Pm_prior(model,par);
     end
 
     %% starting model kernel
@@ -196,6 +209,14 @@ while ifpass==0
     model0_perchain{iii} = model0;
     
 end % now we have a starting model!
+
+
+% figure(22); clf; hold on
+% contourf(trudata.HKstack_P.K,trudata.HKstack_P.H,trudata.HKstack_P.Esum',20,'linestyle','none')
+% set(gca,'ydir','reverse')
+% figure(23); clf; hold on
+% set(gca,'ydir','reverse')
+
 
 %% ========================================================================
 %% ------------------------- Start iterations -----------------------------
@@ -221,10 +242,14 @@ ii = ii+1;
     
 %% SAVE model every saveperN
 if mod(ii,par.inv.saveperN)==0 && log_likelihood ~= -Inf
-    [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,misfits,allmodels,predat_save,savedat,time0);
+    [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,Pm_prior,misfits,allmodels,predat_save,savedat,time0);
 %     if isfield(TD.Value,'SW_Ray_phV')
 %         preSW(:,misfits.Nstored) = predata.SW_Ray_phV.phV;
 %     end
+%     figure(22); hold on
+%     plot([model.vpvs],[model.zmoh],'-ow')
+%     figure(23);
+%     plot(model.VS,model.z,'k')
 end
 
 %% SAVE inv state every Nsavestate iterations
@@ -233,7 +258,8 @@ if rem(ii,par.inv.Nsavestate)==0
 end
     
 try
-    if rem(ii,4*par.inv.saveperN)==0 || ii==1, fprintf('Iteration %s%.0f\n',chainstr,ii); end
+    if rem(ii,4*par.inv.saveperN)==0 || ii==1, fprintf('Sta %4s nwk %2s  Iteration %s%.0f\n',...
+            par.data.stadeets.sta,par.data.stadeets.nwk,chainstr,ii); end
     if par.inv.verbose, pause(0.05); end
     ifaccept=false;
     ifpass = false;
@@ -266,19 +292,16 @@ try
     while ifpass == false % only keep calculating if model passes (otherwise save and move on)
 
 %% ===========================  PERTURB  ===========================  
-    if ii==1
-        model1 = model; % don't perturb on first run
-        ptbnorm = 0;
-        ifpass = 1;
-        p_bd = 1;
-        log_likelihood1 = -Inf;
+    if ii==1 % no perturb on first run
+        model1 = model; ptbnorm = 0; ifpass = 1; p_bd = 1; Pm_prior1 = Pm_prior; log_likelihood1 = -Inf;
         ptb{ii,1} = 'start';
     else
-		[model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
+		[model1, ptb{ii,1}, p_bd ] = b2_PERTURB_MODEL(model,par,temp);
 		ifpass = a1_TEST_CONDITIONS( model1, par, par.inv.verbose  );
 		if p_bd==0, if par.inv.verbose, fprintf('  nope\n'); end; break; end
 		if ~ifpass, if par.inv.verbose, fprintf('  nope\n'); end; break; end
 		
+        Pm_prior1 = calc_Pm_prior(model1,par);  % Calculate prior probability of new model
 		[ modptb ] = calc_Vperturbation( Kbase.modelk,model1);
 		
         ptbnorm = 0.5*(norm(modptb.dvsv) + norm(modptb.dvsh)) + norm(modptb.dvpv);
@@ -298,8 +321,10 @@ try
 		ID = [chainstr,num2str(ii,'%05.f'),num2str(randi(99),'_%02.f')];
 
         try
-            predata = b3_FORWARD_MODEL_BW( model1,par,TD.Value,ID,0 );
-            predata = b3_FORWARD_MODEL_SW_kernel( model1,Kbase,par,predata );
+            [predata,laymodel1] = b3__INIT_PREDATA(model1,par,TD.Value,0 );
+            predata = b3_FORWARD_MODEL_BW(       model1,laymodel1,par,predata,ID,0 );
+            predata = b3_FORWARD_MODEL_RF_ccp(   model1,laymodel1,par,predata,ID,0 );
+            predata = b3_FORWARD_MODEL_SW_kernel(model1,Kbase,par,predata );
         catch
             fail_chain=fail_chain+1;
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
@@ -311,8 +336,8 @@ try
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
         end
         
-        predata0=predata;
-        
+        % process predata - filter/taper etc.
+        predata0=predata; % save orig.        
         for idt = 1:length(par.inv.datatypes)
             predata = predat_process( predata,par.inv.datatypes{idt},par);
         end
@@ -354,13 +379,13 @@ try
     end % while ifpass
     
 %% ========================  ACCEPTANCE CRITERION  ========================
-    [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass);        
+    [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass,Pm_prior1,Pm_prior);        
     
     % ======== PLOT ========  if accept
     if ifaccept && par.inv.verbose && fail_chain==0
-        plot_TRUvsPRE( TD.Value,predata);
+        plot_TRUvsPRE( TD.Value,predata);  pause(0.001);
         if strcmp(projname,'SYNTHETICS')
-            plot_MOD_TRUEvsTRIAL( TRUEmodel, model1 );
+            plot_MOD_TRUEvsTRIAL( TRUEmodel, model1 ); pause(0.001);
         end
     end
     
@@ -369,12 +394,18 @@ try
         if par.inv.verbose
             fprintf('  *********************\n  Accepting model! logL:  %.4e ==>  %.4e\n  *********************\n',...
                 log_likelihood,log_likelihood1)
+            fprintf('                   Pm_+prior:  %.4e ==>  %.4e\n  *********************\n',...
+                Pm_prior,Pm_prior1)
         end
+               
         % save new model!
         model = model1;
         log_likelihood = log_likelihood1;
+        Pm_prior = Pm_prior1;
         misfit = misfit1;
         predat_save = predat_save1;
+        
+        
         
     %% UPDATE KERNEL if needed 
         if newK==true
@@ -411,7 +442,9 @@ try
             fprintf('Kernel reset BROKE at %s-%.0f... REWIND to %s-%.0f <<<<<<<<<<<<<<< \n',chainstr,ii,chainstr,Kbase.itersave)
             model = Kbase.modelk;
             ii = Kbase.itersave;
-            predata = b3_FORWARD_MODEL_BW( model,par,TD.Value,ID,0 );
+
+            [predata,laymodel] = b3_FORWARD_MODEL_BW( model,par,TD.Value,ID,0 );
+            predata = b3_FORWARD_MODEL_RF_ccp( model,laymodel,par,predata,ID,0 );
             predata = b3_FORWARD_MODEL_SW_kernel( model,Kbase,par,predata );
             fail_reset = fail_reset+1;
         end
@@ -420,6 +453,7 @@ try
         % calc. approximation - if so, need to undo this, or chain will get
         % stuck once we reset kernels).
         [log_likelihood,misfit] = b8_LIKELIHOOD_RESET(par,predata,TD.Value,Kbase,model.datahparm);
+        Pm_prior = calc_Pm_prior(model,par);
         nchain = 0;
     end
 
@@ -461,13 +495,13 @@ plot_invtime(misfits_perchain,[resdir,'/invTime.pdf']);
 
 %% Process results
 fprintf('  > Processing results\n')
-[misfits_perchain,allmodels_perchain,goodchains] = c1_PROCESS_RESULTS( misfits_perchain,allmodels_perchain,par,1,[resdir,'/modMisfits']);
-misfits_perchain_original = misfits_perchain;    % misfits_perchain = misfits_perchain_original;
-allmodels_perchain_original = allmodels_perchain;% allmodels_perchain = allmodels_perchain_original;
-misfits_perchain = misfits_perchain(goodchains);
-allmodels_perchain = allmodels_perchain(goodchains);
-
-[ allmodels_collated ] = collate_allmodels_perchain( allmodels_perchain,par );
+% misfits_perchain = misfits_perchain_original;
+% allmodels_perchain = allmodels_perchain_original;
+[misfits_perchain,allmodels_perchain,goodchains,...
+ misfits_perchain_original,...
+ allmodels_perchain_original,...
+ allmodels_collated] ...
+ = c1_PROCESS_RESULTS( misfits_perchain,allmodels_perchain,par,1,[resdir,'/modMisfits']);
 
 [ hypparm_trends ] = plot_HYPERPARAMETER_TRENDS( allmodels_perchain,[resdir,'/hyperparmtrend.pdf'] );
 plot_KNOT_TRENDS( allmodels_perchain,par,[resdir,'/knottrends']  )
@@ -475,7 +509,7 @@ plot_KNOT_TRENDS( allmodels_perchain,par,[resdir,'/knottrends']  )
 posterior = c2_BUILD_POSTERIOR(allmodels_collated,par,par.res.zatdep);
 
 fprintf('  > Plotting posterior\n')
-plot_MODEL_SUMMARY(posterior,1,[resdir,'/posterior.pdf'])
+plot_MODEL_SUMMARY(posterior,par,1,[resdir,'/posterior.pdf'])
 
 fprintf('  > Plotting prior vs. posterior\n')
 plot_PRIORvsPOSTERIOR(prior,posterior,par,1,[resdir,'/prior2posterior.pdf'])
@@ -529,12 +563,8 @@ save([resdir,'/final_predata'],'final_predata');
 plot_TRUvsPRE( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data.pdf']);
 plot_TRUvsPRE_WAVEFORMS( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data_wavs.pdf']);
 
-%addpath([resdir]); 
 
 plot_FIG2_FIT_MODEL( final_model,posterior,prior,par,1,[resdir,'/fig2_FIT_MODEL.pdf']);
-
-profile viewer
-
 
 % did we save the data?
 if ifsavedat
@@ -545,8 +575,5 @@ if ifsavedat
     plot_FIG1_FIT_DATA( trudata,savedat,par,1,[resdir,'/fig1_FIT_DATA.pdf'])
 end
 
-
-%rmpath([resdir]);
-
-% clear('TRUEmodel')
-return
+clear('TRUEmodel')
+% return

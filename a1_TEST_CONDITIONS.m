@@ -58,14 +58,14 @@ if any(strcmp(fieldnames(cond),'pos_sed2basement')) && cond.pos_sed2basement==tr
     end
 end
 
-%% No moho V jumps exceeding 30%
+%% No moho V jumps exceeding 25%
 if any(strcmp(fieldnames(cond),'nobigdVmoh')) && cond.nobigdVmoh==true
-    if model.fdVSmoh > 30
+    if model.fdVSmoh > 25
         ifpass = false;
-        if ifverbose,fprintf('Failed: moho fractional dVS>30%\n'); end        
+        if ifverbose,fprintf('Failed: moho fractional dVS>25%\n'); end        
         return
     end
-    if model.mantmparm.VS_sp(1) - model.crustmparm.VS_sp(end) > 0.9
+    if model.mantmparm.VS_sp(1) - model.crustmparm.VS_sp(end) > 0.8
         ifpass = false;
         if ifverbose,fprintf('Failed: moho absolute dVS>0.8 km/s\n'); end        
         return
@@ -79,6 +79,21 @@ if any(strcmp(fieldnames(cond),'pos_crustdV')) && cond.pos_crustdV==true
     if any(diff(model.crustmparm.VS_sp) < 0)
         ifpass = false;
         if ifverbose,fprintf('Failed: crustal velocity non-increasing\n'); end        
+        return
+    end
+end
+
+%% No sharp gradients immediately adjacent to the moho
+if any(strcmp(fieldnames(cond),'no_moho_sharpgrad')) && cond.no_moho_sharpgrad==true
+    [sub_gradient,supra_gradient] = moho_adj_gradients(model);
+    if supra_gradient < -0.008 || abs(supra_gradient) > 0.1
+        ifpass = false;
+        if ifverbose,fprintf('Failed: strong or negative VS gradient immediately above Moho\n'); end        
+        return
+    end
+    if sub_gradient < -0.008 || abs(sub_gradient) > 0.1
+        ifpass = false;
+        if ifverbose,fprintf('Failed: strong or negative VS gradient immediately below Moho\n'); end        
         return
     end
 end

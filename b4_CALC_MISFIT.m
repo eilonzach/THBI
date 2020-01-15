@@ -1,7 +1,7 @@
 function [ misfit ] = b4_CALC_MISFIT( trudata,predata,par,ifplot,SWwt )
 % [ misfit ] = b4_CALC_MISFIT( trudata,predata,par,ifplot,SWwt)
 %  
-% Calculate cross-convolution missfit between observed data and
+% Calculate cross-convolution misfit between observed data and
 % (unit-normalised) predicted data
 
 if nargin < 4 || isempty(ifplot)
@@ -27,13 +27,15 @@ for id = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{id};
     pdt = parse_dtype(dtype);
     
-    % BODY WAVE
-    if strcmp(pdt{1},'BW')
+    % BODY WAVE 
+    % Calculate cross-convolution misfit between observed data and
+    % (unit-normalised) predicted data
+    if any(strcmp({'BW','RF'},pdt{1}))
         misfit2    = zeros(length(trudata.(dtype)),1);
         stfpow_tru = zeros(length(trudata.(dtype)),1);
         stfpow_pre = zeros(length(trudata.(dtype)),1);
         for itr = 1:length(trudata.(dtype))
-            [ misfit2(itr) ] = xconv_misfit(trudata.(dtype)(itr).PSV(:,1),...
+            misfit2(itr)    = xconv_misfit(trudata.(dtype)(itr).PSV(:,1),...
                                                trudata.(dtype)(itr).PSV(:,2),...
                                                predata.(dtype)(itr).PSV(:,1),...
                                                predata.(dtype)(itr).PSV(:,2));
@@ -48,6 +50,11 @@ for id = 1:length(par.inv.datatypes)
     elseif strcmp(pdt{1},'SW')
         e = (trudata.(dtype).(pdt{3}) - predata.(dtype).(pdt{3}));
         misfit.E2.(dtype) = e'*(SWwt.(dtype).*e); % SUM OF SQUARED MISFITS, NORMALISED
+
+    % HKstack
+    elseif strcmp(pdt{1},'HKstack')
+        % a is deliberate dummy - not sure how to calc error here
+        misfit.E2.(dtype) = 1./predata.(dtype).E_by_Emax; % pick out error value
 
     end % end on data type
 end

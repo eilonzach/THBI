@@ -99,6 +99,7 @@ end
 
 %% ===================  SP RFs FROM PROPAGATOR MATRIX  ====================
 if any(strcmp(pdtyps(:,2),'Sp'))
+if any(~strcmp(pdtyps(strcmp(pdtyps(:,2),'Sp'),3),'ccp'))
     Spdat = par.inv.datatypes{find(strcmp(pdtyps(:,2),'Sp'),1,'first')};
     [ unique_rayps_S,irayps_S ] = rayp_vals( [final_predata.(Spdat).rayp] );
     for ir = 1:length(unique_rayps_S)
@@ -164,6 +165,7 @@ if any(strcmp(pdtyps(:,2),'Sp'))
             final_predata.(Spdat)(inds(iir),1).nsamp = length(final_predata.(Spdat)(inds(iir)).PSV);
         end
     end
+end % Sp not ccp
 end
 
 
@@ -209,6 +211,102 @@ if any(strcmp(pdtyps(:,1),'SW'))
     end
 
 end
+
+%% ===================  SP RFs FROM PROPAGATOR MATRIX  ====================
+if any(strcmp(pdtyps(strcmp(pdtyps(:,2),'Sp'),3),'ccp'))
+    rayp = final_predata.RF_Sp_ccp.rayp;
+    % declare samprate of 10 - moot as migrated to depth and interpolated later
+    samprate = 10;
+
+    S_inc = rayp2inc(rayp,laymodel.Vs(end),6371-laymodel.zlayb(end));
+    P_inc = rayp2inc(rayp,laymodel.Vp(end),6371-laymodel.zlayb(end));
+    % check if S inhomogeneous
+    if isreal(asind(laymodel.Vs*sind(S_inc)./laymodel.Vs(end))) % 
+
+        % find layers where S to P conversion will not go inhomogeneous
+        Play_incs = asind(laymodel.Vp*sind(P_inc)./laymodel.Vp(end));
+        if any(~isreal(Play_incs))
+            nimagplay = [1:find(imag(Play_incs),1,'first')-1];
+            fns = fieldnames(laymodel);
+            laymodel_Suse = laymodel; 
+            laymodel_Suse.nlay = length(nimagplay);
+            for jj = 1:length(fns)
+                if length(laymodel.(fns{jj}))==1, continue; end
+                laymodel_Suse.(fns{jj}) = laymodel_Suse.(fns{jj})(nimagplay);
+            end
+            % set appropriate S_inc for the actual base
+            S_inc = rayp2inc(rayp,laymodel_Suse.Vs(end),6371-laymodel_Suse.zlayb(end));
+        else
+            laymodel_Suse = laymodel;
+        end
+        [predat_sp,tt_sp] = run_propmat(laymodel_Suse,ID,'Sp',samprate, S_inc, par.forc.synthperiod,par.forc.nsamps);
+        % pad with zeros
+        tt_sp = [tt_sp(1) + [-1000:-1]'./samprate; tt_sp ;tt_sp(end) + [1:1000]'./samprate];
+        predat_sp = [zeros(1000,3);predat_sp;zeros(1000,3)];
+        %correct corrdinate order
+        predat_sp_ZRT = predat_sp(:,[3,1,2]); % in Z,R,T
+
+        % convert to P, SV - use LAYMODEL Vp,Vs to do this precisely
+        [predat_sp_PSV(:,1),predat_sp_PSV(:,2)] = ...
+            Rotate_XZ_to_PSV(predat_sp_ZRT(:,2),-predat_sp_ZRT(:,1),... % z positive down
+            laymodel.Vp(1),laymodel.Vs(1),...
+            rayp_sdeg2skm(rayp,laymodel_Suse.zlayb(end)));
+
+        predat_sp_PSV = predat_sp_PSV./maxab(predat_sp_PSV(:,2)); % normalise on parental max, make positive
+        tt_sp_Sar = mean(tt_sp(predat_sp_PSV(:,2)==max(predat_sp_PSV(:,2)))); % estimate main S-wave arrival time from first big upswing
+        tt_sp = tt_sp - tt_sp_Sar;
+        tt_sp = round_level(tt_sp,0.001);
+
+        Sp_widewind = [-50 10];
+        inwind = (tt_sp >= Sp_widewind(1)) & (tt_sp < Sp_widewind(2)); 
+        % crop
+        predat_sp_PSV = predat_sp_PSV(inwind,:);
+        tt_sp = tt_sp(inwind);
+
+        if ~any(inwind)
+            tt_sp = []; predat_sp_PSV = nan; % NO GOOD DATA
+        end
+
+        %% migrate from time to depth
+        %     fprintf(' Migrating RF(z) to RF(t) using %s, rayp = %.3f s/deg\n',par.datprocess.CCP.migratemodel,par.datprocess.CCP.rayp_S)
+        simp_final_mod = struct('z',final_model.Z,'VS',final_model.VSav,'VP',final_model.VPav);
+        zz_mig = migrate_PorS_conv(tt_sp,simp_final_mod,rayp_sdeg2skm(rayp),0,'Sp');
+
+        % fill in zz_mig "above" surface, corresponding to positive time...
+        zz_mig(max(tt_sp)>=tt_sp & tt_sp>0) = -flipud(zz_mig(0>tt_sp & tt_sp>=-max(tt_sp)));
+        % discard remaining nans
+        kill = isnan(zz_mig);
+        zz_mig(kill) = [];
+        predat_sp_PSV(kill,:) = [];
+
+        % convert RF_t to RF_z 
+        RF_P  = interp1(zz_mig,predat_sp_PSV(:,1),final_predata.RF_Sp_ccp.zz,'linear',0);
+        RF_SV  = interp1(zz_mig,predat_sp_PSV(:,2),final_predata.RF_Sp_ccp.zz,'linear',0);
+
+        % taper off daughter = P component
+        Zwin = par.datprocess.CCP.Zwin.def;
+        taperz = par.datprocess.CCP.taperz;
+        RF_Pw = flat_hanning_win(final_predata.RF_Sp_ccp.zz,RF_P,Zwin(1)-taperz/2,Zwin(2)+taperz/2,taperz);    
+
+
+    else
+        final_predata.RF_Sp_ccp.PSV = NaN;    
+    end
+    % -----------------  PUT INTO DATA STRUCTURE  -----------------
+    final_predata.RF_Sp_ccp.PSV = [RF_Pw,RF_SV]; 
+    
+end
+
+%% ===================  HK-stack: put in values  ====================
+if any(strcmp(pdtyps(:,1),'HKstack'))
+    HKdat = par.inv.datatypes{find(strcmp(pdtyps(:,1),'HKstack'),1,'first')};
+    ik = mindex(data.(HKdat).K,final_model.vpvsav);
+    ih = mindex(data.(HKdat).H,zmoh);
+    final_predata.(HKdat).H = zmoh;
+    final_predata.(HKdat).K = final_model.vpvsav;
+    final_predata.(HKdat).E_by_Emax = data.(HKdat).Esum(ik,ih)/maxgrid(data.(HKdat).Esum);
+end
+
 
 
 end

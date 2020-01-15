@@ -34,16 +34,26 @@ for id = 1:length(par.inv.datatypes)
     sig = datahparm.(['sig_',dtype]); 
     % account for sig coming from final_model, w/ both mu and std fields
     if isstruct(sig), sig = 10.^(sig.mu_log10); end
+    
     M(id) = length(data.(dtype));
     % calculate N - # of periods if SW, # of degrees of freedom if BW
 	N = zeros(M(id),1);
     for itr = 1:length(data.(dtype))
-        if strcmp(pdt{1},'SW') 
-            N(itr) = length(data.(dtype)(itr).periods);
-        elseif strcmp(pdt{1},'BW') 
-            N(itr) = mean([scdofcalc(data.(dtype)(itr).PSV(:,1)),scdofcalc(data.(dtype)(itr).PSV(:,2))]);
-        end
+        N(itr) = data.(dtype)(itr).dof;
     end
+    
+    %     Below is now done once at the beginning in a2_load_data by dofTHBI.m
+%         if strcmp(pdt{1},'SW') 
+%             N(itr) = length(data.(dtype)(itr).periods);
+%         elseif any(strcmp({'BW','RF'},pdt{1}))
+%             if strcmp(pdt{3},'ccp')
+%                 N(itr) = length(data.(dtype)(itr).zz)*data.(dtype)(itr).dof_per_z;
+%             else
+%                 N(itr) = mean([scdofcalc(data.(dtype)(itr).PSV(:,1)),...
+%                                scdofcalc(data.(dtype)(itr).PSV(:,2))]);
+%             end
+%         end
+%     end
     
     chi2 = misfit.E2.(dtype)./sig./sig;
     rms  = sqrt(misfit.E2.(dtype)./N);

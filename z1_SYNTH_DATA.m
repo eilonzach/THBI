@@ -136,7 +136,8 @@ for id = 1:length(par.inv.datatypes)
     if strcmp(pdtyp{2},'HV')
         truSWdat.HVr = run_HVkernel(TRUEmodel,SWperiods,'initmod',1,0,par.inv.verbose);
     else
-        [truSWdat.phV,truSWdat.grV] = run_mineos(TRUEmodel,SWperiods,pdtyp{2},'initmod',1,0,par.inv.verbose);
+        par_mineos = struct('R_or_L',pdtyp{2},'phV_or_grV',pdtyp{3},'ID','synthmod');
+        [truSWdat.phV,truSWdat.grV] = run_mineos(TRUEmodel,SWperiods,par_mineos,1,0,par.inv.verbose);
     end
 
     % add noise

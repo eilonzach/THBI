@@ -1,4 +1,4 @@
-function   [misfits,allmodels,savedat] = b9_SAVE_RESULT(iter,log_likelihood,misfit,model,misfits,allmodels,predata,savedat,time0)
+function   [misfits,allmodels,savedat] = b9_SAVE_RESULT(iter,log_likelihood,misfit,model,Pm_prior,misfits,allmodels,predata,savedat,time0)
 %  [misfits,allmodels,savedat] = b9_SAVE_RESULT(iter,log_likelihood,misfit,model,misfits,allmodels,predata,time0)
 % 
 % Function to store model into results structure and to store the misfit
@@ -38,6 +38,7 @@ for ifn = 1:length(fns)
     allmodels(N).(fns{ifn}) = model.(fns{ifn});
 end
 allmodels(N).iter = iter;
+allmodels(N).Pm_prior = Pm_prior;
 allmodels(1).Nstored = N;
 
 %% DATA
