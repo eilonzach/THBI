@@ -1,16 +1,16 @@
 function [traces,tt,status,cmdout] = run_propmat(LAYmodel,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
-% [traces,tt,LAYmodel1D] = run_propmat(model,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
+% [traces,tt,status,cmdout] = run_propmat(LAYmodel,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
 % 
 % Function to run the propagator matrix code for a given layerised model. 
-% tic
+
 if nargin < 2 || isempty(ID)
-    ID = 'eg';
+    ID = 'example';
 end
 if nargin < 3 || isempty(ph)
     ph= 'Ps';
 end
 if nargin < 4 || isempty(samprate)
-    samprate = 3;
+    samprate = 5;
 end
 if nargin < 5 || isempty(inc)
     inc = 5; % this is the incidence angle at the bottom of the model
@@ -49,6 +49,7 @@ ifile = [ID,'_synth.in'];
 ofile0 = [ID,'_synth.out0'];
 ofile1 = [ID,'_synth.out1'];
 ofile2 = [ID,'_synth.out2'];
+oimagout = [ID,'_imag.out'];
 
 %% =======================================================================
 
@@ -59,13 +60,14 @@ elseif strcmp(ph,'Sp')
 end
 nlay = LAYmodel.nlay;
 
+
 %% write to PropMatrix format
 writePROPMATmodfile( LAYmodel,modfile)
 writePROPMATparmfile(ifile, Vbot, nlay+1,nsamps,samprate,cutf) % add one layer for the halfspace
 if strcmp(sourc,'gauss')
-    writePROPMATexecfile_gauss( execfile,modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,ph,synthperiod,obsdist,ocomps)
+    writePROPMATexecfile_gauss( execfile,modfile,ifile,ofile0,ofile1,ofile2,oimagout,odatfile,inc,ph,synthperiod,obsdist,ocomps)
 elseif strcmp(sourc,'sine')
-    writePROPMATexecfile( execfile,modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,ph,synthperiod,obsdist,ocomps)
+    writePROPMATexecfile(       execfile,modfile,ifile,ofile0,ofile1,ofile2,oimagout,odatfile,inc,ph,synthperiod,obsdist,ocomps)
 end
 system(['chmod +u+x ' execfile]);
 
