@@ -1,5 +1,9 @@
 function writePROPMATexecfile_gauss( execfile, modfile,ifile,ofile0,ofile1,ofile2,oimfile,odatfile,inc,PS,soT,obsdist,ocomps)
+<<<<<<< HEAD
 %writePROPMATexecfile_gauss( execfile, modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,PS,soT,obsdist,ocomps)
+=======
+%writePROPMATexecfile_gauss( execfile, modfile,ifile,ofile0,ofile1,ofile2,oimfile,odatfile,inc,PS,soT,obsdist,ocomps)
+>>>>>>> 2d2bfed0aa4d93d4c3ab3b3d946f09c339ecb36f
 %   
 % Function to write execution file for PropMatrix code
 % 

@@ -75,6 +75,7 @@ switch pdtyp{1}
         if strcmp(pdtyp{4},'lo'),axn = axn+2; end
 
 
+
     xa1 = axs(2*axn-1); % order [5,7,1,3]
     xa2 = axs(2*axn); % order [6,8,2,4]
     if strcmp(pdtyp{2}(1),'P'), ps=1;xp=1;xsv=0.1;elseif strcmp(pdtyp{2}(1),'S'), ps=2;xp=0.1;xsv=1; end

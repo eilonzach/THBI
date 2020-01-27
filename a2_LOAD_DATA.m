@@ -5,8 +5,19 @@ fprintf('LOADING data\n')
 global THBIpath TRUEmodel %#ok<NUSED>
 
 %% -----------------------------------------------------------------
+%% EXAMPLE
+if any(strcmp(par.proj.name,{'EXAMPLE'}))
+    
+    fprintf(' > Loading example data and target model\n')
+    
+    global TRUEmodel TLM trudata
+    
+    load('target_model.mat')
+    load('trudata.mat')
+    
+    %% -----------------------------------------------------------------
 %% SYNTHETICS
-if strcmp(par.proj.name,'SYNTHETICS')
+elseif any(strcmp(par.proj.name,{'SYNTHETICS','test_RF_vs_BW'}))
     
     fprintf(' > Creating custom model and synthetic data\n')
     
@@ -22,6 +33,12 @@ if strcmp(par.proj.name,'SYNTHETICS')
 
     % distribute data for different processing (e.g. _lo, _cms)
     trudata = duplicate_data_distribute(trudata,par);
+   
+    % conv to receiver functions
+    if any(strcmp(par.proj.name,{'SYNTHETICS','test_RF_vs_BW'}))
+        trudata = BW_2_RF(trudata,par);
+    end
+    
 %% -----------------------------------------------------------------
 %% LAB TESTING
 elseif strcmp(par.proj.name,'LAB_tests')
@@ -56,6 +73,7 @@ else
         par.data.stadeets.Longitude = stainfo(strcmp({stainfo.StationCode},par.data.stadeets.sta)).Longitude;
     end
     
+    %% LOAD THE DATA!!
     [trudata,zeroDstr] = load_data(par);
     par.data.stadeets.sta = [par.data.stadeets.sta,zeroDstr];
     
@@ -116,11 +134,16 @@ end
 % save data
 save([par.res.resdir,'/trudata_ORIG'],'trudata');
 
-% window, filter data 
+%% PROCESS - window, filter data 
 for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt};
     [ trudata ] = predat_process( trudata,dtype,par);
 end
+
+%% DEGREES OF FREEDOM
+fprintf('Computing degrees of freedom (N) for each data type\n');
+trudata = dofTHBI(trudata);
+
 % plot_TRU_WAVEFORMS(trudata);
 % plot_TRUvsPRE(trudata,trudata);
 save([par.res.resdir,'/trudata_USE'],'trudata');

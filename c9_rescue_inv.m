@@ -1,7 +1,7 @@
 function [misfits_perchain,allmodels_perchain,par,trudata,prior] = c9_rescue_inv(resdir)
 %[misfits_perchain,allmodels_perchain,par,trudata,prior] = c9_rescue_inv(resdir)
 %   Function to load saved states of chains in the even the inversion is
-%   stopped early. 
+%   stopped early.
 
 load([resdir,'/par.mat'],'par');
 
@@ -19,10 +19,14 @@ end
 try
     load([resdir,'/prior.mat'],'prior');
 catch
-    warning('could not find prior for rescuing')
-    prior = []; end
+    try
+        load([strtok(fliplr(strtok(fliplr(resdir),'/')),'_'),'/prior.mat']);
+    catch
+        warning('could not find prior for rescuing')
+        prior = [];
+    end
+end
 
 load([resdir,'/trudata_USE.mat'],'trudata');
 
 end
-

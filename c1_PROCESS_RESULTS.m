@@ -1,4 +1,5 @@
-function [misfits,allmodels,goodchains] = c1_PROCESS_RESULTS( misfits,allmodels,par,ifsave,ofile )
+function [misfits,allmodels,goodchains,misfits_orig,allmodels_orig,allmodels_collated]...
+               = c1_PROCESS_RESULTS( misfits,allmodels,par,ifsave,ofile )
 % [misfits,allmodels,goodchains] = c1_PROCESS_RESULTS( misfits,allmodels,par,ifsave,ofile )
 % 
 % Script to process the results and make some plots of the misfit + the
@@ -39,9 +40,12 @@ goodchains = true(nchains,1);
 
 for iii = 1:nchains
     
-    if nchains>1, mf = misfits{iii};   else mf = misfits; end
-    if nchains>1, am = allmodels{iii}; else am = allmodels; end
+%     if nchains>1, mf = misfits{iii};   else mf = misfits; end
+%     if nchains>1, am = allmodels{iii}; else am = allmodels; end
+    mf = misfits{iii};
+    am = allmodels{iii};
     if isempty(am), continue; end
+    try am(1).Nstored; catch, am = am{1}; end
     basecol = colour_get(iii,nchains+1,0,parula); basecol = basecol(:)';
     
     %% TRIM MISFITS AND ALLMODELS STRUCTURES
@@ -190,34 +194,37 @@ end
 pause(0.05)
 
 %% PARSE GOOD AND BAD CHAINS
-rms_alldata = nan(nchains,length(par.inv.datatypes));
+chi2_alldata = nan(nchains,length(par.inv.datatypes));
 
 % gather average rms errors of each chain
 for iii=1:nchains
-    if goodchains(iii)==false, rms_alldata(iii,:) = nan; continue; end % already know it's bad
+    if goodchains(iii)==false, chi2_alldata(iii,:) = nan; continue; end % already know it's bad
     for id = 1:length(par.inv.datatypes)
         % assign structures
         if nchains>1, mf = misfits{iii}; else mf = misfits; end
         if isempty(mf), goodchains(iii)=false; continue; end
         ind = mf.iter > par.inv.burnin & mf.iter~=0;
         dtype = par.inv.datatypes{id};
-        % work out rms for this dtype (average across all data streams for this dtype)
-        rms = [mf.rms.(dtype)]';
-        rms_alldata(iii,id) = mean(sum(rms(ind,:),2)); 
+        % work out chi2 for this dtype (average across all data streams for this dtype)
+        chi2 = [mf.chi2.(dtype)]';
+        chi2_alldata(iii,id) = mean(sum(chi2(ind,:),2)); 
         % work out if the chain got stuck - if there is no change to the
-        % data over many iterations - must be stuck for 500 iterations to
+        % data over many iterations - must be stuck for 600 iterations to
         % signify
-        Nstuck = 500;
-        if any(any(diff(rms(ind,:),ceil(Nstuck./par.inv.saveperN),1)==0))
+        Nstuck = 600;
+        if any(any(diff(chi2(ind,:),ceil(Nstuck./par.inv.saveperN),1)==0)) 
+            if strcmp(dtype,'HKstack_P'), continue; end % don't do for HK stack - may stick for ages!
             fprintf('Chain %s stuck\n',mkchainstr(iii));
-            rms_alldata(iii,id) = nan; continue;
+            chi2_alldata(iii,id) = nan; 
         end
     end
 end
 
 % goodchains = true(nchains,1);
 for id = 1:length(par.inv.datatypes)
-    goodchains = goodchains & (rms_alldata(:,id) < 1.3*nanmean(rms_alldata(:,id)));
+    mean_chi2_dtp = nanmean(chi2_alldata(:,id));
+    std_chi2_gdtp = nanstd(chi2_alldata(chi2_alldata(:,id)<mean_chi2_dtp,id));
+    goodchains = goodchains & (chi2_alldata(:,id) < mean_chi2_dtp + 5*std_chi2_gdtp);
 end
 goodchains=find(goodchains);
 
@@ -240,6 +247,18 @@ for ii = linspace(par.mod.sed.hmax+par.mod.crust.hmax,par.mod.maxz,6)
     try fprintf('TRUE Vs at %.0f km = %.2f km/s\n',ii,linterp(Z,vs,ii));end
 end
 end
+
+%% collate all
+
+misfits_orig = misfits;    % misfits_perchain = misfits_perchain_original;
+allmodels_orig = allmodels;% allmodels_perchain = allmodels_perchain_original;
+if par.inv.nchains > 1
+    allmodels = allmodels(goodchains);
+end
+misfits = misfits(goodchains);
+
+[ allmodels_collated ] = collate_allmodels_perchain( allmodels,par );
+
 
 % 
 %% PLOT PROGRESS OF MODEL

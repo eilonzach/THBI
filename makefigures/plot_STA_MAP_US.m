@@ -1,7 +1,11 @@
 function [figh,axh,hstas] = plot_STA_MAP_US(fig,stainfo,lolim,lalim)
 
 if nargin<4
+<<<<<<< HEAD
     lalim = [39 51.5];
+=======
+    lalim = [39 56];
+>>>>>>> 2d2bfed0aa4d93d4c3ab3b3d946f09c339ecb36f
 end 
 if nargin<3
     lolim = [-130 -85];
@@ -16,13 +20,17 @@ m_coast;
 m_grid('linestyle','none','tickdir','out','linewidth',3,'fontsize',14,'layer','top');
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 2d2bfed0aa4d93d4c3ab3b3d946f09c339ecb36f
 % colormap(flipud(copper));
 [CS,CH]=m_etopo2('contourf',[[-5000:200:0],[1,10,50,100:200:3000]],'edgecolor','none');
 colormap(1 - (1-[m_colmap('water',27);m_colmap('bland',18)]).^1);
 caxis([-5000 3000])
 % [Cw,Cw]=m_etopo2('contourf',[0 0],'edgecolor','none');
 
+<<<<<<< HEAD
 % US state borders
 addpath('~/Dropbox/MATLAB/lib/borders_v3.1.2/borders/');
 [bordlat,bordlon] = borders('Continental US');
@@ -31,6 +39,8 @@ for ib = 1:length(bordlat)
 end
 set(hbord,'linewidth',1.3);
 
+=======
+>>>>>>> 2d2bfed0aa4d93d4c3ab3b3d946f09c339ecb36f
 stinbounds = stainfo.slats<=max(lalim) & stainfo.slats>=min(lalim) &...
              stainfo.slons<=max(lolim) & stainfo.slons>=min(lolim);
 

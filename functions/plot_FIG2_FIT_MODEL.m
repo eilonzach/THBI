@@ -23,10 +23,12 @@ ax5 = axes('position',[0.75 0.09 0.21 0.36]); hold on
 vslims = [3.2 5.1];
 
 % get SEMum profiles for ref
+try
 addpath('/Volumes/data/models_seismic/SEMum2_avg_VS/');
 a = SEMum2_avgprofiles(0,'/Volumes/data/models_seismic/SEMum2_avg_VS/');
 cmp = lines;
 indz = a.Z>=55;
+end
 
 %%  =========================  MODEL FIT  =========================  
 
@@ -46,7 +48,7 @@ plot(ax1,vslims(1,:)-0.1,Zmoh(1)*[1 1],'--k','linewidth',2)
 text(ax1,vslims(1,1)+0.1,Zmoh(1)+8,sprintf('$%.1f \\pm %.1f$',Zmoh),...
     'fontsize',17,'interpreter','latex')    
 % young oceans plot on
-plot(ax1,a.ocean_0_25(indz),a.Z(indz),'-','linewidth',2,'color',[0.3 0.8 0.5]);
+% plot(ax1,a.ocean_0_25(indz),a.Z(indz),'-','linewidth',2,'color',[0.3 0.8 0.5]);
 
 set(ax1,'ydir','reverse','fontsize',14,'ytick',[0:25:max(Z)],...
 'color','none','xlim',vslims,'ylim',[0 275],'linewidth',2,'box','on');

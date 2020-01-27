@@ -1,16 +1,16 @@
 function [traces,tt,status,cmdout] = run_propmat(LAYmodel,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
-% [traces,tt,LAYmodel1D] = run_propmat(model,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
+% [traces,tt,status,cmdout] = run_propmat(LAYmodel,ID,ph,samprate,inc,synthperiod,nsamps,cutf,sourc)
 % 
 % Function to run the propagator matrix code for a given layerised model. 
-% tic
+
 if nargin < 2 || isempty(ID)
-    ID = 'eg';
+    ID = 'example';
 end
 if nargin < 3 || isempty(ph)
     ph= 'Ps';
 end
 if nargin < 4 || isempty(samprate)
-    samprate = 3;
+    samprate = 5;
 end
 if nargin < 5 || isempty(inc)
     inc = 5; % this is the incidence angle at the bottom of the model
@@ -59,6 +59,7 @@ elseif strcmp(ph,'Sp')
     Vbot = LAYmodel.Vs(end);
 end
 nlay = LAYmodel.nlay;
+
 
 %% write to PropMatrix format
 writePROPMATmodfile( LAYmodel,modfile)

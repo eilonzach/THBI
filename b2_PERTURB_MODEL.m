@@ -1,4 +1,4 @@
- function [ model,ptb,p_bd ] = b2_PERTURB_MODEL( model,par,temp )
+ function [ model,ptb,P_bd ] = b2_PERTURB_MODEL( model,par,temp )
 % [ model_out,ptb,p_bd ] = b2_PERTURB_MODEL( model_in, par,temp )
 %   
 %  function to perturb the model by choosing one of the fields and then
@@ -22,7 +22,7 @@
 %  ptb     - a string with information about which model parm was changed
 %  p_bd    - the probability of a birth or death, if relevant
 
-p_bd = 1; %default, for non b/d moves
+P_bd = 1; %default, for non b/d moves
 model0 = model;
 
 ptbopts = {'ptb_Vmod','ptb_disc','ptb_Mmod','ptb_sigdat'};
@@ -121,7 +121,7 @@ switch ptbopts{optflag} % decide what to modify
                     % within bounds?
                     vma = par.mod.crust.vpvsmax;
                     vmi = par.mod.crust.vpvsmin;
-                    if V1>vma || V1<vmi, p_bd = 0; return, end
+                    if V1>vma || V1<vmi, P_bd = 0; return, end
                     
                 case 'xi' % 14% chance we modify xi value
                     std = temp.*par.mod.crust.xistd; % get std of perturbation
@@ -137,7 +137,7 @@ switch ptbopts{optflag} % decide what to modify
                     % within bounds?
                     vma = par.mod.crust.ximax;
                     vmi = par.mod.crust.ximin;
-                    if V1>vma || V1<vmi, p_bd = 0; end                    
+                    if V1>vma || V1<vmi, P_bd = 0; end                    
 
                 case 'kz' % 14% chance we modify spline knot location
                     if model.crustmparm.Nkn<=2, continue, end % can't change spline location if only two splines, as can't change edges
@@ -152,7 +152,7 @@ switch ptbopts{optflag} % decide what to modify
                     % within bounds?
                     zma = model.crustmparm.knots(end);
                     zmi = model.crustmparm.knots(1);
-                    if z1>zma || z1<zmi, p_bd = 0; return, end                    
+                    if z1>zma || z1<zmi, P_bd = 0; return, end                    
                     
                     model.crustmparm.knots(isp2mod) = z1; % insert perturbed val  
                     model.crustmparm.knots = sort(model.crustmparm.knots);
@@ -211,7 +211,7 @@ switch ptbopts{optflag} % decide what to modify
                     % within bounds?
                     vma = par.mod.mantle.ximax;
                     vmi = par.mod.mantle.ximin;
-                    if V1>vma || V1<vmi, p_bd = 0; end                    
+                    if V1>vma || V1<vmi, P_bd = 0; end                    
 
                 case 'kz' % 14% chance we modify spline knot location
                     if model.mantmparm.Nkn<=2, continue, end % can't change spline location if only two knots, as can't change edges
@@ -226,7 +226,7 @@ switch ptbopts{optflag} % decide what to modify
                     % within bounds?
                     zma = par.mod.maxkz;
                     zmi = model.mantmparm.knots(1);
-                    if z1>zma || z1<zmi, p_bd = 0; return, end                    
+                    if z1>zma || z1<zmi, P_bd = 0; return, end                    
 
                     model.mantmparm.knots(isp2mod) = z1; % insert perturbed val  
                     model.mantmparm.knots = sort(model.mantmparm.knots);
@@ -274,7 +274,7 @@ switch ptbopts{optflag} % decide what to modify
                         dV0 = vb-vt; % V jump at disc
                         dV1 = dV0 + random('norm',0,std,1); % calc. random perturbation
                         
-                        if dV1<0, p_bd = 0; return, end
+                        if dV1<0, P_bd = 0; return, end
 %                         if avV - dV1/2 > par.mod.sed.vsmax, p_bd = 0; return, end
 %                         if avV + dV1/2 < par.mod.crust.vsmin, p_bd = 0; return, end
 
@@ -300,7 +300,7 @@ switch ptbopts{optflag} % decide what to modify
                         avV1 = avV0 + random('norm',0,std,1); % calc. random perturbation
                         
 %                         if (avV1+dV/2 > vcma), p_bd = 0; return, end % if vels have to increase in the crust
-                        if (avV1-dV/2 < vsmi), p_bd = 0; return, end
+                        if (avV1-dV/2 < vsmi), P_bd = 0; return, end
 %                         if avV1 - dV/2 > par.mod.sed.vsmax, p_bd = 0; return, end
 %                         if avV1 + dV/2 < par.mod.crust.vsmin, p_bd = 0; return, end
 
@@ -326,8 +326,8 @@ switch ptbopts{optflag} % decide what to modify
                         dh = h1-h0;
                         if rem(h1-h0,1)==0, h1 = h1+1e-5; end
                         
-                        if h1 < 0 || h1 < hmi, p_bd = 0; return, end
-                        if h1 > hma, p_bd = 0; return, end
+                        if h1 < 0 || h1 < hmi, P_bd = 0; return, end
+                        if h1 > hma, P_bd = 0; return, end
                         
                         model.crustmparm.knots(1) = h1;
                         model.crustmparm.knots = sort(model.crustmparm.knots);
@@ -386,7 +386,7 @@ switch ptbopts{optflag} % decide what to modify
                         dV0 = vb-vt; % V jump at disc
                         dV1 = dV0 + random('norm',0,std,1); % calc. random perturbation
                             
-                        if dV1<0, p_bd = 0; return, end
+                        if dV1<0, P_bd = 0; return, end
 %                         if avV - dV1/2 > par.mod.crust.vsmax, p_bd = 0; return, end
 %                         if avV + dV1/2 < par.mod.mantle.vsmin, p_bd = 0; return, end
                         
@@ -398,6 +398,7 @@ switch ptbopts{optflag} % decide what to modify
                         
                     case 'avV'
                         std = temp.*mean([par.mod.crust.vsstd,par.mod.mantle.vsstd]);
+                        if std==0, continue; end % don't perturb if no perturbation
                         vt = model.crustmparm.VS_sp(end);
                         vb = model.mantmparm.VS_sp(1);
                         avV0 = (vt+vb)/2; % mean V of disc
@@ -446,8 +447,8 @@ switch ptbopts{optflag} % decide what to modify
 %                         if any(diff(model.mantmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
 %                         if any(diff(model.crustmparm.knots)<par.mod.dz), continue, end % can't be too close to existing knot
 
-                        if h1 < hmi, p_bd = 0; return, end
-                        if h1 > hma, p_bd = 0; return, end
+                        if h1 < hmi, P_bd = 0; return, end
+                        if h1 > hma, P_bd = 0; return, end
 
                         % -------- modify splines in crust -------- 
                         cminz = model.crustmparm.knots(1);
@@ -536,8 +537,9 @@ switch ptbopts{optflag} % decide what to modify
                 k = model.crustmparm.Nkn;
                 
                 if add_or_rm == 1 % ADDING a layer
+                    if par.mod.crust.kmin==par.mod.crust.kmax, continue; end % don't perturb if no perturbation allowed
                     ptb = 'crust_kn_add';
-                    if model.crustmparm.Nkn+1>par.mod.crust.kmax, p_bd = 0; return, end % can't add more than max knots
+                    if model.crustmparm.Nkn+1>par.mod.crust.kmax, P_bd = 0; return, end % can't add more than max knots
                     % add knot
                     model.crustmparm.Nkn = model.crustmparm.Nkn+1;
                     model.crustmparm.Nsp = model.crustmparm.Nsp+1;
@@ -575,13 +577,14 @@ switch ptbopts{optflag} % decide what to modify
 %                     DeltaV = vmax-vmin;
 %                     qV = qV2_vnewk*DeltaV;
 %                     p_bd = (1./qV) * k/(k+1);
-                    p_bd = k/(k+1);
+                    P_bd = k/(k+1);
 
                     if par.inv.verbose, fprintf('    Added crustal knot at %.2f km\n',znewk); end
                     
                 elseif add_or_rm == 2 % REMOVING a layer
+                    if par.mod.crust.kmin==par.mod.crust.kmax, continue; end % don't perturb if no perturbation allowed
                     ptb = 'crust_kn_rm';
-                    if model.crustmparm.Nkn-1<par.mod.crust.kmin, p_bd = 0; return, end % can't have fewer than min knots
+                    if model.crustmparm.Nkn-1<par.mod.crust.kmin, P_bd = 0; return, end % can't have fewer than min knots
                     oldknots = model.crustmparm.knots;
                     isp2rm = 1+randi(model.crustmparm.Nkn-2); % can't remove an edge one
                     V0 = model.crustmparm.VS_sp(isp2rm); zv0 = model.crustmparm.knots(isp2rm);
@@ -602,7 +605,7 @@ switch ptbopts{optflag} % decide what to modify
 %                     DeltaV = par.mod.crust.vsmax-par.mod.crust.vsmin;
 %                     qV = qV2_vnewk*DeltaV;
 %                     p_bd = qV * k/(k-1);
-                    p_bd = k/(k-1);
+                    P_bd = k/(k-1);
                     
                     if par.inv.verbose, fprintf('    Removed crustal knot %.0f\n',isp2rm); end
                 end
@@ -616,8 +619,9 @@ switch ptbopts{optflag} % decide what to modify
                 k = model.mantmparm.Nkn;
 
                 if add_or_rm == 1 % ADDING a layer
+                    if par.mod.mantle.kmin==par.mod.mantle.kmax, continue; end % don't perturb if no perturbation allowed
                     ptb = 'mantle_kn_add';
-                    if model.mantmparm.Nkn+1>par.mod.mantle.kmax, p_bd = 0; return, end % can't add more than max knots
+                    if model.mantmparm.Nkn+1>par.mod.mantle.kmax, P_bd = 0; return, end % can't add more than max knots
                     model.mantmparm.Nkn = model.mantmparm.Nkn+1;
                     model.mantmparm.Nsp = model.mantmparm.Nsp+1;
                     minz = zmi(2);
@@ -654,13 +658,14 @@ switch ptbopts{optflag} % decide what to modify
 %                     DeltaV = vmax-vmin;
 %                     qV = qV2_vnewk*DeltaV;
 %                     p_bd = (1./qV) * k/(k+1);
-                    p_bd = k/(k+1);
+                    P_bd = k/(k+1);
                     
                     if par.inv.verbose, fprintf('    Added mantle knot at %.2f km\n',znewk); end
                     
                 elseif add_or_rm == 2 % REMOVING a layer
+                    if par.mod.mantle.kmin==par.mod.mantle.kmax, continue; end % don't perturb if no perturbation allowed
                     ptb = 'mantle_kn_rm';
-                    if model.mantmparm.Nkn-1<par.mod.mantle.kmin, p_bd = 0; return, end % can't have fewer than min knots
+                    if model.mantmparm.Nkn-1<par.mod.mantle.kmin, P_bd = 0; return, end % can't have fewer than min knots
                     isp2rm = 1+randi(model.mantmparm.Nkn-2); % can't remove an edge one
                     V0 = model.mantmparm.VS_sp(isp2rm); zv0 = model.mantmparm.knots(isp2rm);
                     model.mantmparm.knots(isp2rm) = []; % remove selected knot
@@ -680,7 +685,7 @@ switch ptbopts{optflag} % decide what to modify
 %                     DeltaV = par.mod.mantle.vsmax-par.mod.mantle.vsmin;
 %                     qV = qV2_vnewk*DeltaV;
 %                     p_bd = qV * k/(k-1);
-                    p_bd = k/(k-1);
+                    P_bd = k/(k-1);
 
                     if par.inv.verbose, fprintf('    Removed mantle knot %.0f\n',isp2rm); end
                 end      
@@ -704,7 +709,7 @@ switch ptbopts{optflag} % decide what to modify
         
         model.datahparm.(['sig_',dtype])(d2mod) = 10.^lgstd1; % modify that one data stream's error
             
-        if model.datahparm.(['sig_',dtype])(d2mod) < get_sigma_min_prior( dtype,par), p_bd = 0; return, end % check not smaller than minimum 
+        if model.datahparm.(['sig_',dtype])(d2mod) < get_sigma_min_prior( dtype,par), P_bd = 0; return, end % check not smaller than minimum 
 
         if par.inv.verbose, fprintf('    Changed %s data stream %.0f error from %.3f to %.3f\n',dtype,d2mod,10.^lgstd0,10.^lgstd1); end
               
@@ -718,11 +723,12 @@ end
 
 % no need to recalc model if only hyperparm change or if model will reject
 if strcmp(ptbopts{optflag},'ptb_sigdat'), return; end
-if p_bd == 0, return; end
+if P_bd == 0, return; end
 
 
-% USE PERTURBED PARAMS TO MAKE NEW 1D PROFILES ETC.
+%% USE PERTURBED PARAMS TO MAKE NEW 1D PROFILES ETC.
 [ model ] = make_mod_from_parms( model,par );
+
 
 % if strcmp(ptb,'Moho_h') && a1_TEST_CONDITIONS( model, par ) == 0
 %     figure(2); clf,hold on

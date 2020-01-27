@@ -56,8 +56,8 @@ end
 
 
 %% Radial anisotropy
-[ ys,xs ] = VsvVsh_from_VsXi( wmod.beta,model1D.xi );
-[ yp,xp ] = VpvVph_from_VpPhi( wmod.alph,model1D.phi );
+[ ys,xs ] = VsvVsh_from_VsXi( wmod.beta,wmod.xi );
+[ yp,xp ] = VpvVph_from_VpPhi( wmod.alph,wmod.phi );
 
 anisflag = zeros(nlay,1);
 for kk = 1:nlay

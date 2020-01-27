@@ -100,11 +100,11 @@ end
 if ifplot
 	figure(58),clf,set(gcf,'pos',[2 275 1047 830])
     %Ps
-    subplot(411),plot(tt_ps,trudat_ps_PSV(:,1),'k','linewidth',2), xlim(par.datprocess.Twin.PsRF), ylabel('Z tru','fontsize',18), title('Ps TRUE','fontsize',22)
-    subplot(412),plot(tt_ps,trudat_ps_PSV(:,2),'r','linewidth',2), xlim(par.datprocess.Twin.PsRF), ylabel('R tru','fontsize',18)
+    subplot(411),plot(tt_ps,trudat_ps_PSV(:,1),'k','linewidth',2), xlim(par.datprocess.Ps.Twin.def), ylabel('Z tru','fontsize',18), title('Ps TRUE','fontsize',22)
+    subplot(412),plot(tt_ps,trudat_ps_PSV(:,2),'r','linewidth',2), xlim(par.datprocess.Ps.Twin.def), ylabel('R tru','fontsize',18)
     %Sp
-    subplot(413),plot(tt_sp,trudat_sp_PSV(:,1),'k','linewidth',2), xlim(par.datprocess.Twin.SpRF), ylabel('Z tru','fontsize',18), title('Sp TRUE','fontsize',22)
-    subplot(414),plot(tt_sp,trudat_sp_PSV(:,2),'r','linewidth',2), xlim(par.datprocess.Twin.SpRF), ylabel('R tru','fontsize',18)
+    subplot(413),plot(tt_sp,trudat_sp_PSV(:,1),'k','linewidth',2), xlim(par.datprocess.Sp.Twin.def), ylabel('Z tru','fontsize',18), title('Sp TRUE','fontsize',22)
+    subplot(414),plot(tt_sp,trudat_sp_PSV(:,2),'r','linewidth',2), xlim(par.datprocess.Sp.Twin.def), ylabel('R tru','fontsize',18)
 end
 
 % save
@@ -127,6 +127,7 @@ data = struct('BW_Ps',PsRF,'BW_Sp',SpRF);
 % phinmod = [TLM.zlayb-TLM.zlayt,TLM.Vp,TLM.Vs,TLM.rho];
 % trudat_cph = Calc_Ray_dispersion(SWperiods,phinmod,1,2000,0);
 % % Use MINEOS
+if ifplot, figure(13); clf; hold on; end
 for id = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{id};
     pdtyp = parse_dtype(dtype);
@@ -136,14 +137,15 @@ for id = 1:length(par.inv.datatypes)
     if strcmp(pdtyp{2},'HV')
         truSWdat.HVr = run_HVkernel(TRUEmodel,SWperiods,'initmod',1,0,par.inv.verbose);
     else
-        [truSWdat.phV,truSWdat.grV] = run_mineos(TRUEmodel,SWperiods,pdtyp{2},'initmod',1,0,par.inv.verbose);
+        par_mineos = struct('R_or_L',pdtyp{2},'phV_or_grV',pdtyp{3},'ID','synthmod');
+        [truSWdat.phV,truSWdat.grV] = run_mineos(TRUEmodel,SWperiods,par_mineos,1,0,par.inv.verbose);
     end
 
     % add noise
     truSWdat.(pdtyp{3}) = truSWdat.(pdtyp{3}) + random('norm',0,par.synth.(nstr),size(truSWdat.(pdtyp{3})));
 
     if ifplot
-        figure(13);plot(SWperiods,trudat_phV,'o')
+        hold on; plot(SWperiods,truSWdat.phV,'o')
     end
 
     data.(dtype) = struct('periods',SWperiods,pdtyp{3},truSWdat.(pdtyp{3}),'sigma',par.mod.data.prior_sigma.(pdtyp{1}).(pdtyp{2}).(pdtyp{3}));

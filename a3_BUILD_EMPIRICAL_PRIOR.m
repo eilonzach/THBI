@@ -35,6 +35,7 @@ while ifpass==0 % first make sure the starting model satisfies conditions
     model0 = b1_INITIATE_MODEL(par);
     model = model0;
     ifpass = a1_TEST_CONDITIONS( model, par );
+	Pm_prior = calc_Pm_prior(model,par);
 end % now we have a starting model!
 
 
@@ -53,7 +54,6 @@ empprior = struct('Niter',Niter*Nchains,'Nstored',0,...
 %% ========================================================================
 ptb = cell({});
 acc = zeros(par.inv.niter,1);
-ifaccept=false; 
 % reset_likelihood;
 lastlogL = -Inf; 
 % not parfor
@@ -66,21 +66,24 @@ for ii = 1:Niter
     if ii==1
         model1 = model; % don't perturb on first run
         p_bd = 1;
+        Pm_prior1 = Pm_prior;
         ptb{ii,1} = 'start';
     else
-        [model1,ptb{ii,1},p_bd] = b2_PERTURB_MODEL(model,par,temp);
-        ifpass = a1_TEST_CONDITIONS( model1, par, par.inv.verbose );
+        [model1, ptb{ii,1}, p_bd] = b2_PERTURB_MODEL(model,par,temp);
+        ifpass = a1_TEST_CONDITIONS( model1, par, par.inv.verbose );     
+        Pm_prior1 = calc_Pm_prior(model1,par); % Calculate prior probability of new model
         if ifpass==0 && model1.mantmparm.knots(end-1)<par.mod.maxkz
         end
     end
  
 %% =====================    ===  ACCEPTANCE CRITERION  ========================
-    [ ifaccept ] = b6_IFACCEPT( 0,lastlogL,temp,p_bd*ifpass );
+    [ ifaccept ] = b6_IFACCEPT( 0,lastlogL,temp,p_bd*ifpass,Pm_prior1,Pm_prior);
 
         
 %% ========================  IF ACCEPT ==> STORE  =========================
     if ifaccept 
         model = model1;
+        Pm_prior = Pm_prior1;
         lastlogL=0;
         acc(ii)=1;
     else
@@ -136,7 +139,7 @@ end % parfor loop
 %% ========================================================================
 %% ========================================================================
 fprintf('Duration of entire run: %.0f s\n',(now-t)*86400)
-delete(gcp('nocreate'))
+% delete(gcp('nocreate'))
 
 empprior = emppriors{1};
 ptb = ptbs{1};

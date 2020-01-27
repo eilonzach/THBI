@@ -1,5 +1,5 @@
-function [ predata ] = b3_FORWARD_MODEL_BW( model,par,predata,ID,ifplot )
-%[ predata ] = b3_FORWARD_MODEL_BW( model,par,predata,ID,ifplot )
+function [ predata ] = b3_FORWARD_MODEL_BW( model,laymodel,par,predata,ID,ifplot )
+% [ predata ] = b3_FORWARD_MODEL_BW( model,laymodel,par,predata,ID,ifplot )
 % 
 %   Do forward model to calculate predicted data.
 % 
@@ -13,8 +13,7 @@ function [ predata ] = b3_FORWARD_MODEL_BW( model,par,predata,ID,ifplot )
 %   ifplot  - flag with option to plot (1) or not (0)
 % 
 % OUTPUTS
-%   predata - structure identical to input data structure, but with
-%             predicted data, rather than observed data
+%   predata - predicted body wave data inserted
 %%
 % An important component is the layerising of the model - conversion of
 % continuous model into a bunch of layers, with coarseness partly
@@ -30,45 +29,6 @@ end
 % [predata.PsRF.Vp_surf] = deal(mean([predata.PsRF.Vp_surf]));
 % [predata.PsRF.Vs_surf] = deal(mean([predata.PsRF.Vs_surf]));
 
-
-%% ===================  LAYERISE PROFILE  ===================
-[zlayt,zlayb,Vslay] = ...
-    layerise(model.z,model.VS,par.forc.mindV,0); 
-nlay = length(Vslay);
-
-% S to P and rho structure
-xs = 1:find(zlayb==model.zsed); if model.zsed ==0, xs = []; end
-xc = find(zlayt==model.zsed):find(zlayb==model.zmoh);
-xm = find(zlayt==model.zmoh):nlay;
-Vplay = [sed_vs2vp(Vslay(xs));...
-         model.crustmparm.vpvs*Vslay(xc);...
-         mantle_vs2vp(Vslay(xm),mean([zlayt(xm),zlayb(xm)],2))];
-rholay = [sed_vs2rho(Vslay([xs,xc]));...
-          mantle_vs2rho(Vslay(xm),mean([zlayt(xm),zlayb(xm)],2))];
-xilay = [zeros(length(xs),1);...
-         model.crustmparm.xi*ones(length(xc),1);...
-         model.mantmparm.xi*ones(length(xm),1)]; % S radial anisotropy
-philay = ones(nlay,1); % P radial anisotropy
-etalay = ones(nlay,1); % eta anisotropy
-
-laymodel = struct('zlayt',zlayt,'zlayb',zlayb,'Vs',Vslay,'Vp',Vplay,'rho',rholay,'nlay',nlay,'xi',xilay,'phi',philay,'eta',etalay);
-if any(isnan(laymodel.rho))
-    error('NaN densities')
-end
-
-
-if ifplot
-    figure(1); clf, hold on
-    plot(model.VS,model.z,'-ko')
-    plot(model.VP,model.z,'-ko')
-    zlayp = reshape([laymodel.zlayt';laymodel.zlayb'],2*laymodel.nlay,1);
-    vslayp = reshape([laymodel.Vs';laymodel.Vs'],2*laymodel.nlay,1);
-    vplayp = reshape([laymodel.Vp';laymodel.Vp'],2*laymodel.nlay,1);
-    plot(vslayp,zlayp,'-ro')
-    plot(vplayp,zlayp,'-ro')
-    set(gca,'ydir','reverse','ylim',[0, max(model.z)],'xlim',[0.9*min(model.VS) 1.1*max(model.VP)])
-    set(gcf,'pos',[41   282   729   823]);
-end
 
 %% ===================  PS RFs FROM PROPAGATOR MATRIX  ====================
 
@@ -147,7 +107,8 @@ if any(strcmp(pdtyps(:,2),'Ps'))
 end
 
 %% ===================  SP RFs FROM PROPAGATOR MATRIX  ====================
-if any(strcmp(pdtyps(:,2),'Sp'))
+if any(strcmp(pdtyps(:,2),'Sp'))    
+if any(~strcmp(pdtyps(strcmp(pdtyps(:,2),'Sp'),3),'ccp'))
     Spdat = par.inv.datatypes{find(strcmp(pdtyps(:,2),'Sp'),1,'first')};
     [ unique_rayps_S,irayps_S ] = rayp_vals( [predata.(Spdat).rayp] );
     for ir = 1:length(unique_rayps_S)
@@ -203,7 +164,7 @@ if any(strcmp(pdtyps(:,2),'Sp'))
             tt_sp = tt_sp(inwind);
 
             if ~any(inwind)
-                tt_ps = []; predat_sp_PSV = nan; % NO GOOD DATA
+                tt_sp = []; predat_sp_PSV = nan; % NO GOOD DATA
             else
                 % taper
                 predat_sp_PSV = flat_hanning_win(tt_sp,predat_sp_PSV,Sp_widewind(1),Sp_widewind(2),1); % 1s taper
@@ -223,20 +184,42 @@ if any(strcmp(pdtyps(:,2),'Sp'))
             predata.(Spdat)(inds(iir),1).nsamp = length(predata.(Spdat)(inds(iir)).PSV);
         end
     end
+end % Sp can't only be ccp
+end
+
+%% ===================  HK-stack: put in values  ====================
+if any(strcmp(pdtyps(:,1),'HKstack'))
+    HKdat = par.inv.datatypes{find(strcmp(pdtyps(:,1),'HKstack'),1,'first')};
+    ik = mindex(predata.(HKdat).K,model.vpvs);
+    ih = mindex(predata.(HKdat).H,model.zmoh);
+    predata.(HKdat).H = model.zmoh;
+    predata.(HKdat).K = model.vpvs;
+    predata.(HKdat).E_by_Emax = predata.(HKdat).Esum(ik,ih)/maxgrid(predata.(HKdat).Esum);
 end
 
 
-
-%% distribute data for different processing (e.g. _lo, _cms)
+%% distribute data for different processing (e.g. _lo, _cms, CCP)
 for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt}; 
     pdt = parse_dtype( dtype ); 
+    % for BW case
     if strcmp(pdt{1},'BW') && (~strcmp(pdt{3},'def') || ~strcmp(pdt{4},'def'))
         if any(strcmp(par.inv.datatypes,['BW_',pdt{2}])) % only if there IS a standard!
             predata.(dtype) = predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
         end
     end
+    % for RF case - basically identical
+    if strcmp(pdt{1},'RF') && (~strcmp(pdt{3},'def') || ~strcmp(pdt{4},'def')) && ~strcmp(pdt{3},'ccp')
+        if any(strcmp(par.inv.datatypes,['RF_',pdt{2}])) % only if there IS a standard!
+            predata.(dtype) = predata.([pdt{1},'_',pdt{2}]); % insert standard BW if needed
+        end
+    end
+    
 end
+
+
+
+
 
 
 %% ifplot....
@@ -244,16 +227,20 @@ end
 if ifplot
     figure(2); clf, hold on
     comps = {'VERTICAL','RADIAL','TRANSVERSE'}; 
-    for ip = 1:2
-    subplot(3,2,2*ip-1)
-    plot(tt_ps,predat_ps_PSV(:,ip),'Linewidth',2)
-    xlim(par.datprocess.Ps.Twin.def);
-    ylabel(comps{ip},'fontsize',19,'fontweight','bold')
-    if ip == 1, title('Ps','fontsize',22,'fontweight','bold'), end
-    subplot(3,2,2*ip)
-    plot(tt_sp,predat_sp_PSV(:,ip),'Linewidth',2)
-    xlim(par.datprocess.Sp.Twin.def);
-    if ip == 1, title('Sp','fontsize',22,'fontweight','bold'), end
+    for ic = 1:2
+        
+        subplot(3,2,2*ic-1)
+        plot(tt_ps,predat_ps_PSV(:,ic)./max(max(predat_ps_PSV)),'Linewidth',2)
+        xlim(par.datprocess.Ps.Twin.def);
+        ylim([-1 1])
+        ylabel(comps{ic},'fontsize',19,'fontweight','bold')
+        if ic == 1, title('Ps','fontsize',22,'fontweight','bold'), end
+        
+        subplot(3,2,2*ic)
+        plot(tt_sp,predat_sp_PSV(:,ic)./max(max(predat_sp_PSV)),'Linewidth',2)
+        xlim(par.datprocess.Sp.Twin.def);
+        ylim([-1 1])
+        if ic == 1, title('Sp','fontsize',22,'fontweight','bold'), end
     end
     set(gcf,'position',[780         282        1058         823]);
 end % on ifplot

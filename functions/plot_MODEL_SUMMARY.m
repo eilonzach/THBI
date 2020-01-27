@@ -1,12 +1,12 @@
-function plot_MODEL_SUMMARY( model_summary,ifsave,ofile)
-% plot_MODEL_SUMMARY( model_summary,ifsave,ofile )
+function plot_MODEL_SUMMARY( model_summary,par,ifsave,ofile)
+% plot_MODEL_SUMMARY( model_summary,par,ifsave,ofile )
 %   
 % function to plot prior model distribution
 
-if nargin<2 || isempty(ifsave)
+if nargin<3 || isempty(ifsave)
     ifsave = 0; % default is not to save
 end
-if nargin<3 || isempty(ofile)
+if nargin<4 || isempty(ofile)
     ofile = 'figs/model_summary_fig.pdf';
 end
 
@@ -53,10 +53,17 @@ hb = bar(X,N/Nmods,1,'facecolor','flat'); xlim([3.5 4.9]);
 legend(num2str(model_summary.zatdep(:)),'location','northwest')
 set(gca,'fontsize',14), title('Vs at 50,100,150,...,300','fontsize',16)
 
-% subplot(335)
-% [N,X] = hist(model_summary.fdVSsed,20);
-% hb = bar(X,N/Nmods,1,'facecolor','none','edgecolor','r');
-% set(gca,'fontsize',14), title('fractional dVs at sed/crust (%)','fontsize',16)
+subplot(335)
+% Xh = linspace(par.mod.sed.hmin+par.mod.crust.hmin,par.mod.sed.hmax+par.mod.crust.hmax,30);
+% Xk = linspace(par.mod.crust.vpvsmin,par.mod.crust.vpvsmax,20);
+% N = histcounts2(model_summary.vpvs,model_summary.zmoh,Xk,Xh); 
+% N = N/maxgrid(N);
+% contourf(midpts(Xk),midpts(Xh),N',[0:0.1:1],'linestyle','none');
+plot(model_summary.vpvs,model_summary.zmoh,'.k','markersize',1)
+set(gca,'fontsize',14,'box','on','linewidth',1.5,'layer','top',...
+     'xlim',[par.mod.crust.vpvsmin,par.mod.crust.vpvsmax],...
+     'ylim',[par.mod.sed.hmin+par.mod.crust.hmin par.mod.sed.hmax+par.mod.crust.hmax])
+title('H-K comparison','fontsize',16)
 
 subplot(336)
 [N,X] = hist(model_summary.fdVSmoh,20);
