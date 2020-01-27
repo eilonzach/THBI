@@ -29,9 +29,9 @@ notes = [...
     'Not using Ps data, not permitting mantle anisotropy. '...
     'Moho constrained between 30 and 40 km depth - cf SR16. '...
     'Relaxed condition of no negative crustal velocity gradients. '...
-]; 
+];
 
-%% ------------------------- START ------------------------- 
+%% ------------------------- START -------------------------
 global projdir THBIpath TRUEmodel
 THBIpath = '/Users/zeilon/Documents/MATLAB/BayesianJointInv';
 projdir = [THBIpath,'/',projname,'/'];
@@ -48,7 +48,7 @@ run parms/bayes_inv_parms
 if strcmp(projname,'SYNTHETICS')
     if isfield(par.synth,'noisetype') && strcmp(par.synth.noisetype,'real'), sta=['SYNTH_',sta]; else sta = 'SYNTH'; end
     par.stadeets = struct('sta',sta','nwk','--');
-    
+
 	% noise details, if "real"
 	noisesta = 'RSSD';
 	noisenwk = 'IU';
@@ -63,7 +63,7 @@ elseif strcmp(projname,'LAB_tests')
 	wlab = 10;
 	flab = 0.05;
     par.synth.model = struct('zsed',zsed,'zmoh',zmoh,'zlab',zlab,'wlab',wlab,'flab',flab);
-	dtps = {'BW_Ps','BW_Sp','BW_Sp_lo','BW_Ps_lo','SW_Ray_phV','SW_Lov_phV','SW_HV'};     
+	dtps = {'BW_Ps','BW_Sp','BW_Sp_lo','BW_Ps_lo','SW_Ray_phV','SW_Lov_phV','SW_HV'};
 
 	% noise details, if "real"
 	noisesta = 'RSSD';
@@ -99,7 +99,7 @@ ifsavedat = false;
 %% get saving things ready
 par.proj = proj;
 avardir = sprintf('%s%s_%s_dat%.0f/',par.proj.STAinversions,sta,nwk,datN);
-resdir = [avardir,STAMP]; 
+resdir = [avardir,STAMP];
 if ~exist(resdir,'dir'), try mkdir(resdir); catch, error('Looks like no path to output directory - is it mounted?'); end, end
 fid = fopen([resdir,'/notes.txt'],'w'); fprintf(fid,notes); fclose(fid);
 
@@ -126,12 +126,12 @@ eval(sprintf('! cp parms/bayes_inv_parms.m %s',resdir))
 
 allpdytp = parse_dtype_all(par);
 
-%% ========================  LOAD + PREP DATA  ========================  
+%% ========================  LOAD + PREP DATA  ========================
 [trudata,par] = a2_LOAD_DATA(par);
 plot_TRU_WAVEFORMS(trudata);
 % check_data(trudata,par)
 
-%% ===========================  PRIOR  ===========================  
+%% ===========================  PRIOR  ===========================
 % see if prior exists already
 if exist([proj.dir,'prior.mat'],'file')
     a = load([proj.dir,'prior.mat']);
@@ -141,7 +141,7 @@ if exist([proj.dir,'prior.mat'],'file')
 else
     redoprior = true;
 end
-    
+
 if redoprior
     fprintf('  > Building prior distribution from %.0f runs\n',max([par.inv.niter,1e5]))
     prior = a3_BUILD_EMPIRICAL_PRIOR(par,max([par.inv.niter,1e5]),14,par.res.zatdep);
@@ -156,7 +156,7 @@ end
 % profile on
 
 % ===== Prepare for parallel pool =====
-delete(gcp('nocreate')); 
+delete(gcp('nocreate'));
 parpool(min([par.inv.nchains,18]));
 TD = parallel.pool.Constant(trudata);
 % (((( If not parallel: ))))
@@ -175,7 +175,7 @@ fprintf('\n ============== STARTING CHAIN(S) ==============\n')
 %% ========================================================================
 t = now;
 % mkdir([resdir,'/chainout']);
-parfor iii = 1:par.inv.nchains   
+for iii = 1:par.inv.nchains
 chainstr = mkchainstr(iii);
 
 
@@ -203,11 +203,11 @@ while ifpass==0
     try
         [Kbase] = make_allkernels(model,[],TD.Value,['start',chainstr],par);
     catch
-        ifpass = false; continue; 
+        ifpass = false; continue;
     end
-    
+
     model0_perchain{iii} = model0;
-    
+
 end % now we have a starting model!
 
 
@@ -239,7 +239,7 @@ time0 = now;
 
 while ii < par.inv.niter
 ii = ii+1;
-    
+
 %% SAVE model every saveperN
 if mod(ii,par.inv.saveperN)==0 && log_likelihood ~= -Inf
     [misfits,allmodels,savedat] = b9_SAVE_RESULT(ii,log_likelihood,misfit,model,Pm_prior,misfits,allmodels,predat_save,savedat,time0);
@@ -256,7 +256,7 @@ end
 if rem(ii,par.inv.Nsavestate)==0
     save_inv_state(resdir,chainstr,allmodels,misfits)
 end
-    
+
 try
     if rem(ii,4*par.inv.saveperN)==0 || ii==1, fprintf('Sta %4s nwk %2s  Iteration %s%.0f\n',...
             par.data.stadeets.sta,par.data.stadeets.nwk,chainstr,ii); end
@@ -269,7 +269,7 @@ try
         if (ii - par.inv.burnin)/par.inv.saveperN < 200
             break
         % if enough saved in chain, abort and keep the incomplete chain
-        else 
+        else
             fail_chain = -fail_chain; break
         end
     end
@@ -278,20 +278,20 @@ try
         if (ii - par.inv.burnin)/par.inv.saveperN < 200
             fail_chain = 100;  break % high fail_chain will mean we restart chain
         % if enough saved in chain, abort and keep the incomplete chain
-        else 
-            fail_chain = -100; break 
+        else
+            fail_chain = -100; break
         end
     end
-    
+
     % temperature - for perturbation scaling and likelihood increase
     temp = (par.inv.tempmax-1)*erfc(2*(ii-1)./par.inv.cooloff) + 1;
 %     if round_level(temp,0.01)>1
 %         if par.inv.verbose, fprintf('TEMPERATURE = %.2f\n',temp); end
 %     end
-    
+
     while ifpass == false % only keep calculating if model passes (otherwise save and move on)
 
-%% ===========================  PERTURB  ===========================  
+%% ===========================  PERTURB  ===========================
     if ii==1 % no perturb on first run
         model1 = model; ptbnorm = 0; ifpass = 1; p_bd = 1; Pm_prior1 = Pm_prior; log_likelihood1 = -Inf;
         ptb{ii,1} = 'start';
@@ -300,19 +300,19 @@ try
 		ifpass = a1_TEST_CONDITIONS( model1, par, par.inv.verbose  );
 		if p_bd==0, if par.inv.verbose, fprintf('  nope\n'); end; break; end
 		if ~ifpass, if par.inv.verbose, fprintf('  nope\n'); end; break; end
-		
+
         Pm_prior1 = calc_Pm_prior(model1,par);  % Calculate prior probability of new model
 		[ modptb ] = calc_Vperturbation( Kbase.modelk,model1);
-		
+
         ptbnorm = 0.5*(norm(modptb.dvsv) + norm(modptb.dvsh)) + norm(modptb.dvpv);
 		if par.inv.verbose, fprintf('    Perturbation %.2f\n',ptbnorm); end
     end
-    
+
     % quickly plot model (if not in parallel and if verbose)
     plot_quickmodel(par,model,model1)
 
     nchain  = kchain_addcount( nchain,ptbnorm,par );
-    
+
 %% ===========================  FORWARD MODEL  ===========================
 	% don't re-calc if the only thing perturbed is the error, or if there
 	% is zero probability of acceptance!
@@ -329,58 +329,58 @@ try
             fail_chain=fail_chain+1;
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
         end
-        
+
         % continue if any Sp or PS inhomogeneous or nan or weird output
         if ifforwardfail(predata,par)
-            fail_chain=fail_chain+1; 
+            fail_chain=fail_chain+1;
             fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
         end
-        
+
         % process predata - filter/taper etc.
-        predata0=predata; % save orig.        
+        predata0=predata; % save orig.
         for idt = 1:length(par.inv.datatypes)
             predata = predat_process( predata,par.inv.datatypes{idt},par);
         end
-        
+
 		% Explicitly use mineos + Tanimoto scripts if ptb is too large
         if ptbnorm/par.inv.kerneltolmax > random('unif',par.inv.kerneltolmed/par.inv.kerneltolmax,1,1) % control chance of going to MINEOS
             newK = true;
             [ predata,SW_precise ] = b3_FORWARD_MODEL_SW_precise( model1,par,predata,ID );
-        end            
-            
-    end % only redo data if model has changed 
+        end
+
+    end % only redo data if model has changed
 
 %      plot_TRUvsPRE(TD.Value,predata);
 
     % continue if any Sp or PS inhomogeneous or nan or weird output
     if ifforwardfail(predata,par)
-        fail_chain=fail_chain+1; ifpass=0; 
+        fail_chain=fail_chain+1; ifpass=0;
         fprintf('Forward model error, failchain %.0f\n',fail_chain);  break;
     else
-        fail_chain = 0; 
+        fail_chain = 0;
     end
 
 %% =========================  CALCULATE MISFIT  ===========================
-    
-    % SW weights, if applicable 
+
+    % SW weights, if applicable
     [ SWwt ] = make_SW_weight( par,Kbase,TD.Value );
-    
+
     [ misfit1 ] = b4_CALC_MISFIT( TD.Value,predata,par,0,SWwt ); % misfit has structures of summed errors
 
 %% =======================  CALCULATE LIKELIHOOD  =========================
     [ log_likelihood1,misfit1 ] = b5_CALC_LIKELIHOOD( misfit1,TD.Value,model1.datahparm,par);
-    
+
 %     fprintf('MISFITS: Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.SpRF,misfit.PsRF,misfit.SW)
 %     fprintf('CHI2S:   Sp %5.2e  Ps %5.2e  SW %5.2e\n',misfit.chi2_sp,misfit.chi2_ps,misfit.chi2_SW)
-    
+
     fail_chain = 0;
     predat_save1 = predata0;
 
     end % while ifpass
-    
+
 %% ========================  ACCEPTANCE CRITERION  ========================
-    [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass,Pm_prior1,Pm_prior);        
-    
+    [ ifaccept ] = b6_IFACCEPT( log_likelihood1,log_likelihood,temp,p_bd*ifpass,Pm_prior1,Pm_prior);
+
     % ======== PLOT ========  if accept
     if ifaccept && par.inv.verbose && fail_chain==0
         plot_TRUvsPRE( TD.Value,predata);  pause(0.001);
@@ -388,40 +388,40 @@ try
             plot_MOD_TRUEvsTRIAL( TRUEmodel, model1 ); pause(0.001);
         end
     end
-    
+
 %% ========================  IF ACCEPT ==> CHANGE TO NEW MODEL  =========================
-    if ifaccept 
+    if ifaccept
         if par.inv.verbose
             fprintf('  *********************\n  Accepting model! logL:  %.4e ==>  %.4e\n  *********************\n',...
                 log_likelihood,log_likelihood1)
             fprintf('                   Pm_+prior:  %.4e ==>  %.4e\n  *********************\n',...
                 Pm_prior,Pm_prior1)
         end
-               
+
         % save new model!
         model = model1;
         log_likelihood = log_likelihood1;
         Pm_prior = Pm_prior1;
         misfit = misfit1;
         predat_save = predat_save1;
-        
-        
-        
-    %% UPDATE KERNEL if needed 
+
+
+
+    %% UPDATE KERNEL if needed
         if newK==true
-            [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,ii,par,0,SW_precise);                        
+            [Kbase,predata] = b7_KERNEL_RESET(model,Kbase,predata,ID,ii,par,0,SW_precise);
             nchain = 0;
         end
-    
+
     else
         if par.inv.verbose, fprintf('  --FAIL--\n'); end
         if newK, delete_mineos_files(ID,'R'); end
-        if newK, delete_mineos_files(ID,'L'); end       
+        if newK, delete_mineos_files(ID,'L'); end
     end
-    
+
     % restart-chain if immediate failure
-    if isinf(log_likelihood), fail_chain=100; break; end     
-    
+    if isinf(log_likelihood), fail_chain=100; break; end
+
 %% =========  reset kernel at end of burn in or after too many iter =======
     resetK = false;
     if (newK && ifaccept) == false && ii == par.inv.burnin % reset kernel at end of burn in (and we didn't just reset it tacitly)
@@ -477,7 +477,7 @@ save_inv_state(resdir,chainstr,allmodels,misfits)
 misfits_perchain{iii} = misfits;
 allmodels_perchain{iii} = allmodels;
 if isfield(TD.Value,'SW_Ray')
-    SWs_perchain{iii} = preSW;	
+    SWs_perchain{iii} = preSW;
 end
 
 
@@ -541,8 +541,8 @@ plot_FINAL_MODEL( final_model,posterior,1,[resdir,'/final_model.pdf'],true,[par.
 
 % distribute data for different processing (e.g. _lo, _cms)
 for idt = 1:length(par.inv.datatypes)
-    dtype = par.inv.datatypes{idt}; 
-    pdt = parse_dtype( dtype ); 
+    dtype = par.inv.datatypes{idt};
+    pdt = parse_dtype( dtype );
     if strcmp(pdt{1},'BW') && (~strcmp(pdt{3},'def') || ~strcmp(pdt{4},'def'))
         if any(strcmp(par.inv.datatypes,['BW_',pdt{2}])) % only if there IS a standard!
             disp(['replacing ',dtype,' with ',[pdt{1},'_',pdt{2}]])
@@ -550,14 +550,14 @@ for idt = 1:length(par.inv.datatypes)
         end
     end
 end
-% window, filter data 
+% window, filter data
 for idt = 1:length(par.inv.datatypes)
     dtype = par.inv.datatypes{idt};
     [ final_predata ] = predat_process( final_predata,dtype,par);
 end
 save([resdir,'/final_predata'],'final_predata');
 
-   
+
 [ final_misfit ] = b4_CALC_MISFIT( trudata,final_predata,par,0 );
 [ final_log_likelihood,final_misfit ] = b5_CALC_LIKELIHOOD( final_misfit,trudata,final_model.hyperparms,par );
 plot_TRUvsPRE( trudata,final_predata,1,[resdir,'/final_true_vs_pred_data.pdf']);

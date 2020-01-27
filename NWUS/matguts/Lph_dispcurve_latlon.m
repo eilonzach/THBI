@@ -11,13 +11,22 @@ if nargin<3 || isempty(transT)
     transT = 33;
 end
 
+seismoddir = '/Volumes/data/models_seismic/';
+if ~exist(seismoddir,'dir')
+    try
+        seismoddir = '/Volumes/eilon_data/models_seismic/';
+    catch
+        error('NO SEISMOD DIR FOUND');
+    end
+end
+
 %% EQ data:
 
 % none, for now
 
 %% AN data:
 % EKSTROM
-datadir = '/Volumes/data/models_seismic/US_LOVE_ANT_phV_EKSTROM/';
+datadir = [seismoddir,'US_LOVE_ANT_phV_EKSTROM/'];
 ANperiods = [6:2:12,15:5:40]';
 ANphV_period = disp_curve_AN_latlon(ANperiods,ilat,ilon,datadir);
 

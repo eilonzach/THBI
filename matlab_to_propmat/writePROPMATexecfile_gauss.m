@@ -1,8 +1,8 @@
 function writePROPMATexecfile_gauss( execfile, modfile,ifile,ofile0,ofile1,ofile2,oimfile,odatfile,inc,PS,soT,obsdist,ocomps)
 %writePROPMATexecfile_gauss( execfile, modfile,ifile,ofile0,ofile1,ofile2,oimfile,odatfile,inc,PS,soT,obsdist,ocomps)
-%   
+%
 % Function to write execution file for PropMatrix code
-% 
+%
 % INPUTS:
 %  execfile  - name of execution file to write
 %  modfile   - file with model description
@@ -16,7 +16,7 @@ function writePROPMATexecfile_gauss( execfile, modfile,ifile,ofile0,ofile1,ofile
 %  PS        - choice of Ps or Sp (strings)
 %  soT       - source wavelet period (s)
 %  obsdist   - observation distance (km)
-%  ocomps    - output format: 1 = x,y,z  or 2 = R,T,U 
+%  ocomps    - output format: 1 = x,y,z  or 2 = R,T,U
 
 
 if nargin < 10
@@ -25,13 +25,13 @@ end
 if nargin < 11
     soT = 1;
 end
-if nargin < 12 
+if nargin < 12
     obsdist = 0;
 end
 if nargin < 13
     ocomps = 2;
 end
-    
+
 if strcmp(PS,'Ps')
     excite = '1 0 0';
 elseif strcmp(PS,'Sp')
@@ -39,7 +39,7 @@ elseif strcmp(PS,'Sp')
 end
 
 if exist(execfile,'file')==2
-    delete(execfile); % kill if it is there 
+    delete(execfile); % kill if it is there
 end
 
 %% write synth.in parameter file
@@ -76,7 +76,3 @@ fprintf(fid,'rm %s\n',oimfile);
 fclose(fid);
 
 end
-
-
-
-

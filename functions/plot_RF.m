@@ -1,12 +1,14 @@
 function [h,hline,hpos,hneg] = plot_RF( ax,RF,tt,level,xshift,iffill,pcol,ncol )
 %[h,hline,hpos,hneg] = plot_RF( ax,RF,tt,level,xshift,iffill )
-%   
+%
 % function to plot a single receiver function on a set of axes "ax". This
 % will plot the receiver function vector "RF" in time "tt", shifted in the
 % x-direction by "xshift". If "iffill" is true, it will fill in the regions
 % with greater amplitude than "level" - red for positive, blue for
-% negative. The handles to the plotted elements are returned, where 
+% negative. The handles to the plotted elements are returned, where
 %  h = [hline,hpos,hneg].
+%
+% ** Must be in increasing time!!! Flip RF data if not!! **
 
 
 if nargin < 4 || isempty(level)
@@ -28,8 +30,23 @@ end
 RF = [0;RF(:);0]; % pad edges to avoid beginnning/end plot tie-line issues
 tt = [tt(1);tt(:);tt(end)]; % pad edges to avoid beginnning/end plot tie-line issues
 
-axes(ax);hold on
 
+dt=tt(2)-tt(1); % edit by HEK May 2018
+if dt < 0
+    RF = flipud(RF);
+    tt = flipud(tt);
+end
+
+% find and account for nans, if needed
+rfnan = isnan(RF);
+RFn = RF;
+RF(rfnan) = 0;
+
+RF = [0;RF(:);0]; % pad edges to avoid beginnning/end plot tie-line issues
+tt = [tt(1);tt(:);tt(end)]; % pad edges to avoid beginnning/end plot tie-line issues
+
+%% fill patches
+axes(ax);hold on
 
 if iffill
 %     % positive patch
@@ -44,10 +61,10 @@ if iffill
 %         RF_bl = interp1(tt,RF,tt_bl);
 %         hpos(ib) = patch(ax,RF_bl+xshift,tt_bl,pcol,'linestyle','none','facealpha',0.6);
 %     end
-% 
+%
 %     % negative patch
 %     [~,tt_neg] = crossing(RF,tt,-level); % find crossings at negative level
-%     Nnf = floor(length(tt_neg)/2); % N of negative blocks. 
+%     Nnf = floor(length(tt_neg)/2); % N of negative blocks.
 %     hneg = zeros(Nnf,1);
 %     for ib = 1:Nnf
 %         if RF(1)<-level,k=1; else k=0; end % shift if the RF starts above lev
@@ -58,7 +75,7 @@ if iffill
 %         hold on
 %         hneg(ib) = patch(ax,RF_bl+xshift,tt_bl,ncol,'linestyle','none','facealpha',0.6);
 %     end
-    RF_pos = RF; 
+    RF_pos = RF;
     RF_pos(RF<level) = level;
     RF_neg = RF;
     RF_neg(RF>-level) = -level;
@@ -71,7 +88,7 @@ else
     hneg = [];
     fprintf('\nChose NO FILL\n');
 end
-    
+
 hline = plot(ax,RF+xshift,tt,'-k','linewidth',1.5);
 
 h = {hline,hpos,hneg};
@@ -79,4 +96,3 @@ h = {hline,hpos,hneg};
 
 
 end
-

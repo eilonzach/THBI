@@ -18,6 +18,7 @@ BWavardir = par.data.avardir;
 sta = par.data.stadeets.sta;
 nwk = par.data.stadeets.nwk;
 
+<<<<<<< HEAD
 %% work out which data types to grab
 allpdytp = parse_dtype_all(par);
 
@@ -28,6 +29,28 @@ if any(strcmp(allpdytp(:,1),'BW'))
     %% Seismogram data
     datfiles = dir(sprintf('avar_dat_%s_%s_*%s.mat',sta,nwk,zeroDstr));
 
+=======
+seismoddir = '/Volumes/data/models_seismic/';
+if ~exist(seismoddir,'dir')
+    try
+        seismoddir = '/Volumes/eilon_data/models_seismic/';
+    catch
+        error('NO SEISMOD DIR FOUND');
+    end
+end
+     
+
+%% work out which data types to grab
+allpdytp = parse_dtype_all(par);
+
+%% ------------------------------------------------------------------
+%% --------------------  BODY WAVE STACKED DATA  --------------------
+if any(strcmp(allpdytp(:,1),'BW'))
+    cd(BWavardir);
+    %% Seismogram data
+    datfiles = dir(sprintf('avar_dat_%s_%s_*%s.mat',sta,nwk,zeroDstr));
+
+>>>>>>> 25bd594b76996c6a3dc7fdcc68f3f714d39d945b
     if isempty(datfiles)
         trudata=[];
         return
@@ -51,6 +74,7 @@ if any(strcmp(allpdytp(:,1),'BW'))
         Sind = strcmp(avar.phases,'S') | strcmp(avar.phases,'Sp') ;
 
         %% BW_Ps ==> flip Z to 'up', taper, downsample, window
+<<<<<<< HEAD
 
         if any(Pind)
             Pdat = avar.dataPSVSH(:,:,Pind); 
@@ -66,6 +90,23 @@ if any(strcmp(allpdytp(:,1),'BW'))
                                  'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
         end
 
+=======
+
+        if any(Pind)
+            Pdat = avar.dataPSVSH(:,:,Pind); 
+            Pdat_t  = flat_hanning_win(avar.tt(:,Pind),Pdat,P_win(1),P_win(2),tapertime);
+            Pdat_td = downsamp(Pdat_t,unique(round(1./diff(avar.tt(:,Pind)))),samprate);
+            tt_d = avar.tt(1,Pind) + [0:size(Pdat_td,1)-1]'/samprate;
+            tt_w = P_win(1) + [0:(diff(P_win)*samprate-1)]'./samprate;
+            Pdat_tdw = interp1(tt_d,Pdat_td,tt_w);
+            np = np+1;
+            BW_Ps(np,1) = struct('PSV',Pdat_tdw(:,1:2),'tt',tt_w,...
+                                 'clust',clust,'rayp',avar.rayp(Pind),'seaz',avar.seaz(Pind),'gcarc',avar.gcarc(Pind),...
+                                 'samprate',samprate,'nsamp',size(Pdat_tdw,1),...
+                                 'Vp_surf',avar.Vp_Vs_surf(1),'Vs_surf',avar.Vp_Vs_surf(2));
+        end
+
+>>>>>>> 25bd594b76996c6a3dc7fdcc68f3f714d39d945b
         %% BW_Sp ==> flip Z to 'up', taper, downsample, window
         if any(Sind)
             Sdat = avar.dataPSVSH(:,:,Sind); 
@@ -124,7 +165,11 @@ if any(strcmp(allpdytp(:,1),'RF'))
         if strcmpi(allpdytp(idt,3),'CCP')
             fprintf('\n Extracting %s "RF" from CCP stack\n',allpdytp{idt,2})
             % addpath to CCP data
+<<<<<<< HEAD
             addpath('/Volumes/data/models_seismic/');
+=======
+            addpath(seismoddir);
+>>>>>>> 25bd594b76996c6a3dc7fdcc68f3f714d39d945b
             slat = par.data.stadeets.Latitude;
             slon = par.data.stadeets.Longitude;
 
@@ -181,6 +226,7 @@ end
 %% ------------------------------------------------------------------
 %% ----------------------  SURFACE WAVE DATA  ----------------------
 if any(strcmp(allpdytp(:,1),'SW'))
+<<<<<<< HEAD
 
     %% Phase velocity data
     seismoddir = '/Volumes/data/models_seismic/';
@@ -195,6 +241,21 @@ if any(strcmp(allpdytp(:,1),'SW'))
         [Rperiods,RphV]  = Rph_dispcurve_latlon( slat,slon); % grab composite of AN and EQ
         % err = error_curve_EQ_latlon( 1./periods,avar.slat,avar.slon,phVerrordir);
 
+=======
+
+    %% Phase velocity data
+    if ~exist(seismoddir,'dir'), seismoddir = regexprep(seismoddir,'~','/Volumes/zeilon'); end 
+    addpath(seismoddir);
+
+    slat = par.data.stadeets.Latitude;
+    slon = par.data.stadeets.Longitude;
+
+    %% -------- Rayleigh waves
+    if any(strcmp(allpdytp(strcmp(allpdytp(:,1),'SW'),2),'Ray'))
+        [Rperiods,RphV]  = Rph_dispcurve_latlon( slat,slon); % grab composite of AN and EQ
+        % err = error_curve_EQ_latlon( 1./periods,avar.slat,avar.slon,phVerrordir);
+
+>>>>>>> 25bd594b76996c6a3dc7fdcc68f3f714d39d945b
         if ~isempty(RphV)
             [Rperiods,iT] = sort(Rperiods);
             RphV = RphV(iT);
@@ -243,7 +304,11 @@ end
 %% --------------------  H-K stack  --------------------
 if any(strcmp(allpdytp(:,1),'HKstack'))
 	fprintf('\n pulling out EARS H-K stack\n')
+<<<<<<< HEAD
     EARSdir = '/Volumes/data/models_seismic/US_EARS';
+=======
+    EARSdir = [seismoddir,'US_EARS'];
+>>>>>>> 25bd594b76996c6a3dc7fdcc68f3f714d39d945b
     load(sprintf('%s/EARS_HKStack_%s_%s.mat',EARSdir,nwk,sta));
     if isempty(hkstack.Nobs)
         fprintf('\t Not sure how many EQ in EARS obs - assigning 100\n');
