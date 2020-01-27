@@ -134,7 +134,7 @@ datprocess=struct( 'normdata',true               ,... % normalise data in proces
 cond = struct(  'pos_moho',         true         ,... % No negative moho jumps
                 'pos_sed2basement', true         ,... % No negative sed bottom jumps
                 'nobigdVmoh',       true         ,... % No Vs moho jumps exceeding 30%
-                'pos_crustdV',      false        ,... % Monotonic increase of V(p/s) in crust
+                'pos_crustdV',      true         ,... % Monotonic increase of V(p/s) in crust
                 'pos_seddV',        true         ,... % Monotonic increase of V(p/s) in sediments
                 'noVSgt49',         true         );  % No VS exceeding 4.9 km/s
             

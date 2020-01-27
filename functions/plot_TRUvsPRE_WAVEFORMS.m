@@ -35,6 +35,12 @@ ax9 = axes('position',[0.03 0.05 0.28 0.26]); hold on
 ax10 = axes('position',[0.36 0.05 0.28 0.26]); hold on
 ax11 = axes('position',[0.69 0.05 0.28 0.26]); hold on
 
+if any(strcmp(fieldnames(trudata),'HKstack_P'))
+    ax12 = axes('pos',[axpos(ax2,[1,2,3]) sum(axpos(ax1,[2,4]))-axpos(ax2,2)]); hold on
+    delete([ax1,ax2]);
+end
+
+
 axs=[ax1,ax2,ax3,ax4,ax5,ax6,ax7,ax8,ax9,ax10,ax11];
 
 
@@ -60,13 +66,14 @@ switch pdtyp{1}
     title(ax,['SW-',pdtyp{2}],'fontsize',22)
 
 %% BWs
-    case 'BW'
+    case {'BW','RF'}
         axn = 0;
         switch pdtyp{2}
             case 'Ps', axn = axn+1; 
             case 'Sp', axn = axn+2;
         end
         if strcmp(pdtyp{4},'lo'),axn = axn+2; end
+
 
 
     xa1 = axs(2*axn-1); % order [5,7,1,3]
@@ -77,6 +84,12 @@ switch pdtyp{1}
         trunrm = zeros(length(trudata.(dtype)),1);
         prenrm = zeros(length(predata.(dtype)),1);
         for itr = 1:length(trudata.(dtype))
+            if strcmp(pdtyp{3},'ccp')
+                trudata.(dtype)(itr).tt = trudata.(dtype)(itr).zz;
+                predata.(dtype)(itr).tt = predata.(dtype)(itr).zz;
+            end
+          
+            
             if ifnorm
 %                 trumax(itr) = max(abs(maxab(trudata.(dtype)(itr).PSV))); % get the max, to normalise trace
 %                 premax = max(abs(maxab(predata.(dtype)(1).PSV))); % get the max, to normalise trace
@@ -99,8 +112,28 @@ switch pdtyp{1}
                 'fontsize',13)
         title(xa1, regexprep(dtype,'_','-'),'fontsize',22)
         xlabel(xa2, sprintf('Time from %s arrival',pdtyp{2}(1)),'fontsize',18)
+        
+        if strcmp(pdtyp{3},'ccp')
+            set([xa1,xa2],'xlim',minmax(trudata.(dtype)(itr).zz))
+            xlabel(xa2,'Depth of conversion (km)','fontsize',18)
+        end
     
     end
+    
+%% HKstack        
+    case {'HKstack'}
+        contourf(ax12,trudata.(dtype).K,trudata.(dtype).H,trudata.(dtype).Esum',30,'linestyle','none');
+        colorbar(ax12,'southoutside')
+        
+        plot(predata.HKstack_P.K,predata.HKstack_P.H,'ok','linewidth',2,...
+            'markerfacecolor','r','markersize',7)
+        
+        title(ax12, regexprep(dtype,'_','-'),'fontsize',22)
+        xlabel(ax12, 'Vp/Vs ratio','fontsize',16)
+        ylabel(ax12, 'Moho depth','fontsize',16)
+        set(ax12,'fontsize',13,'ydir','reverse')
+    
+    
 end
 end
 

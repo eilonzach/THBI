@@ -8,6 +8,11 @@ function [ allmodels_collated ] = collate_allmodels_perchain( allmodels_perchain
 
 allmodels_collated = [];
 
+if par.inv.nchains==1
+    allmodels_collated = allmodels_perchain;
+    return
+end
+
 for iii = 1:length(allmodels_perchain)
     am = allmodels_perchain{iii};
     if isempty(am), continue; end

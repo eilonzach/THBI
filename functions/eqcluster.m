@@ -1,6 +1,16 @@
 function [ iclust,nclust ] = eqcluster( seazs,gcarcs,min4clust,bazwin,arcwin,ifplot )
-%EQCLUSTER Summary of this function goes here
-%   Detailed explanation goes here
+% [ iclust,nclust ] = eqcluster( seazs,gcarcs,min4clust,bazwin,arcwin,ifplot )
+% 
+%   Function to cluster earthquakes by seaz and gcarc. Iteratively searches
+%   through all earthquakes and picks maxima in the windows of baz and arc
+%   
+% OUTPUTS:
+%   iclust = [Neq x 1] vector of integers corresponding to each
+%               earthquake's cluster number
+%   nclust = number of total clusters
+% 
+% Zach Eilon 
+%   + some helpful edits by Hannah Krueger
 
 if nargin<3 || isempty(min4clust)
     min4clust = 10;
@@ -19,7 +29,7 @@ iclust = zeros(size(seazs));
 
 %% Parse EQ into gcarc/baz space
 baztry = [0:359]';
-arctry = [00:180-arcwin+1]';
+arctry = [0:180-arcwin+1]';
 eqinbin = zeros(length(baztry),length(arctry));
 
 for ibaz = 1:length(baztry)
@@ -40,12 +50,14 @@ while any(any(eqinbin>min4clust))
     [~,iarc,ibaz] = maxgrid(eqinbin);
     bazcl(icl) = baztry(ibaz);
     arccl(icl) = arctry(iarc);
-    indclust = (abs(bazcl(icl)-seazs) <= bazwin/2) & (abs(arccl(icl)-gcarcs) <= arcwin/2);
+    indclust = (abs(azdiff(bazcl(icl),seazs)) <= bazwin/2) & (abs(arccl(icl)-gcarcs) <= arcwin/2);
     iclust(indclust) = icl;
     
     for ibaz = 1:length(baztry)
     for iarc = 1:length(arctry)
-        if (abs(baztry(ibaz) - bazcl(icl)) < bazwin) & (abs(arctry(iarc) - arccl(icl)) <= arcwin)
+        if bazwin>180 %added by HEK 2/2019 bc not correct if trying to plot >180 baz bins
+            eqinbin(ibaz,iarc)=0;
+        elseif (abs(baztry(ibaz) - bazcl(icl)) < bazwin) & (abs(arctry(iarc) - arccl(icl)) <= arcwin)
             eqinbin(ibaz,iarc) = 0;
 
         end

@@ -14,11 +14,20 @@ end
 
 figure(57),clf,set(gcf,'pos',[015 576 1750 600])
 ax1 = axes('position',[0.03 0.53 0.235 0.4]); hold on
-ax2 = axes('position',[0.03 0.09 0.235 0.4]); hold on
-ax3 = axes('position',[0.29 0.53 0.24 0.4]); hold on
+ax2 = axes('position',[0.29 0.53 0.24 0.4]); hold on
+ax3 = axes('position',[0.03 0.09 0.235 0.4]); hold on
 ax4 = axes('position',[0.29 0.09 0.24 0.4]); hold on
 ax5 = axes('position',[0.565 0.09 0.205 0.83]); hold on
 ax6 = axes('position',[0.795 0.09 0.19 0.83]); hold on
+
+% ax11 = axes('position',[0.03 0.09 0.11 0.84]); hold on
+% ax12 = axes('position',[0.155 0.09 0.11 0.84]); hold on
+
+if any(strcmp(fieldnames(trudata),'HKstack_P'))
+    ax7 = axes('pos',[axpos(ax3,[1,2,3]) sum(axpos(ax1,[2,4]))-axpos(ax3,2)]); hold on
+    delete([ax1,ax3]);
+end
+
 
 axs=[ax1,ax2,ax3,ax4,ax5,ax6];
 
@@ -30,11 +39,13 @@ dtype = dtypes{id};
 switch pdtyp{1}
 
 %% BWs
-    case 'BW'
+    case {'BW','RF'}
 
     if strcmp(pdtyp{2},'Ps'), ipl = 3; elseif strcmp(pdtyp{2},'Sp'), ipl = 4; end
     if ~strcmp(pdtyp{3},'def') || ~strcmp(pdtyp{4},'def'), ipl = ipl-2; end
     xa = axs(ipl); % order [3,4,1,2]
+    
+    if strcmp(pdtyp{3},'ccp'), trudata.(dtype)(1).samprate = 1;end
     
     samprate = trudata.(dtype)(1).samprate;
     if ~isempty(predata.(dtype)) && ~isempty(predata.(dtype)(1).PSV)
@@ -49,8 +60,10 @@ switch pdtyp{1}
         end
         if strcmp(pdtyp{2}(1),'P')
             xlims = [0 1.5*trudata.(dtype)(1).nsamp./samprate];
-        elseif strcmp(pdtyp{2}(1),'S')
+        elseif strcmp(pdtyp{2}(1),'S') && ~strcmp(pdtyp{3},'ccp')
             xlims = length(cc_t)./samprate - [1.5*trudata.(dtype)(1).nsamp./samprate 0];
+        elseif strcmp(pdtyp{2}(1),'S') && strcmp(pdtyp{3},'ccp')
+            xlims = [0 600];
         end
         set(xa,'fontsize',13,'xlim',xlims,'ylim',max([1.1*cc_max,axlim(xa,4)])*[-1 1])
         title(xa,regexprep(dtype,'_','-'),'fontsize',22,'pos',[mean(xlims),0.85*cc_max,0])
@@ -90,6 +103,20 @@ switch pdtyp{1}
 %             ylabel('HV ratio)','fontsize',18)
             title(ax6,'HV ratio','fontsize',22)
         end
+   
+%% HKstack        
+    case {'HKstack'}
+        contourf(ax7,trudata.(dtype).K,trudata.(dtype).H,trudata.(dtype).Esum',30,'linestyle','none');
+        colorbar(ax7,'southoutside')
+        
+        plot(predata.HKstack_P.K,predata.HKstack_P.H,'ok','linewidth',2,...
+            'markerfacecolor','r','markersize',7)
+        
+        title(ax7, regexprep(dtype,'_','-'),'fontsize',22)
+        xlabel(ax7, 'Vp/Vs ratio','fontsize',16)
+        ylabel(ax7, 'Moho depth','fontsize',16)
+        set(ax7,'fontsize',13,'ydir','reverse')
+        
         
 
 end
