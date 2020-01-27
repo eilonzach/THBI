@@ -22,3 +22,11 @@ matlab_to_mineos/*
 test_detailed_balance*
 defunct*
 *.m~
+NWUS/*
+AK/*
+Krueger_RF/*
+NWTA/*
+test_*
+GENERAL/old_processing*
+US/*
+SYNTHETICS/*
