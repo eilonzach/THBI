@@ -1,5 +1,5 @@
-function empprior = a2_BUILD_EMPIRICAL_PRIOR(par,Niter,Nchains,zatdep)
-% empprior = a2_BUILD_EMPIRICAL_PRIOR(par,Niter,Nchains,zatdep)
+function empprior = a3_BUILD_EMPIRICAL_PRIOR(par,Niter,Nchains,zatdep)
+% empprior = a3_BUILD_EMPIRICAL_PRIOR(par,Niter,Nchains,zatdep)
 
 if nargin <2 || isempty(Niter) 
     Niter = 1e4;
@@ -45,7 +45,7 @@ empprior = struct('Niter',Niter*Nchains,'Nstored',0,...
                'VSsedtop',o,'VSsedbot',o,'VScrusttop',o,'VScrustbot',o,'VSmanttop',o,...
                'VSmantle',nan(Nsave,length(zatdep)),'zatdep',zatdep,...
                'Zkn_crust',nan(Nsave,par.mod.crust.kmax),'Zkn_mantle',nan(Nsave,par.mod.mantle.kmax),...
-               'fdVSmoh',o,'vpvs',o,'cxi',o,'mxi',o,...
+               'fdVSmoh',o,'vpvs',o,'cxi',o,'mxi',o,'NVGzwa',o,...
                'datahparm',nan(Nsave,length(dtypes)));
 
 %% ========================================================================
@@ -113,6 +113,12 @@ for ii = 1:Niter
     for id = 1:length(dtypes)
         empprior.datahparm(istor,id) = model.datahparm.(dtypes{id});
     end
+    
+    % nvg
+    [empprior.NVGzwa(istor,1),...
+        empprior.NVGzwa(istor,2),...
+            empprior.NVGzwa(istor,3)] =  model_NVG_info(model);
+        
     
     
     end

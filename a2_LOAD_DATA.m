@@ -72,6 +72,7 @@ else
         if all(~strcmp(trudtypes{idt},par.inv.datatypes)) % no match
             fprintf('WARNING - removing %s data from trudata\n',trudtypes{idt})
             trudata = rmfield(trudata,trudtypes{idt});
+            continue
         end
         if isempty(trudata.(trudtypes{idt}))
             fprintf('WARNING - No %s data in trudata\n',trudtypes{idt})
