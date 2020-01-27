@@ -16,7 +16,12 @@ for iii = 1:par.inv.nchains
     allmodels_perchain{iii} = a.allmodels;
 end
 
-load([resdir,'/prior.mat'],'prior');
+try
+    load([resdir,'/prior.mat'],'prior');
+catch
+    warning('could not find prior for rescuing')
+    prior = []; end
+
 load([resdir,'/trudata_USE.mat'],'trudata');
 
 end
