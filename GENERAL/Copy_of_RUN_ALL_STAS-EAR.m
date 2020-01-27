@@ -1,26 +1,20 @@
 close all
 clear all
 %% Setup
-run('/Users/zeilon/Documents/MATLAB/BayesianJointInv/a0_STARTUP_BAYES.m')
-
-proj = struct('name','NWUS');
-proj.dir = ['~/Documents/MATLAB/BayesianJointInv/',proj.name];
+proj = struct('name','EARdb');
+proj.dir = ['~/Work/EastAfrica/',proj.name];
 wd = pwd; addpath(wd);
 cd(proj.dir);
 
 %% load project, station, and request details and request details
-try
-    load([proj.dir,'/project_details.mat']);
-catch
-    run([proj.dir,'/project_details.m']);
-end
+load([proj.dir,'/project_details.mat']);
 load([proj.infodir,'stations.mat']);
 
 %% specify details of this run
 generation = 30; % generation of solution and data processing
 gc = 1;
 BWclust = 1;
-STAMP = 'NWUS_CCP_HK';
+STAMP = 'TEI19_BWSW';
 
 onesta = '';
 
@@ -37,7 +31,7 @@ run_params.STAMP = STAMP;
 run_params.overwrite = overwrite;
 
 %% ==================  LOOP OVER STATIONS IN DB  ================== 
-for is = 1:stainfo.nstas % done 30-end, need to do before and after...
+for is = 59:stainfo.nstas % got to BMO, UO = is 89
     
     if exist('onesta') && ~isempty(onesta)
         if ~strcmp(stainfo.stas{is},onesta), continue; end
@@ -63,8 +57,8 @@ end
 function execute_MASTER_par
     global run_params
     try
-        MASTER_par;
+    MASTER_par;
     catch
-         1;
+%         1;
     end
 end
