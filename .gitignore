@@ -5,6 +5,7 @@ matlab_to_mineos/*
 *.out0
 *.out1
 *.out2
+*imag.out
 *.in
 *.cmd
 *.mod
@@ -16,8 +17,18 @@ matlab_to_mineos/*
 *.asc
 *.eig
 *.strip
+*.table
+*.table_hdr
+*.table_hdr.branch
+*.cvfrechet
 *.run_kernels
 *.run_mineos
+*.run_mineosq
+*.run_propmat
+%.synth_in
+*notes.txt
+*eig_fix*
+*.hdr
 *cvfrechet*s
 test_detailed_balance*
 defunct*

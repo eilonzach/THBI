@@ -156,11 +156,11 @@ end
 % profile on
 
 % ===== Prepare for parallel pool =====
-% delete(gcp('nocreate')); 
-% parpool(min([par.inv.nchains,18]));
-% TD = parallel.pool.Constant(trudata);
+delete(gcp('nocreate')); 
+parpool(min([par.inv.nchains,18]));
+TD = parallel.pool.Constant(trudata);
 % (((( If not parallel: ))))
-TD(1).Value = trudata; par.inv.verbose = 0;
+% TD(1). Value = trudata; par.inv.verbose = 0;
 
 %% START DIFFERENT MARKOV CHAINS IN PARALLEL
 model0_perchain = cell(par.inv.nchains,1);
@@ -175,7 +175,7 @@ fprintf('\n ============== STARTING CHAIN(S) ==============\n')
 %% ========================================================================
 t = now;
 % mkdir([resdir,'/chainout']);
-for iii = 1:par.inv.nchains   
+parfor iii = 1:par.inv.nchains   
 chainstr = mkchainstr(iii);
 
 
