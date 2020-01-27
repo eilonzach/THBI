@@ -5,8 +5,19 @@ fprintf('LOADING data\n')
 global THBIpath TRUEmodel %#ok<NUSED>
 
 %% -----------------------------------------------------------------
+%% EXAMPLE
+if any(strcmp(par.proj.name,{'EXAMPLE'}))
+    
+    fprintf(' > Loading example data and target model\n')
+    
+    global TRUEmodel TLM trudata
+    
+    load('target_model.mat')
+    load('trudata.mat')
+    
+    %% -----------------------------------------------------------------
 %% SYNTHETICS
-if any(strcmp(par.proj.name,{'SYNTHETICS','test_RF_vs_BW'}))
+elseif any(strcmp(par.proj.name,{'SYNTHETICS','test_RF_vs_BW'}))
     
     fprintf(' > Creating custom model and synthetic data\n')
     
