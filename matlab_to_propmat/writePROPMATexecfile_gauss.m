@@ -1,5 +1,5 @@
-function writePROPMATexecfile( execfile, modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,PS,soT,obsdist,ocomps)
-%writePROPMATexecfile( execfile, modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,PS,soT,obsdist,ocomps)
+function writePROPMATexecfile_gauss( execfile, modfile,ifile,ofile0,ofile1,ofile2,oimfile,odatfile,inc,PS,soT,obsdist,ocomps)
+%writePROPMATexecfile_gauss( execfile, modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,PS,soT,obsdist,ocomps)
 %   
 % Function to write execution file for PropMatrix code
 % 
@@ -10,6 +10,7 @@ function writePROPMATexecfile( execfile, modfile,ifile,ofile0,ofile1,ofile2,odat
 %  ofile0    - name of synth.out file, not used again
 %  ofile1    - name of 1st file with synth output, for sourc1 to use
 %  ofile2    - name of 2nd file with synth output, for sourc1 to use
+%  oimfile   - name of imaginary output file, will be sour1 output
 %  odatfile  - name of file with output data from sourc1
 %  inc       - incidence angle
 %  PS        - choice of Ps or Sp (strings)
@@ -18,16 +19,16 @@ function writePROPMATexecfile( execfile, modfile,ifile,ofile0,ofile1,ofile2,odat
 %  ocomps    - output format: 1 = x,y,z  or 2 = R,T,U 
 
 
-if nargin < 9
+if nargin < 10
     PS = 'Ps';
 end
-if nargin < 10
+if nargin < 11
     soT = 1;
 end
-if nargin < 11 
+if nargin < 12 
     obsdist = 0;
 end
-if nargin < 12;
+if nargin < 13
     ocomps = 2;
 end
     
@@ -60,6 +61,7 @@ fprintf(fid,'$xdir/sourc1_gauss <<!\n');
 fprintf(fid,'%s\n',odatfile);
 fprintf(fid,'%s\n',ofile1);
 fprintf(fid,'%s\n',ofile2);
+fprintf(fid,'%s\n',oimfile);
 fprintf(fid,'%s\n',excite);
 fprintf(fid,'%.1f\n',soT);
 fprintf(fid,'%.1f\n',obsdist);
@@ -69,7 +71,7 @@ fprintf(fid,'!\n');
 fprintf(fid,'echo "Done source convolution, cleaning up..."\n');
 %
 % fprintf(fid,'rm synth.out3*\n');
-fprintf(fid,'rm imag_part.out\n');
+fprintf(fid,'rm %s\n',oimfile);
 
 fclose(fid);
 
