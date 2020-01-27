@@ -42,3 +42,5 @@ GENERAL/old_processing*
 US/*
 SYNTHETICS/*
 LAB_tests/*
+*.jpg
+*.png
