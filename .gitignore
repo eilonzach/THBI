@@ -22,3 +22,9 @@ matlab_to_mineos/*
 test_detailed_balance*
 defunct*
 *.m~
+LAB_tests/*
+NWUS/*
+SYNTHETICS/*
+US/*
+test_PropMAT/*
+test_*

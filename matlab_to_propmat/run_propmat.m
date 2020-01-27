@@ -49,6 +49,7 @@ ifile = [ID,'_synth.in'];
 ofile0 = [ID,'_synth.out0'];
 ofile1 = [ID,'_synth.out1'];
 ofile2 = [ID,'_synth.out2'];
+oimagout = [ID,'_imag.out'];
 
 %% =======================================================================
 
@@ -63,9 +64,9 @@ nlay = LAYmodel.nlay;
 writePROPMATmodfile( LAYmodel,modfile)
 writePROPMATparmfile(ifile, Vbot, nlay+1,nsamps,samprate,cutf) % add one layer for the halfspace
 if strcmp(sourc,'gauss')
-    writePROPMATexecfile_gauss( execfile,modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,ph,synthperiod,obsdist,ocomps)
+    writePROPMATexecfile_gauss( execfile,modfile,ifile,ofile0,ofile1,ofile2,oimagout,odatfile,inc,ph,synthperiod,obsdist,ocomps)
 elseif strcmp(sourc,'sine')
-    writePROPMATexecfile( execfile,modfile,ifile,ofile0,ofile1,ofile2,odatfile,inc,ph,synthperiod,obsdist,ocomps)
+    writePROPMATexecfile(       execfile,modfile,ifile,ofile0,ofile1,ofile2,oimagout,odatfile,inc,ph,synthperiod,obsdist,ocomps)
 end
 system(['chmod +u+x ' execfile]);
 

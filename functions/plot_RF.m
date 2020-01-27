@@ -7,6 +7,8 @@ function [h,hline,hpos,hneg] = plot_RF( ax,RF,tt,level,xshift,iffill,pcol,ncol )
 % with greater amplitude than "level" - red for positive, blue for
 % negative. The handles to the plotted elements are returned, where 
 %  h = [hline,hpos,hneg].
+%
+% ** Must be in increasing time!!! Flip RF data if not!! **
 
 
 if nargin < 4 || isempty(level)
@@ -25,18 +27,35 @@ if nargin < 8 || isempty(ncol)
     ncol = [0 0 1];
 end
 
+
+%% processing things
 RF = RF(:);
 tt = tt(:);
 
-axes(ax);hold on
 
+dt=tt(2)-tt(1); % edit by HEK May 2018
+if dt < 0
+    RF = flipud(RF);
+    tt = flipud(tt);    
+end
+
+% find and account for nans, if needed
+rfnan = isnan(RF);
+RFn = RF;
+RF(rfnan) = 0;
+
+RF = [0;RF(:);0]; % pad edges to avoid beginnning/end plot tie-line issues
+tt = [tt(1);tt(:);tt(end)]; % pad edges to avoid beginnning/end plot tie-line issues
+
+%% fill patches
+axes(ax);hold on
 
 if iffill
     % positive patch
     [~,tt_pos] = crossing(RF,tt,level); % find crossings at positive level
     Npf = floor(length(tt_pos)/2); % N of positive blocks. 
     hpos = zeros(Npf,1);
-    for ib = 1:Npf
+    for ib = 1:Npf-1
         if RF(1)>level,k=1; else k=0; end % shift if the RF starts above lev
         tt_b0 = tt_pos(2*ib-1 + k);
         tt_b1 = tt_pos(2*ib + k);
@@ -49,7 +68,7 @@ if iffill
     [~,tt_neg] = crossing(RF,tt,-level); % find crossings at negative level
     Nnf = floor(length(tt_neg)/2); % N of negative blocks. 
     hneg = zeros(Nnf,1);
-    for ib = 1:Nnf
+    for ib = 1:Nnf-1
         if RF(1)<-level,k=1; else k=0; end % shift if the RF starts above lev
         tt_b0 = tt_neg(2*ib-1 + k);
         tt_b1 = tt_neg(2*ib + k);
@@ -61,9 +80,10 @@ if iffill
 else
     hpos = [];
     hneg = [];
+    fprintf('\nChose NO FILL\n');
 end
     
-hline = plot(ax,RF+xshift,tt,'-k');
+hline = plot(ax,RF+xshift,tt,'-k','linewidth',1.5);
 
 h = {hline,hpos,hneg};
 
